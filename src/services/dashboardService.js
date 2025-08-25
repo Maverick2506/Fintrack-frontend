@@ -52,6 +52,15 @@ const dashboardService = {
       .then((res) => res.data);
   },
 
+  fetchMonthlyExpenses: async (year, month) => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", year);
+    if (month) params.append("month", month);
+    return api
+      .get(`/expenses/monthly?${params.toString()}`)
+      .then((res) => res.data);
+  },
+
   fetchDebts: async () => {
     return api.get("/debts").then((res) => res.data);
   },

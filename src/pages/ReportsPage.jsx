@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import dashboardService from "../services/dashboardService";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
+import TransactionList from "../components/Dashboard/TransactionList";
 
 const ReportsPage = () => {
   const [reportData, setReportData] = useState(null);
   const [spendingData, setSpendingData] = useState([]);
+  const [monthlyExpenses, setMonthlyExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState({
     year: new Date().getFullYear(),
@@ -16,7 +18,7 @@ const ReportsPage = () => {
     const fetchReportData = async () => {
       setLoading(true);
       try {
-        const [dashboardRes, spendingRes] = await Promise.all([
+        const [dashboardRes, spendingRes, expensesRes] = await Promise.all([
           dashboardService.fetchDashboard(
             selectedDate.year,
             selectedDate.month
@@ -25,9 +27,14 @@ const ReportsPage = () => {
             selectedDate.year,
             selectedDate.month
           ),
+          dashboardService.fetchMonthlyExpenses(
+            selectedDate.year,
+            selectedDate.month
+          ),
         ]);
         setReportData(dashboardRes);
         setSpendingData(spendingRes);
+        setMonthlyExpenses(expensesRes);
       } catch (err) {
         console.error("Error fetching report data:", err);
       } finally {
@@ -109,6 +116,9 @@ const ReportsPage = () => {
               <p className="text-gray-400">No spending data for this month.</p>
             </div>
           )}
+          <div className="md:col-span-2">
+            <TransactionList transactions={monthlyExpenses} />
+          </div>
         </div>
       ) : (
         <p className="text-center text-white">
