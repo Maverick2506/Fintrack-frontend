@@ -23,7 +23,9 @@ const UpcomingBills = ({ bills, onMarkAsPaid, onEdit, onDelete }) => {
                 <div>
                   <span>{bill.name}</span>
                   <p className="text-xs text-gray-500">
-                    {new Date(bill.due_date).toLocaleDateString()}
+                    {new Date(bill.due_date).toLocaleDateString("en-US", {
+                      timeZone: "UTC",
+                    })}
                   </p>
                 </div>
               </div>

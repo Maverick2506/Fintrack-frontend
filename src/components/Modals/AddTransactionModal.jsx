@@ -12,6 +12,7 @@ const AddTransactionModal = ({
   const [name, setName] = useState("");
   const [type, setType] = useState("expense");
   const [category, setCategory] = useState("Other");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [recurrence, setRecurrence] = useState("none");
   const isEditing = !!existingTransaction;
@@ -33,12 +34,16 @@ const AddTransactionModal = ({
         setName(existingTransaction.name);
         setAmount(existingTransaction.amount);
         setCategory(existingTransaction.category || "Other");
+        setDueDate(
+          existingTransaction.due_date || new Date().toISOString().slice(0, 10)
+        );
         setRecurrence(existingTransaction.recurrence || "none");
         setType("expense");
       } else {
         setName("");
         setAmount("");
         setCategory("Other");
+        setDueDate(new Date().toISOString().slice(0, 10));
         setRecurrence("none");
         setType("expense");
       }
@@ -63,32 +68,31 @@ const AddTransactionModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const isExpense = type === "expense";
 
-    if (category === "Debt") {
+    const payload = isExpense
+      ? {
+          id: existingTransaction?.id,
+          name,
+          amount,
+          due_date: dueDate,
+          category,
+          recurrence,
+        }
+      : {
+          id: existingTransaction?.id,
+          name,
+          amount,
+          payment_date: new Date().toISOString().slice(0, 10),
+        };
+
+    if (category === "Debt" && isExpense) {
       await dashboardService.addDebt({
         name,
         total_amount: amount,
         monthly_payment: 0,
       });
     } else {
-      const isExpense = type === "expense";
-      const payload = isExpense
-        ? {
-            id: existingTransaction?.id,
-            name,
-            amount,
-            due_date:
-              existingTransaction?.due_date ||
-              new Date().toISOString().slice(0, 10),
-            category,
-            recurrence,
-          }
-        : {
-            id: existingTransaction?.id,
-            name,
-            amount,
-            payment_date: new Date().toISOString().slice(0, 10),
-          };
       await dashboardService.saveTransaction(payload, isEditing);
     }
 
@@ -140,6 +144,22 @@ const AddTransactionModal = ({
           </div>
           {type === "expense" && (
             <>
+              <div className="mb-4">
+                <label
+                  htmlFor="dueDate"
+                  className="block text-sm font-medium text-gray-300"
+                >
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  id="dueDate"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+                  required
+                />
+              </div>
               <div className="mb-4">
                 <div className="flex justify-between items-center">
                   <label
