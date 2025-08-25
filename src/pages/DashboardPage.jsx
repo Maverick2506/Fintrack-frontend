@@ -11,8 +11,8 @@ import dashboardService from "../services/dashboardService";
 import FinancialAdviceCard from "../components/Dashboard/FinancialAdviceCard";
 import AdviceModal from "../components/Modals/AdviceModal";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
-import AddDebtModal from "../components/Modals/AddDebtModal";
-import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
+import AddDebtModal from "../components/Modals/AddDebtModal"; 
+import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal"; 
 
 const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -136,22 +136,25 @@ const DashboardPage = () => {
         </main>
       </div>
 
-      <div className="fixed bottom-6 right-6 space-y-4">
+      <div className="fixed bottom-6 right-6 flex flex-col items-center gap-4">
         <button
           onClick={() => openModal("addDebt")}
-          className="bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg hover:bg-red-700"
+          title="Add New Debt"
+          className="bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg hover:bg-red-700 transition-transform transform hover:scale-110"
         >
           D
         </button>
         <button
           onClick={() => openModal("addSavingsGoal")}
-          className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg hover:bg-green-700"
+          title="Add New Savings Goal"
+          className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg hover:bg-green-700 transition-transform transform hover:scale-110"
         >
           S
         </button>
         <button
           onClick={() => openModal("transaction")}
-          className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl pb-1 font-bold shadow-lg hover:bg-blue-700"
+          title="Add Transaction"
+          className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl pb-1 font-bold shadow-lg hover:bg-blue-700 transition-transform transform hover:scale-110"
         >
           +
         </button>
