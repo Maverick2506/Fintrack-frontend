@@ -4,7 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 // Login function no longer needs an email parameter
 export const login = async (password) => {
-  const response = await axios.post(`${API_URL}/api/auth/login`, { password });
+  const response = await axios.post(`${API_URL}/auth/login`, { password });
   if (response.data.token) {
     localStorage.setItem("user_token", response.data.token);
   }
