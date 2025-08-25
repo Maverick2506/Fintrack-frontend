@@ -1,6 +1,6 @@
 import React from "react";
 
-const TransactionList = ({ transactions }) => {
+const TransactionList = ({ transactions, onDelete }) => {
   if (!transactions || transactions.length === 0) {
     return (
       <div className="bg-gray-800 p-4 rounded-lg">
@@ -21,7 +21,7 @@ const TransactionList = ({ transactions }) => {
         {transactions.map((transaction) => (
           <li
             key={transaction.id}
-            className="flex items-center justify-between"
+            className="flex items-center justify-between group"
           >
             <div className="flex items-center">
               <div>
@@ -33,9 +33,16 @@ const TransactionList = ({ transactions }) => {
                 </p>
               </div>
             </div>
-            <span className="font-semibold text-red-400">
-              -${parseFloat(transaction.amount).toFixed(2)}
-            </span>
+            <div className="flex items-center">
+              <span className="font-semibold text-red-400 mr-4">
+                -${parseFloat(transaction.amount).toFixed(2)}
+              </span>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => onDelete(transaction.id)} title="Delete">
+                  🗑️
+                </button>
+              </div>
+            </div>
           </li>
         ))}
       </ul>

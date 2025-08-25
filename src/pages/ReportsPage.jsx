@@ -3,44 +3,45 @@ import dashboardService from "../services/dashboardService";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import TransactionList from "../components/Dashboard/TransactionList";
+import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 
 const ReportsPage = () => {
   const [reportData, setReportData] = useState(null);
   const [spendingData, setSpendingData] = useState([]);
   const [monthlyExpenses, setMonthlyExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [activeExpenseId, setActiveExpenseId] = useState(null);
   const [selectedDate, setSelectedDate] = useState({
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
   });
 
+  const fetchReportData = async () => {
+    setLoading(true);
+    try {
+      const [dashboardRes, spendingRes, expensesRes] = await Promise.all([
+        dashboardService.fetchDashboard(selectedDate.year, selectedDate.month),
+        dashboardService.fetchSpendingSummary(
+          selectedDate.year,
+          selectedDate.month
+        ),
+        dashboardService.fetchMonthlyExpenses(
+          selectedDate.year,
+          selectedDate.month
+        ),
+      ]);
+      setReportData(dashboardRes);
+      setSpendingData(spendingRes);
+      setMonthlyExpenses(expensesRes);
+    } catch (err) {
+      console.error("Error fetching report data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchReportData = async () => {
-      setLoading(true);
-      try {
-        const [dashboardRes, spendingRes, expensesRes] = await Promise.all([
-          dashboardService.fetchDashboard(
-            selectedDate.year,
-            selectedDate.month
-          ),
-          dashboardService.fetchSpendingSummary(
-            selectedDate.year,
-            selectedDate.month
-          ),
-          dashboardService.fetchMonthlyExpenses(
-            selectedDate.year,
-            selectedDate.month
-          ),
-        ]);
-        setReportData(dashboardRes);
-        setSpendingData(spendingRes);
-        setMonthlyExpenses(expensesRes);
-      } catch (err) {
-        console.error("Error fetching report data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchReportData();
   }, [selectedDate]);
 
@@ -49,6 +50,12 @@ const ReportsPage = () => {
       ...prev,
       [e.target.name]: parseInt(e.target.value),
     }));
+  };
+
+  const handleDelete = async () => {
+    await dashboardService.deleteBill(activeExpenseId);
+    setDeleteModalOpen(false);
+    fetchReportData();
   };
 
   return (
@@ -117,7 +124,13 @@ const ReportsPage = () => {
             </div>
           )}
           <div className="md:col-span-2">
-            <TransactionList transactions={monthlyExpenses} />
+            <TransactionList
+              transactions={monthlyExpenses}
+              onDelete={(id) => {
+                setActiveExpenseId(id);
+                setDeleteModalOpen(true);
+              }}
+            />
           </div>
         </div>
       ) : (
@@ -125,6 +138,13 @@ const ReportsPage = () => {
           Could not load data for the selected period.
         </p>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        itemType="expense"
+      />
     </div>
   );
 };
