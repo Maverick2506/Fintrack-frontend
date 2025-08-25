@@ -17,7 +17,7 @@ const Navbar = () => {
 
   return (
     <nav className="bg-gray-900 p-4 flex justify-center sticky top-0 z-10">
-      <div className="flex items-center space-x-4">
+      <div className="flex flex-wrap items-center justify-center gap-y-2 gap-x-2">
         <NavLink
           to="/"
           className={({ isActive }) =>
