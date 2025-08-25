@@ -138,6 +138,13 @@ const dashboardService = {
       "Debt payment successful!"
     );
   },
+
+  contributeToSavingsGoal: async (goalId, contributionData) => {
+    return handleRequest(
+      api.post(`/savings-goals/${goalId}/contribute`, contributionData),
+      "Contribution successful!"
+    );
+  },
 };
 
 export default dashboardService;
