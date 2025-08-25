@@ -11,8 +11,8 @@ import dashboardService from "../services/dashboardService";
 import FinancialAdviceCard from "../components/Dashboard/FinancialAdviceCard";
 import AdviceModal from "../components/Modals/AdviceModal";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
-import AddDebtModal from "../components/Modals/AddDebtModal"; 
-import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal"; 
+import AddDebtModal from "../components/Modals/AddDebtModal";
+import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 
 const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -82,10 +82,11 @@ const DashboardPage = () => {
     openModal("advice");
     setAdviceLoading(true);
     try {
-      const adviceText = await dashboardService.getFinancialAdvice(
+      // FIX: Extract the .advice property from the response object
+      const adviceResponse = await dashboardService.getFinancialAdvice(
         dashboardData
       );
-      setAdvice(adviceText);
+      setAdvice(adviceResponse.advice);
     } catch (error) {
       setAdvice("Sorry, I could not get any advice at the moment.");
     } finally {
