@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import dashboardService from "../../services/dashboardService";
 
 const AddSavingsContributionModal = ({
   isOpen,
@@ -14,12 +14,9 @@ const AddSavingsContributionModal = ({
     if (!goalId || !amount) return;
 
     try {
-      await axios.post(
-        `http://localhost:8000/api/savings-goals/${goalId}/contribute`,
-        {
-          amount: amount,
-        }
-      );
+      await dashboardService.contributeToSavingsGoal(goalId, {
+        amount: amount,
+      });
       onClose();
       refreshData();
     } catch (error) {
