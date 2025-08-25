@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
+import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import dashboardService from "../services/dashboardService";
 
 const SavingsPage = () => {
@@ -8,6 +9,7 @@ const SavingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
   const [isAddGoalModalOpen, setAddGoalModalOpen] = useState(false);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState(null);
 
   const fetchGoals = async () => {
@@ -29,6 +31,12 @@ const SavingsPage = () => {
   const handleOpenSavingsModal = (goalId) => {
     setActiveGoalId(goalId);
     setIsSavingsModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    await dashboardService.deleteSavingsGoal(activeGoalId);
+    setDeleteModalOpen(false);
+    fetchGoals();
   };
 
   if (loading) {
@@ -62,12 +70,23 @@ const SavingsPage = () => {
             <div key={goal.id} className="bg-gray-800 p-4 rounded-lg">
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-lg font-bold text-white">{goal.name}</h2>
-                <button
-                  onClick={() => handleOpenSavingsModal(goal.id)}
-                  className="text-sm bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded"
-                >
-                  Contribute
-                </button>
+                <div>
+                  <button
+                    onClick={() => {
+                      setActiveGoalId(goal.id);
+                      setDeleteModalOpen(true);
+                    }}
+                    className="text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded mr-2"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => handleOpenSavingsModal(goal.id)}
+                    className="text-sm bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded"
+                  >
+                    Contribute
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-gray-400">
                 ${parseFloat(goal.current_amount).toFixed(2)} / $
@@ -93,6 +112,12 @@ const SavingsPage = () => {
         isOpen={isAddGoalModalOpen}
         onClose={() => setAddGoalModalOpen(false)}
         refreshData={fetchGoals}
+      />
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        itemType="savings goal"
       />
     </div>
   );

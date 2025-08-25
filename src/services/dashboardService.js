@@ -97,6 +97,20 @@ const dashboardService = {
     );
   },
 
+  deleteDebt: async (debtId) => {
+    return handleRequest(
+      api.delete(`/debts/${debtId}`),
+      "Debt deleted successfully."
+    );
+  },
+
+  deleteSavingsGoal: async (goalId) => {
+    return handleRequest(
+      api.delete(`/savings-goals/${goalId}`),
+      "Savings goal deleted."
+    );
+  },
+
   saveTransaction: async (transaction, isEditing) => {
     const isExpense = !transaction.payment_date;
     const endpoint = isEditing
