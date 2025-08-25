@@ -52,7 +52,6 @@ const dashboardService = {
       .then((res) => res.data);
   },
 
-  // --- THESE FUNCTIONS WERE MISSING ---
   fetchDebts: async () => {
     return api.get("/debts").then((res) => res.data);
   },
@@ -60,7 +59,20 @@ const dashboardService = {
   fetchSavingsGoals: async () => {
     return api.get("/savings-goals").then((res) => res.data);
   },
-  // ------------------------------------
+
+  addDebt: async (debtData) => {
+    return handleRequest(
+      api.post("/debts", debtData),
+      "Debt added successfully!"
+    );
+  },
+
+  addSavingsGoal: async (goalData) => {
+    return handleRequest(
+      api.post("/savings-goals", goalData),
+      "Savings goal added!"
+    );
+  },
 
   markBillAsPaid: async (billId) => {
     return handleRequest(

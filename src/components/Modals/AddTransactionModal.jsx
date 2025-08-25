@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import dashboardService from "../../services/dashboardService"; // Import the service
+import dashboardService from "../../services/dashboardService";
 import axios from "axios";
 
 const AddTransactionModal = ({
@@ -63,28 +63,35 @@ const AddTransactionModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const isExpense = type === "expense";
 
-    const payload = isExpense
-      ? {
-          id: existingTransaction?.id,
-          name,
-          amount,
-          due_date:
-            existingTransaction?.due_date ||
-            new Date().toISOString().slice(0, 10),
-          category,
-          recurrence,
-        }
-      : {
-          id: existingTransaction?.id,
-          name,
-          amount,
-          payment_date: new Date().toISOString().slice(0, 10),
-        };
+    if (category === "Debt") {
+      await dashboardService.addDebt({
+        name,
+        total_amount: amount,
+        monthly_payment: 0,
+      });
+    } else {
+      const isExpense = type === "expense";
+      const payload = isExpense
+        ? {
+            id: existingTransaction?.id,
+            name,
+            amount,
+            due_date:
+              existingTransaction?.due_date ||
+              new Date().toISOString().slice(0, 10),
+            category,
+            recurrence,
+          }
+        : {
+            id: existingTransaction?.id,
+            name,
+            amount,
+            payment_date: new Date().toISOString().slice(0, 10),
+          };
+      await dashboardService.saveTransaction(payload, isEditing);
+    }
 
-    // Use the service to save the transaction
-    await dashboardService.saveTransaction(payload, isEditing);
     onClose();
     refreshData();
   };

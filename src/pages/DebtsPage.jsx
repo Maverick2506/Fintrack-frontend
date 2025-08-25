@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
+import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddDebtPaymentModal from "../components/Modals/AddDebtPaymentModal";
-import dashboardService from "../services/dashboardService"; // Use the service
+import dashboardService from "../services/dashboardService";
 
 const DebtsPage = () => {
   const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDebtModalOpen, setIsDebtModalOpen] = useState(false);
+  const [isAddDebtModalOpen, setAddDebtModalOpen] = useState(false);
   const [activeDebtId, setActiveDebtId] = useState(null);
 
   const fetchDebts = async () => {
     setLoading(true);
     try {
-      // Use the service which sends the auth token
       const data = await dashboardService.fetchDebts();
       setDebts(data);
     } catch (error) {
@@ -36,7 +37,15 @@ const DebtsPage = () => {
 
   return (
     <div className="container mx-auto max-w-7xl p-4">
-      <h1 className="text-2xl font-bold text-white mb-6">Debt Management</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-white">Debt Management</h1>
+        <button
+          onClick={() => setAddDebtModalOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Add Debt
+        </button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {debts.map((debt) => {
           const totalAmount = parseFloat(debt.monthly_payment || 0) * 24 + 800;
@@ -76,6 +85,11 @@ const DebtsPage = () => {
         onClose={() => setIsDebtModalOpen(false)}
         refreshData={fetchDebts}
         debtId={activeDebtId}
+      />
+      <AddDebtModal
+        isOpen={isAddDebtModalOpen}
+        onClose={() => setAddDebtModalOpen(false)}
+        refreshData={fetchDebts}
       />
     </div>
   );

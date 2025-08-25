@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
-import dashboardService from "../services/dashboardService"; // Use the service
+import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
+import dashboardService from "../services/dashboardService";
 
 const SavingsPage = () => {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+  const [isAddGoalModalOpen, setAddGoalModalOpen] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState(null);
 
   const fetchGoals = async () => {
     setLoading(true);
     try {
-      // Use the service which sends the auth token
       const data = await dashboardService.fetchSavingsGoals();
       setGoals(data);
     } catch (error) {
@@ -40,7 +41,15 @@ const SavingsPage = () => {
 
   return (
     <div className="container mx-auto max-w-7xl p-4">
-      <h1 className="text-2xl font-bold text-white mb-6">Savings Goals</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-white">Savings Goals</h1>
+        <button
+          onClick={() => setAddGoalModalOpen(true)}
+          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Add Goal
+        </button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {goals.map((goal) => {
           const progress =
@@ -79,6 +88,11 @@ const SavingsPage = () => {
         onClose={() => setIsSavingsModalOpen(false)}
         refreshData={fetchGoals}
         goalId={activeGoalId}
+      />
+      <AddSavingsGoalModal
+        isOpen={isAddGoalModalOpen}
+        onClose={() => setAddGoalModalOpen(false)}
+        refreshData={fetchGoals}
       />
     </div>
   );

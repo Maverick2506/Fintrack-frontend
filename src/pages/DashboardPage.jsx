@@ -11,7 +11,8 @@ import dashboardService from "../services/dashboardService";
 import FinancialAdviceCard from "../components/Dashboard/FinancialAdviceCard";
 import AdviceModal from "../components/Modals/AdviceModal";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
-// No longer need to import axios directly here
+import AddDebtModal from "../components/Modals/AddDebtModal";
+import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 
 const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -23,6 +24,8 @@ const DashboardPage = () => {
     savings: false,
     delete: false,
     advice: false,
+    addDebt: false,
+    addSavingsGoal: false,
   });
   const [active, setActive] = useState({
     debtId: null,
@@ -37,7 +40,6 @@ const DashboardPage = () => {
     try {
       const [dashboardRes, spendingRes] = await Promise.all([
         dashboardService.fetchDashboard(),
-        // Use the service function which includes the auth token
         dashboardService.fetchSpendingSummary(),
       ]);
       setDashboardData(dashboardRes);
@@ -134,12 +136,26 @@ const DashboardPage = () => {
         </main>
       </div>
 
-      <button
-        onClick={() => openModal("transaction")}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl pb-1 font-bold shadow-lg hover:bg-blue-700"
-      >
-        +
-      </button>
+      <div className="fixed bottom-6 right-6 space-y-4">
+        <button
+          onClick={() => openModal("addDebt")}
+          className="bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg hover:bg-red-700"
+        >
+          D
+        </button>
+        <button
+          onClick={() => openModal("addSavingsGoal")}
+          className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg hover:bg-green-700"
+        >
+          S
+        </button>
+        <button
+          onClick={() => openModal("transaction")}
+          className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl pb-1 font-bold shadow-lg hover:bg-blue-700"
+        >
+          +
+        </button>
+      </div>
 
       {/* All Modals */}
       <AddTransactionModal
@@ -154,11 +170,21 @@ const DashboardPage = () => {
         refreshData={fetchAllData}
         debtId={active.debtId}
       />
+      <AddDebtModal
+        isOpen={modals.addDebt}
+        onClose={() => closeModal("addDebt")}
+        refreshData={fetchAllData}
+      />
       <AddSavingsContributionModal
         isOpen={modals.savings}
         onClose={() => closeModal("savings")}
         refreshData={fetchAllData}
         goalId={active.goalId}
+      />
+      <AddSavingsGoalModal
+        isOpen={modals.addSavingsGoal}
+        onClose={() => closeModal("addSavingsGoal")}
+        refreshData={fetchAllData}
       />
       <ConfirmDeleteModal
         isOpen={modals.delete}

@@ -1,19 +1,17 @@
 import { useState } from "react";
 import dashboardService from "../../services/dashboardService";
 
-const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
+const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const [name, setName] = useState("");
-  const [totalAmount, setTotalAmount] = useState("");
-  const [monthlyPayment, setMonthlyPayment] = useState("");
+  const [goalAmount, setGoalAmount] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !totalAmount || !monthlyPayment) return;
+    if (!name || !goalAmount) return;
 
-    await dashboardService.addDebt({
+    await dashboardService.addSavingsGoal({
       name,
-      total_amount: totalAmount,
-      monthly_payment: monthlyPayment,
+      goal_amount: goalAmount,
     });
     onClose();
     refreshData();
@@ -24,18 +22,18 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center p-4 z-50">
       <div className="bg-gray-800 p-6 rounded-lg w-full max-w-sm">
-        <h2 className="text-xl font-bold mb-4 text-white">Add New Debt</h2>
+        <h2 className="text-xl font-bold mb-4 text-white">New Savings Goal</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label
-              htmlFor="debtName"
+              htmlFor="goalName"
               className="block text-sm font-medium text-gray-300"
             >
-              Debt Name
+              Goal Name
             </label>
             <input
               type="text"
-              id="debtName"
+              id="goalName"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
@@ -44,32 +42,16 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
           </div>
           <div className="mb-4">
             <label
-              htmlFor="totalAmount"
+              htmlFor="goalAmount"
               className="block text-sm font-medium text-gray-300"
             >
-              Total Amount
+              Goal Amount
             </label>
             <input
               type="number"
-              id="totalAmount"
-              value={totalAmount}
-              onChange={(e) => setTotalAmount(e.target.value)}
-              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label
-              htmlFor="monthlyPayment"
-              className="block text-sm font-medium text-gray-300"
-            >
-              Monthly Payment
-            </label>
-            <input
-              type="number"
-              id="monthlyPayment"
-              value={monthlyPayment}
-              onChange={(e) => setMonthlyPayment(e.target.value)}
+              id="goalAmount"
+              value={goalAmount}
+              onChange={(e) => setGoalAmount(e.target.value)}
               className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
               required
             />
@@ -84,9 +66,9 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
             >
-              Add Debt
+              Add Goal
             </button>
           </div>
         </form>
@@ -95,4 +77,4 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
   );
 };
 
-export default AddDebtModal;
+export default AddSavingsGoalModal;
