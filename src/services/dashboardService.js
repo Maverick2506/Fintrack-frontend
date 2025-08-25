@@ -131,6 +131,13 @@ const dashboardService = {
   categorizeExpense: async (name) => {
     return handleRequest(api.post(`/categorize-expense`, { name }));
   },
+
+  payDebt: async (debtId, paymentData) => {
+    return handleRequest(
+      api.post(`/debts/${debtId}/pay`, paymentData),
+      "Debt payment successful!"
+    );
+  },
 };
 
 export default dashboardService;

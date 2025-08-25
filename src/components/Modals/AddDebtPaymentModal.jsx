@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import dashboardService from "../../services/dashboardService";
 
 const AddDebtPaymentModal = ({ isOpen, onClose, refreshData, debtId }) => {
   const [amount, setAmount] = useState("");
@@ -9,7 +9,7 @@ const AddDebtPaymentModal = ({ isOpen, onClose, refreshData, debtId }) => {
     if (!debtId || !amount) return;
 
     try {
-      await axios.post(`http://localhost:8000/api/debts/${debtId}/pay`, {
+      await dashboardService.payDebt(debtId, {
         amount: amount,
         payment_date: new Date().toISOString().slice(0, 10),
       });
