@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/auth";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 // Login function no longer needs an email parameter
 export const login = async (password) => {
