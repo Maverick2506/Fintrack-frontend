@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import dashboardService from "../../services/dashboardService";
-import axios from "axios";
 
 const AddTransactionModal = ({
   isOpen,
@@ -54,11 +53,8 @@ const AddTransactionModal = ({
     if (!name) return;
     setIsSuggesting(true);
     try {
-      const response = await axios.post(
-        "http://localhost:8000/api/categorize-expense",
-        { name }
-      );
-      setCategory(response.data.category);
+      const response = await dashboardService.categorizeExpense(name);
+      setCategory(response.category);
     } catch (error) {
       console.error("Error suggesting category:", error);
     } finally {
@@ -86,15 +82,7 @@ const AddTransactionModal = ({
           payment_date: new Date().toISOString().slice(0, 10),
         };
 
-    if (category === "Debt" && isExpense) {
-      await dashboardService.addDebt({
-        name,
-        total_amount: amount,
-        monthly_payment: 0,
-      });
-    } else {
-      await dashboardService.saveTransaction(payload, isEditing);
-    }
+    await dashboardService.saveTransaction(payload, isEditing);
 
     onClose();
     refreshData();

@@ -127,6 +127,10 @@ const dashboardService = {
   getFinancialAdvice: async (dashboardData) => {
     return handleRequest(api.post(`/financial-advice`, dashboardData));
   },
+
+  categorizeExpense: async (name) => {
+    return handleRequest(api.post(`/categorize-expense`, { name }));
+  },
 };
 
 export default dashboardService;
