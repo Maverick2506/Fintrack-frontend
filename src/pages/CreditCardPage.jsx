@@ -65,10 +65,11 @@ const CreditCardPage = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cards.map((card) => {
+          // FIX: Use the correct camelCase property names
           const utilization =
-            parseFloat(card.credit_limit) > 0
-              ? (parseFloat(card.statement_balance) /
-                  parseFloat(card.credit_limit)) *
+            parseFloat(card.creditLimit) > 0
+              ? (parseFloat(card.currentBalance) /
+                  parseFloat(card.creditLimit)) *
                 100
               : 0;
           return (
@@ -91,13 +92,14 @@ const CreditCardPage = () => {
                 </div>
               </div>
               <p className="text-sm text-gray-400">
-                Statement Balance: $
-                {parseFloat(card.statement_balance).toFixed(2)}
+                {/* FIX: Use the correct camelCase property name */}
+                Statement Balance: ${parseFloat(card.currentBalance).toFixed(2)}
               </p>
               <p className="text-sm text-gray-400">
+                {/* FIX: Use the correct camelCase property name */}
                 Due Date:{" "}
-                {card.due_date
-                  ? new Date(card.due_date).toLocaleDateString("en-US", {
+                {card.dueDate
+                  ? new Date(card.dueDate).toLocaleDateString("en-US", {
                       timeZone: "UTC",
                     })
                   : "N/A"}
