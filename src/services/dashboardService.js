@@ -182,6 +182,27 @@ const dashboardService = {
       .get(`/expenses/category?${params.toString()}`)
       .then((res) => res.data);
   },
+
+  updateDebt: async (id, debtData) => {
+    return handleRequest(
+      api.put(`/debts/${id}`, debtData),
+      "Debt updated successfully!"
+    );
+  },
+
+  updateSavingsGoal: async (id, goalData) => {
+    return handleRequest(
+      api.put(`/savings-goals/${id}`, goalData),
+      "Savings goal updated!"
+    );
+  },
+
+  updateCreditCard: async (id, cardData) => {
+    return handleRequest(
+      api.put(`/credit-cards/${id}`, cardData),
+      "Credit card updated!"
+    );
+  },
 };
 
 export default dashboardService;
