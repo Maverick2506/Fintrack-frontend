@@ -12,6 +12,9 @@ const AddTransactionModal = ({
   const [type, setType] = useState("expense");
   const [category, setCategory] = useState("Other");
   const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [paymentDate, setPaymentDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [recurrence, setRecurrence] = useState("none");
   const isEditing = !!existingTransaction;
@@ -43,6 +46,7 @@ const AddTransactionModal = ({
         setAmount("");
         setCategory("Other");
         setDueDate(new Date().toISOString().slice(0, 10));
+        setPaymentDate(new Date().toISOString().slice(0, 10));
         setRecurrence("none");
         setType("expense");
       }
@@ -79,7 +83,7 @@ const AddTransactionModal = ({
           id: existingTransaction?.id,
           name,
           amount,
-          payment_date: new Date().toISOString().slice(0, 10),
+          payment_date: paymentDate,
         };
 
     await dashboardService.saveTransaction(payload, isEditing);
@@ -130,7 +134,7 @@ const AddTransactionModal = ({
               required
             />
           </div>
-          {type === "expense" && (
+          {type === "expense" ? (
             <>
               <div className="mb-4">
                 <label
@@ -197,6 +201,23 @@ const AddTransactionModal = ({
                 </select>
               </div>
             </>
+          ) : (
+            <div className="mb-4">
+              <label
+                htmlFor="paymentDate"
+                className="block text-sm font-medium text-gray-300"
+              >
+                Payment Date
+              </label>
+              <input
+                type="date"
+                id="paymentDate"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+                required
+              />
+            </div>
           )}
           {!isEditing && (
             <div className="mb-4">
