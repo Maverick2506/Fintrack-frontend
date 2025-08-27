@@ -175,6 +175,13 @@ const dashboardService = {
       "Contribution successful!"
     );
   },
+
+  fetchExpensesByCategory: async (year, month, category) => {
+    const params = new URLSearchParams({ year, month, category });
+    return api
+      .get(`/expenses/category?${params.toString()}`)
+      .then((res) => res.data);
+  },
 };
 
 export default dashboardService;

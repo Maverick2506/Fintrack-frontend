@@ -1,7 +1,13 @@
 import React from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from "recharts";
 
-// Define a color palette for the chart segments
 const COLORS = [
   "#0088FE",
   "#00C49F",
@@ -12,7 +18,8 @@ const COLORS = [
   "#4ddbff",
 ];
 
-const SpendingChartCard = ({ data }) => {
+// Component now accepts an onCategoryClick prop
+const SpendingChartCard = ({ data, onCategoryClick }) => {
   return (
     <div className="bg-gray-800 p-4 rounded-lg">
       <h2 className="text-sm font-semibold text-gray-400 mb-3">
@@ -30,6 +37,8 @@ const SpendingChartCard = ({ data }) => {
               fill="#8884d8"
               dataKey="value"
               nameKey="name"
+              onClick={(pieData) => onCategoryClick(pieData.name)} // Handle click event
+              style={{ cursor: "pointer" }} // Change cursor to indicate it's clickable
             >
               {data.map((entry, index) => (
                 <Cell
@@ -38,6 +47,12 @@ const SpendingChartCard = ({ data }) => {
                 />
               ))}
             </Pie>
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#374151",
+                borderColor: "#4b5563",
+              }}
+            />
             <Legend iconType="circle" />
           </PieChart>
         </ResponsiveContainer>
