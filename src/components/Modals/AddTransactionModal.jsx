@@ -17,6 +17,8 @@ const AddTransactionModal = ({
   );
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [recurrence, setRecurrence] = useState("none");
+  const [creditCards, setCreditCards] = useState([]);
+  const [selectedCard, setSelectedCard] = useState("");
   const isEditing = !!existingTransaction;
 
   const categories = [
@@ -40,6 +42,7 @@ const AddTransactionModal = ({
           existingTransaction.due_date || new Date().toISOString().slice(0, 10)
         );
         setRecurrence(existingTransaction.recurrence || "none");
+        setSelectedCard(existingTransaction.creditCardId || "");
         setType("expense");
       } else {
         setName("");
@@ -48,10 +51,26 @@ const AddTransactionModal = ({
         setDueDate(new Date().toISOString().slice(0, 10));
         setPaymentDate(new Date().toISOString().slice(0, 10));
         setRecurrence("none");
+        setSelectedCard("");
         setType("expense");
       }
     }
   }, [existingTransaction, isOpen]);
+
+  // Fetch credit cards when the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchCards = async () => {
+        try {
+          const cards = await dashboardService.fetchCreditCards();
+          setCreditCards(cards);
+        } catch (error) {
+          console.error("Failed to fetch credit cards:", error);
+        }
+      };
+      fetchCards();
+    }
+  }, [isOpen]);
 
   const handleSuggestCategory = async () => {
     if (!name) return;
@@ -78,6 +97,8 @@ const AddTransactionModal = ({
           due_date: dueDate,
           category,
           recurrence,
+          creditCardId: selectedCard || null,
+          paid_with_credit_card: !!selectedCard,
         }
       : {
           id: existingTransaction?.id,
@@ -101,7 +122,6 @@ const AddTransactionModal = ({
           {isEditing ? "Edit Transaction" : "Add Transaction"}
         </h2>
         <form onSubmit={handleSubmit}>
-          {/* Form fields remain the same */}
           <div className="mb-4">
             <label
               htmlFor="name"
@@ -198,6 +218,28 @@ const AddTransactionModal = ({
                   <option value="none">No</option>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              {/* New Credit Card Dropdown */}
+              <div className="mb-4">
+                <label
+                  htmlFor="creditCard"
+                  className="block text-sm font-medium text-gray-300"
+                >
+                  Pay with Credit Card (Optional)
+                </label>
+                <select
+                  id="creditCard"
+                  value={selectedCard}
+                  onChange={(e) => setSelectedCard(e.target.value)}
+                  className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+                >
+                  <option value="">None (Direct Payment)</option>
+                  {creditCards.map((card) => (
+                    <option key={card.id} value={card.id}>
+                      {card.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </>

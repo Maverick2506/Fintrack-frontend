@@ -4,6 +4,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ReportsPage from "./pages/ReportsPage";
 import DebtsPage from "./pages/DebtsPage";
 import SavingsPage from "./pages/SavingsPage";
+import CreditCardPage from "./pages/CreditCardPage"; // Import the new page
 import LoginPage from "./pages/LoginPage";
 import Navbar from "./components/Layout/Navbar";
 import ProtectedRoute from "./components/Layout/ProtectedRoute";
@@ -51,6 +52,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <SavingsPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Add the new route for Credit Cards */}
+          <Route
+            path="/credit-cards"
+            element={
+              <ProtectedRoute>
+                <CreditCardPage />
               </ProtectedRoute>
             }
           />

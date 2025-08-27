@@ -69,6 +69,33 @@ const dashboardService = {
     return api.get("/savings-goals").then((res) => res.data);
   },
 
+  // --- NEW CREDIT CARD FUNCTIONS ---
+  fetchCreditCards: async () => {
+    return api.get("/credit-cards").then((res) => res.data);
+  },
+
+  addCreditCard: async (cardData) => {
+    return handleRequest(
+      api.post("/credit-cards", cardData),
+      "Credit card added!"
+    );
+  },
+
+  payCreditCard: async (cardId, paymentData) => {
+    return handleRequest(
+      api.post(`/credit-cards/${cardId}/pay`, paymentData),
+      "Card payment successful!"
+    );
+  },
+
+  deleteCreditCard: async (cardId) => {
+    return handleRequest(
+      api.delete(`/credit-cards/${cardId}`),
+      "Credit card deleted."
+    );
+  },
+  // --- END NEW FUNCTIONS ---
+
   addDebt: async (debtData) => {
     return handleRequest(
       api.post("/debts", debtData),
