@@ -52,6 +52,11 @@ const dashboardService = {
       .then((res) => res.data);
   },
 
+  // NEW: Function to fetch the 6-month trend data
+  fetchTrends: async () => {
+    return api.get("/trends").then((res) => res.data);
+  },
+
   fetchMonthlyExpenses: async (year, month) => {
     const params = new URLSearchParams();
     if (year) params.append("year", year);
@@ -69,7 +74,6 @@ const dashboardService = {
     return api.get("/savings-goals").then((res) => res.data);
   },
 
-  // --- NEW CREDIT CARD FUNCTIONS ---
   fetchCreditCards: async () => {
     return api.get("/credit-cards").then((res) => res.data);
   },
@@ -94,7 +98,6 @@ const dashboardService = {
       "Credit card deleted."
     );
   },
-  // --- END NEW FUNCTIONS ---
 
   addDebt: async (debtData) => {
     return handleRequest(

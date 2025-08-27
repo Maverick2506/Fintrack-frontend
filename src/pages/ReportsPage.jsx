@@ -4,11 +4,13 @@ import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import TransactionList from "../components/Dashboard/TransactionList";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
+import SpendingTrendsChart from "../components/Dashboard/SpendingTrendsChart"; // Import the new chart component
 
 const ReportsPage = () => {
   const [reportData, setReportData] = useState(null);
   const [spendingData, setSpendingData] = useState([]);
   const [monthlyExpenses, setMonthlyExpenses] = useState([]);
+  const [trendsData, setTrendsData] = useState([]); // State for the new trend data
   const [loading, setLoading] = useState(true);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [activeExpenseId, setActiveExpenseId] = useState(null);
@@ -20,20 +22,27 @@ const ReportsPage = () => {
   const fetchReportData = async () => {
     setLoading(true);
     try {
-      const [dashboardRes, spendingRes, expensesRes] = await Promise.all([
-        dashboardService.fetchDashboard(selectedDate.year, selectedDate.month),
-        dashboardService.fetchSpendingSummary(
-          selectedDate.year,
-          selectedDate.month
-        ),
-        dashboardService.fetchMonthlyExpenses(
-          selectedDate.year,
-          selectedDate.month
-        ),
-      ]);
+      // Fetch all data in parallel
+      const [dashboardRes, spendingRes, expensesRes, trendsRes] =
+        await Promise.all([
+          dashboardService.fetchDashboard(
+            selectedDate.year,
+            selectedDate.month
+          ),
+          dashboardService.fetchSpendingSummary(
+            selectedDate.year,
+            selectedDate.month
+          ),
+          dashboardService.fetchMonthlyExpenses(
+            selectedDate.year,
+            selectedDate.month
+          ),
+          dashboardService.fetchTrends(), // Fetch the new trend data
+        ]);
       setReportData(dashboardRes);
       setSpendingData(spendingRes);
       setMonthlyExpenses(expensesRes);
+      setTrendsData(trendsRes); // Set the new trend data
     } catch (err) {
       console.error("Error fetching report data:", err);
     } finally {
@@ -114,23 +123,29 @@ const ReportsPage = () => {
       {loading ? (
         <div className="text-center text-white">Loading report...</div>
       ) : reportData ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <MonthlySummary summary={reportData.monthlySummary} />
-          {spendingData.length > 0 ? (
-            <SpendingChartCard data={spendingData} />
-          ) : (
-            <div className="bg-gray-800 p-4 rounded-lg flex items-center justify-center">
-              <p className="text-gray-400">No spending data for this month.</p>
+        <div className="space-y-6">
+          {/* Add the new SpendingTrendsChart component */}
+          <SpendingTrendsChart data={trendsData} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <MonthlySummary summary={reportData.monthlySummary} />
+            {spendingData.length > 0 ? (
+              <SpendingChartCard data={spendingData} />
+            ) : (
+              <div className="bg-gray-800 p-4 rounded-lg flex items-center justify-center">
+                <p className="text-gray-400">
+                  No spending data for this month.
+                </p>
+              </div>
+            )}
+            <div className="md:col-span-2">
+              <TransactionList
+                transactions={monthlyExpenses}
+                onDelete={(id) => {
+                  setActiveExpenseId(id);
+                  setDeleteModalOpen(true);
+                }}
+              />
             </div>
-          )}
-          <div className="md:col-span-2">
-            <TransactionList
-              transactions={monthlyExpenses}
-              onDelete={(id) => {
-                setActiveExpenseId(id);
-                setDeleteModalOpen(true);
-              }}
-            />
           </div>
         </div>
       ) : (
