@@ -13,6 +13,7 @@ import AdviceModal from "../components/Modals/AdviceModal";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
+import CreditCardSummary from "../components/Dashboard/CreditCardSummary"; // Import the new component
 
 const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -82,11 +83,10 @@ const DashboardPage = () => {
     openModal("advice");
     setAdviceLoading(true);
     try {
-      // FIX: Extract the .advice property from the response object
-      const adviceResponse = await dashboardService.getFinancialAdvice(
+      const adviceText = await dashboardService.getFinancialAdvice(
         dashboardData
       );
-      setAdvice(adviceResponse.advice);
+      setAdvice(adviceText);
     } catch (error) {
       setAdvice("Sorry, I could not get any advice at the moment.");
     } finally {
@@ -102,8 +102,13 @@ const DashboardPage = () => {
     );
   }
 
-  const { monthlySummary, upcomingBills, debtSummary, savingsSummary } =
-    dashboardData;
+  const {
+    monthlySummary,
+    upcomingBills,
+    debtSummary,
+    savingsSummary,
+    creditCardSummary,
+  } = dashboardData;
 
   return (
     <div className="min-h-screen text-gray-200 font-sans pb-24">
@@ -123,6 +128,8 @@ const DashboardPage = () => {
             )}
           </div>
           <div className="lg:w-1/2 space-y-6">
+            {/* ADDED: The new Credit Card Summary component */}
+            <CreditCardSummary creditCards={creditCardSummary} />
             <ProgressSection
               debtSummary={debtSummary}
               savingsSummary={savingsSummary}

@@ -8,13 +8,13 @@ const ProgressSection = ({
 }) => {
   // We only show the first debt and savings goal for simplicity on the dashboard
   const primaryDebt = debtSummary[0] || null;
-  const primaryGoal = savingsSummary[1] || null;
+  const primaryGoal = savingsSummary[0] || null; // Changed to index 0 to grab the first goal
 
-  // Calculate debt progress if primary debt exists
+  // MODIFIED: Correctly calculate debt paydown progress
   const debtProgress = primaryDebt
-    ? ((parseFloat(primaryDebt.monthly_payment * 24) -
+    ? ((parseFloat(primaryDebt.total_amount) -
         parseFloat(primaryDebt.total_remaining)) /
-        parseFloat(primaryDebt.monthly_payment * 24)) *
+        parseFloat(primaryDebt.total_amount)) *
       100
     : 0;
 
@@ -70,6 +70,11 @@ const ProgressSection = ({
               ></div>
             </div>
           </div>
+        )}
+        {!primaryDebt && !primaryGoal && (
+          <p className="text-gray-400 text-sm">
+            No active debts or savings goals to track.
+          </p>
         )}
       </div>
     </div>
