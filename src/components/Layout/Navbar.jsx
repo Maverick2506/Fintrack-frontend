@@ -42,14 +42,7 @@ const Navbar = () => {
         >
           Debts
         </NavLink>
-        <NavLink
-          to="/savings"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
-          }
-        >
-          Savings
-        </NavLink>
+
         {/* Add new NavLink for Credit Cards */}
         <NavLink
           to="/credit-cards"
@@ -59,6 +52,16 @@ const Navbar = () => {
         >
           Credit Cards
         </NavLink>
+
+        <NavLink
+          to="/savings"
+          className={({ isActive }) =>
+            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
+          }
+        >
+          Savings
+        </NavLink>
+
         <button
           onClick={handleLogout}
           className={`${linkClass} ${inactiveLinkClass}`}
