@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
+import EditSavingsGoalModal from "../components/Modals/EditSavingsGoalModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import dashboardService from "../services/dashboardService";
 
@@ -9,8 +10,10 @@ const SavingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
   const [isAddGoalModalOpen, setAddGoalModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState(null);
+  const [activeGoal, setActiveGoal] = useState(null);
 
   const fetchGoals = async () => {
     setLoading(true);
@@ -31,6 +34,11 @@ const SavingsPage = () => {
   const handleOpenSavingsModal = (goalId) => {
     setActiveGoalId(goalId);
     setIsSavingsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (goal) => {
+    setActiveGoal(goal);
+    setIsEditModalOpen(true);
   };
 
   const handleDelete = async () => {
@@ -72,6 +80,12 @@ const SavingsPage = () => {
                 <h2 className="text-lg font-bold text-white">{goal.name}</h2>
                 <div>
                   <button
+                    onClick={() => handleOpenEditModal(goal)}
+                    className="text-sm bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded mr-2"
+                  >
+                    Edit
+                  </button>
+                  <button
                     onClick={() => {
                       setActiveGoalId(goal.id);
                       setDeleteModalOpen(true);
@@ -112,6 +126,12 @@ const SavingsPage = () => {
         isOpen={isAddGoalModalOpen}
         onClose={() => setAddGoalModalOpen(false)}
         refreshData={fetchGoals}
+      />
+      <EditSavingsGoalModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        refreshData={fetchGoals}
+        goal={activeGoal}
       />
       <ConfirmDeleteModal
         isOpen={isDeleteModalOpen}

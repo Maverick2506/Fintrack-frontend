@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AddCreditCardModal from "../components/Modals/AddCreditCardModal";
 import AddCreditCardPaymentModal from "../components/Modals/AddCreditCardPaymentModal";
+import EditCreditCardModal from "../components/Modals/EditCreditCardModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import dashboardService from "../services/dashboardService";
 
@@ -11,8 +12,10 @@ const CreditCardPage = () => {
     addCard: false,
     addPayment: false,
     deleteCard: false,
+    editCard: false,
   });
   const [activeCardId, setActiveCardId] = useState(null);
+  const [activeCard, setActiveCard] = useState(null);
 
   const fetchCreditCards = async () => {
     setLoading(true);
@@ -30,14 +33,16 @@ const CreditCardPage = () => {
     fetchCreditCards();
   }, []);
 
-  const openModal = (type, cardId = null) => {
+  const openModal = (type, cardId = null, card = null) => {
     setActiveCardId(cardId);
+    if (type === "editCard") setActiveCard(card);
     setModals((prev) => ({ ...prev, [type]: true }));
   };
 
   const closeModal = (type) => {
     setModals((prev) => ({ ...prev, [type]: false }));
     setActiveCardId(null);
+    if (type === "editCard") setActiveCard(null);
   };
 
   const handleDelete = async () => {
@@ -65,7 +70,6 @@ const CreditCardPage = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cards.map((card) => {
-          // FIX: Use the correct camelCase property names
           const utilization =
             parseFloat(card.creditLimit) > 0
               ? (parseFloat(card.currentBalance) /
@@ -77,6 +81,12 @@ const CreditCardPage = () => {
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-lg font-bold text-white">{card.name}</h2>
                 <div>
+                  <button
+                    onClick={() => openModal("editCard", card.id, card)}
+                    className="text-sm bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded mr-2"
+                  >
+                    Edit
+                  </button>
                   <button
                     onClick={() => openModal("deleteCard", card.id)}
                     className="text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded mr-2"
@@ -92,11 +102,9 @@ const CreditCardPage = () => {
                 </div>
               </div>
               <p className="text-sm text-gray-400">
-                {/* FIX: Use the correct camelCase property name */}
                 Statement Balance: ${parseFloat(card.currentBalance).toFixed(2)}
               </p>
               <p className="text-sm text-gray-400">
-                {/* FIX: Use the correct camelCase property name */}
                 Due Date:{" "}
                 {card.dueDate
                   ? new Date(card.dueDate).toLocaleDateString("en-US", {
@@ -128,6 +136,12 @@ const CreditCardPage = () => {
         onClose={() => closeModal("addPayment")}
         refreshData={fetchCreditCards}
         cardId={activeCardId}
+      />
+      <EditCreditCardModal
+        isOpen={modals.editCard}
+        onClose={() => closeModal("editCard")}
+        refreshData={fetchCreditCards}
+        card={activeCard}
       />
       <ConfirmDeleteModal
         isOpen={modals.deleteCard}
