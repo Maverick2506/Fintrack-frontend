@@ -13,7 +13,7 @@ import AdviceModal from "../components/Modals/AdviceModal";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
-import CreditCardSummary from "../components/Dashboard/CreditCardSummary"; // Import the new component
+import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 
 const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -79,14 +79,16 @@ const DashboardPage = () => {
     fetchAllData();
   };
 
+  // MODIFIED: This function now sends the entire dashboardData object to the AI
   const handleGetAdvice = async () => {
     openModal("advice");
     setAdviceLoading(true);
     try {
-      const adviceText = await dashboardService.getFinancialAdvice(
+      // Pass the whole object, which now includes credit card data and all upcoming bills
+      const adviceResponse = await dashboardService.getFinancialAdvice(
         dashboardData
       );
-      setAdvice(adviceText);
+      setAdvice(adviceResponse.advice); // The backend now sends { advice: "..." }
     } catch (error) {
       setAdvice("Sorry, I could not get any advice at the moment.");
     } finally {
@@ -128,7 +130,6 @@ const DashboardPage = () => {
             )}
           </div>
           <div className="lg:w-1/2 space-y-6">
-            {/* ADDED: The new Credit Card Summary component */}
             <CreditCardSummary creditCards={creditCardSummary} />
             <ProgressSection
               debtSummary={debtSummary}
