@@ -11,11 +11,13 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
     e.preventDefault();
     if (!name || !creditLimit) return;
 
-    // Convert string inputs to numbers and handle empty optional fields
+    // Prepare a clean payload for the API
     const payload = {
       name,
       credit_limit: parseFloat(creditLimit),
+      // Set to 0 if the optional balance is empty
       statement_balance: statementBalance ? parseFloat(statementBalance) : 0.0,
+      // Set to null if the optional due date is empty
       due_date: dueDate || null,
     };
 
@@ -62,6 +64,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
               className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
               required
               step="0.01"
+              placeholder="e.g., 5000"
             />
           </div>
           <div className="mb-4">
@@ -78,6 +81,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
               onChange={(e) => setStatementBalance(e.target.value)}
               className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
               step="0.01"
+              placeholder="e.g., 250.50"
             />
           </div>
           <div className="mb-4">
