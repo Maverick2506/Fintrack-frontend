@@ -11,12 +11,15 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
     e.preventDefault();
     if (!name || !creditLimit) return;
 
-    await dashboardService.addCreditCard({
+    // Convert string inputs to numbers and handle empty optional fields
+    const payload = {
       name,
-      credit_limit: creditLimit,
-      statement_balance: statementBalance || 0,
+      credit_limit: parseFloat(creditLimit),
+      statement_balance: statementBalance ? parseFloat(statementBalance) : 0.0,
       due_date: dueDate || null,
-    });
+    };
+
+    await dashboardService.addCreditCard(payload);
     onClose();
     refreshData();
   };
@@ -58,6 +61,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
               onChange={(e) => setCreditLimit(e.target.value)}
               className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
               required
+              step="0.01"
             />
           </div>
           <div className="mb-4">
@@ -73,6 +77,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
               value={statementBalance}
               onChange={(e) => setStatementBalance(e.target.value)}
               className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+              step="0.01"
             />
           </div>
           <div className="mb-4">
