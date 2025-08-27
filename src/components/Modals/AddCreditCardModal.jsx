@@ -4,26 +4,41 @@ import dashboardService from "../../services/dashboardService";
 const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
   const [name, setName] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
-  const [statementBalance, setStatementBalance] = useState("");
+  const [currentBalance, setCurrentBalance] = useState("");
   const [dueDate, setDueDate] = useState("");
+
+  const clearForm = () => {
+    setName("");
+    setCreditLimit("");
+    setCurrentBalance("");
+    setDueDate("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !creditLimit) return;
 
-    // Prepare a clean payload for the API
+    // Prepare the payload with the corrected field names
     const payload = {
       name,
-      credit_limit: parseFloat(creditLimit),
-      // Set to 0 if the optional balance is empty
-      statement_balance: statementBalance ? parseFloat(statementBalance) : 0.0,
-      // Set to null if the optional due date is empty
-      due_date: dueDate || null,
+      creditLimit: creditLimit,
+      currentBalance: currentBalance || "0",
+      dueDate: dueDate || null,
     };
 
-    await dashboardService.addCreditCard(payload);
+    try {
+      await dashboardService.addCreditCard(payload);
+      clearForm();
+      onClose();
+      refreshData();
+    } catch (error) {
+      console.error("Submit failed:", error);
+    }
+  };
+
+  const handleClose = () => {
+    clearForm();
     onClose();
-    refreshData();
   };
 
   if (!isOpen) return null;
@@ -69,16 +84,16 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
           </div>
           <div className="mb-4">
             <label
-              htmlFor="statementBalance"
+              htmlFor="currentBalance"
               className="block text-sm font-medium text-gray-300"
             >
               Current Balance (Optional)
             </label>
             <input
               type="number"
-              id="statementBalance"
-              value={statementBalance}
-              onChange={(e) => setStatementBalance(e.target.value)}
+              id="currentBalance"
+              value={currentBalance}
+              onChange={(e) => setCurrentBalance(e.target.value)}
               className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
               step="0.01"
               placeholder="e.g., 250.50"
@@ -102,7 +117,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
           <div className="flex justify-end space-x-4 mt-6">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 rounded-md text-gray-300 hover:bg-gray-700"
             >
               Cancel
