@@ -26,6 +26,11 @@ const ReportsPage = () => {
   const [categoryTransactions, setCategoryTransactions] = useState([]);
   // --- END NEW State ---
 
+  const [sortConfig, setSortConfig] = useState({
+    key: "due_date",
+    direction: "ASC",
+  });
+
   const fetchReportData = async () => {
     setLoading(true);
     try {
@@ -41,7 +46,9 @@ const ReportsPage = () => {
           ),
           dashboardService.fetchMonthlyExpenses(
             selectedDate.year,
-            selectedDate.month
+            selectedDate.month,
+            sortConfig.key,
+            sortConfig.direction
           ),
           dashboardService.fetchTrends(),
         ]);
@@ -56,15 +63,24 @@ const ReportsPage = () => {
     }
   };
 
+  // Refetch data when sortConfig changes
   useEffect(() => {
     fetchReportData();
-  }, [selectedDate]);
+  }, [selectedDate, sortConfig]);
 
   const handleDateChange = (e) => {
     setSelectedDate((prev) => ({
       ...prev,
       [e.target.name]: parseInt(e.target.value),
     }));
+  };
+
+  const handleSort = (key) => {
+    let direction = "ASC";
+    if (sortConfig.key === key && sortConfig.direction === "ASC") {
+      direction = "DESC";
+    }
+    setSortConfig({ key, direction });
   };
 
   const handleDelete = async () => {
@@ -106,22 +122,16 @@ const ReportsPage = () => {
           <SpendingTrendsChart data={trendsData} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <MonthlySummary summary={reportData.monthlySummary} />
-            {spendingData.length > 0 ? (
-              // Pass the new click handler to the chart
-              <SpendingChartCard
-                data={spendingData}
-                onCategoryClick={handleCategoryClick}
-              />
-            ) : (
-              <div className="bg-gray-800 p-4 rounded-lg flex items-center justify-center">
-                <p className="text-gray-400">
-                  No spending data for this month.
-                </p>
-              </div>
-            )}
+            <SpendingChartCard
+              data={spendingData}
+              onCategoryClick={handleCategoryClick}
+            />
             <div className="md:col-span-2">
+              {/* Pass sort config and handler to the transaction list */}
               <TransactionList
                 transactions={monthlyExpenses}
+                sortConfig={sortConfig}
+                onSort={handleSort}
                 onDelete={(id) => {
                   setActiveExpenseId(id);
                   setDeleteModalOpen(true);

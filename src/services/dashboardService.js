@@ -57,10 +57,12 @@ const dashboardService = {
     return api.get("/trends").then((res) => res.data);
   },
 
-  fetchMonthlyExpenses: async (year, month) => {
+  fetchMonthlyExpenses: async (year, month, sortBy, sortOrder) => {
     const params = new URLSearchParams();
     if (year) params.append("year", year);
     if (month) params.append("month", month);
+    if (sortBy) params.append("sortBy", sortBy);
+    if (sortOrder) params.append("sortOrder", sortOrder);
     return api
       .get(`/expenses/monthly?${params.toString()}`)
       .then((res) => res.data);
