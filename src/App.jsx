@@ -8,15 +8,11 @@ import CreditCardPage from "./pages/CreditCardPage";
 import LoginPage from "./pages/LoginPage";
 import Navbar from "./components/Layout/Navbar";
 import ProtectedRoute from "./components/Layout/ProtectedRoute";
-import { isLoggedIn } from "./utils/auth"; // Corrected path
-import useIdleTimeout from "./hooks/useIdleTimeout";
+import { isLoggedIn } from "./utils/auth";
+import IdleTimeoutHandler from "./components/Layout/IdleTimeoutHandler";
 
 function App() {
   const loggedIn = isLoggedIn();
-
-  if (loggedIn) {
-    useIdleTimeout();
-  }
 
   return (
     <Router>
@@ -24,6 +20,8 @@ function App() {
         position="bottom-center"
         toastOptions={{ style: { background: "#333", color: "#fff" } }}
       />
+      <IdleTimeoutHandler />
+
       <div className="bg-gray-900 min-h-screen">
         {loggedIn && <Navbar />}
         <Routes>
