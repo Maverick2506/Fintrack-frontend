@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { isLoggedIn } from "../../utils/auth";
+import { isLoggedIn } from "../../utils/auth"; // Corrected path
 
 const ProtectedRoute = ({ children }) => {
   if (!isLoggedIn()) {

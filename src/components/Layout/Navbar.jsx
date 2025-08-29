@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { logout } from "../../utils/auth";
+import { logout } from "../../utils/auth"; // Corrected path
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -34,17 +34,6 @@ const Navbar = () => {
         >
           Reports
         </NavLink>
-
-        {/* Add new NavLink for Credit Cards */}
-        <NavLink
-          to="/credit-cards"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
-          }
-        >
-          Credit Cards
-        </NavLink>
-
         <NavLink
           to="/debts"
           className={({ isActive }) =>
@@ -53,7 +42,6 @@ const Navbar = () => {
         >
           Debts
         </NavLink>
-
         <NavLink
           to="/savings"
           className={({ isActive }) =>
@@ -62,7 +50,14 @@ const Navbar = () => {
         >
           Savings
         </NavLink>
-
+        <NavLink
+          to="/credit-cards"
+          className={({ isActive }) =>
+            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
+          }
+        >
+          Credit Cards
+        </NavLink>
         <button
           onClick={handleLogout}
           className={`${linkClass} ${inactiveLinkClass}`}

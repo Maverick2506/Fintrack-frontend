@@ -1,53 +1,77 @@
-import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { logout } from "../utils/auth";
-import toast from "react-hot-toast";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import DashboardPage from "./pages/DashboardPage";
+import ReportsPage from "./pages/ReportsPage";
+import DebtsPage from "./pages/DebtsPage";
+import SavingsPage from "./pages/SavingsPage";
+import CreditCardPage from "./pages/CreditCardPage";
+import LoginPage from "./pages/LoginPage";
+import Navbar from "./components/Layout/Navbar";
+import ProtectedRoute from "./components/Layout/ProtectedRoute";
+import { isLoggedIn } from "./utils/auth"; // Corrected path
+import useIdleTimeout from "./hooks/useIdleTimeout";
 
-const useIdleTimeout = (timeout = 1200000) => {
-  // 20 minutes in milliseconds
-  const navigate = useNavigate();
-  const timeoutId = useRef(null);
+function App() {
+  const loggedIn = isLoggedIn();
 
-  const resetTimer = () => {
-    if (timeoutId.current) {
-      clearTimeout(timeoutId.current);
-    }
-    timeoutId.current = setTimeout(() => {
-      toast.error("You've been logged out due to inactivity.");
-      logout();
-      navigate("/login");
-      window.location.reload();
-    }, timeout);
-  };
+  if (loggedIn) {
+    useIdleTimeout();
+  }
 
-  useEffect(() => {
-    const events = [
-      "mousemove",
-      "mousedown",
-      "keypress",
-      "scroll",
-      "touchstart",
-    ];
+  return (
+    <Router>
+      <Toaster
+        position="bottom-center"
+        toastOptions={{ style: { background: "#333", color: "#fff" } }}
+      />
+      <div className="bg-gray-900 min-h-screen">
+        {loggedIn && <Navbar />}
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute>
+                <ReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/debts"
+            element={
+              <ProtectedRoute>
+                <DebtsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/savings"
+            element={
+              <ProtectedRoute>
+                <SavingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/credit-cards"
+            element={
+              <ProtectedRoute>
+                <CreditCardPage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
 
-    const eventListener = () => resetTimer();
-
-    // Set up event listeners
-    events.forEach((event) => window.addEventListener(event, eventListener));
-    // Initialize the timer
-    resetTimer();
-
-    // Cleanup function
-    return () => {
-      if (timeoutId.current) {
-        clearTimeout(timeoutId.current);
-      }
-      events.forEach((event) =>
-        window.removeEventListener(event, eventListener)
-      );
-    };
-  }, [navigate, timeout]);
-
-  return null; // This hook doesn't need to return anything
-};
-
-export default useIdleTimeout;
+export default App;

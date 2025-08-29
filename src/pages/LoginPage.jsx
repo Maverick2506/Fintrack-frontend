@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../utils/auth";
+import { login } from "../utils/auth"; // Corrected path
 import toast from "react-hot-toast";
 
 const LoginPage = () => {
-  // Only state needed is for the password
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Call login with only the password
       await login(password);
       navigate("/");
       window.location.reload();
@@ -23,12 +21,10 @@ const LoginPage = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900">
       <div className="p-8 bg-gray-800 rounded-lg shadow-lg w-full max-w-sm">
-        {/* Updated Title */}
         <h1 className="text-2xl font-bold text-white mb-6 text-center">
           Welcome Maverick
         </h1>
         <form onSubmit={handleSubmit}>
-          {/* Email field is removed */}
           <div className="mb-6">
             <label className="block text-gray-300 mb-2" htmlFor="password">
               Password
