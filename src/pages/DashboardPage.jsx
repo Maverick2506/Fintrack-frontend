@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Landmark, PiggyBank, Plus } from "lucide-react";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import UpcomingBills from "../components/Dashboard/UpcomingBills";
@@ -16,9 +18,19 @@ import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 
 const DashboardPage = () => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [spendingData, setSpendingData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+    queryKey: ["dashboardData"],
+    queryFn: () => dashboardService.fetchDashboard(),
+  });
+
+  const { data: spendingData, isLoading: spendingLoading } = useQuery({
+    queryKey: ["spendingData"],
+    queryFn: () => dashboardService.fetchSpendingSummary(),
+  });
+
+  const loading = dashboardLoading || spendingLoading;
   const [modals, setModals] = useState({
     transaction: false,
     debt: false,
@@ -37,26 +49,6 @@ const DashboardPage = () => {
   const [advice, setAdvice] = useState("");
   const [adviceLoading, setAdviceLoading] = useState(false);
 
-  const fetchAllData = async () => {
-    try {
-      const [dashboardRes, spendingRes] = await Promise.all([
-        dashboardService.fetchDashboard(),
-        dashboardService.fetchSpendingSummary(),
-      ]);
-      setDashboardData(dashboardRes);
-      setSpendingData(spendingRes);
-    } catch (err) {
-      console.error("Error fetching data:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    setLoading(true);
-    fetchAllData();
-  }, []);
-
   const openModal = (type, payload = {}) => {
     setModals((prev) => ({ ...prev, [type]: true }));
     setActive((prev) => ({ ...prev, ...payload }));
@@ -67,16 +59,28 @@ const DashboardPage = () => {
     setActive({ debtId: null, goalId: null, toDelete: null, toEdit: null });
   };
 
-  const handleMarkAsPaid = async (billId) => {
-    await dashboardService.markBillAsPaid(billId);
-    fetchAllData();
+  const markAsPaidMutation = useMutation({
+    mutationFn: (billId) => dashboardService.markBillAsPaid(billId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboardData"] });
+    },
+  });
+
+  const deleteBillMutation = useMutation({
+    mutationFn: (billId) => dashboardService.deleteBill(billId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboardData"] });
+      closeModal("delete");
+    },
+  });
+
+  const handleMarkAsPaid = (billId) => {
+    markAsPaidMutation.mutate(billId);
   };
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = () => {
     if (!active.toDelete) return;
-    await dashboardService.deleteBill(active.toDelete);
-    closeModal("delete");
-    fetchAllData();
+    deleteBillMutation.mutate(active.toDelete);
   };
 
   // MODIFIED: This function now sends the entire dashboardData object to the AI
@@ -149,23 +153,23 @@ const DashboardPage = () => {
         <button
           onClick={() => openModal("addDebt")}
           title="Add New Debt"
-          className="bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg hover:bg-red-700 transition-transform transform hover:scale-110"
+          className="bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition-transform transform hover:scale-110"
         >
-          D
+          <Landmark size={24} />
         </button>
         <button
           onClick={() => openModal("addSavingsGoal")}
           title="Add New Savings Goal"
-          className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg hover:bg-green-700 transition-transform transform hover:scale-110"
+          className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition-transform transform hover:scale-110"
         >
-          S
+          <PiggyBank size={24} />
         </button>
         <button
           onClick={() => openModal("transaction")}
           title="Add Transaction"
-          className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl pb-1 font-bold shadow-lg hover:bg-blue-700 transition-transform transform hover:scale-110"
+          className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition-transform transform hover:scale-110"
         >
-          +
+          <Plus size={32} />
         </button>
       </div>
 
@@ -173,30 +177,30 @@ const DashboardPage = () => {
       <AddTransactionModal
         isOpen={modals.transaction}
         onClose={() => closeModal("transaction")}
-        refreshData={fetchAllData}
+        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
         existingTransaction={active.toEdit}
       />
       <AddDebtPaymentModal
         isOpen={modals.debt}
         onClose={() => closeModal("debt")}
-        refreshData={fetchAllData}
+        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
         debtId={active.debtId}
       />
       <AddDebtModal
         isOpen={modals.addDebt}
         onClose={() => closeModal("addDebt")}
-        refreshData={fetchAllData}
+        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
       />
       <AddSavingsContributionModal
         isOpen={modals.savings}
         onClose={() => closeModal("savings")}
-        refreshData={fetchAllData}
+        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
         goalId={active.goalId}
       />
       <AddSavingsGoalModal
         isOpen={modals.addSavingsGoal}
         onClose={() => closeModal("addSavingsGoal")}
-        refreshData={fetchAllData}
+        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
       />
       <ConfirmDeleteModal
         isOpen={modals.delete}
