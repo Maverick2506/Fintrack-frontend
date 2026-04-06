@@ -151,9 +151,20 @@ const ReportsPage = () => {
               const netChange = curr - prev;
               const arrow = netChange >= 0 ? "▲" : "▼";
               const changeColor = netChange >= 0 ? "text-green-400" : "text-red-400";
+              const spentPct = income > 0 ? Math.min((spending / income) * 100, 100) : 0;
+              const savedPct = income > 0 ? Math.max(100 - spentPct, 0) : 0;
+              const srNum = parseFloat(savingsRate) || 0;
+              const srColor = srNum >= 20 ? "#34d399" : srNum >= 10 ? "#fbbf24" : "#f87171";
+              // Top 3 categories by spend
+              const top3 = [...spendingData]
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 3);
+              const CAT_COLORS = ["#0088FE","#00C49F","#FFBB28","#FF8042","#8884d8","#ff4d4d","#4ddbff"];
               return (
                 <div className="bg-gray-800 p-4 rounded-lg flex flex-col gap-4">
                   <h2 className="text-sm font-semibold text-gray-400">THIS MONTH vs LAST MONTH</h2>
+
+                  {/* Income / Spent row */}
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-xs text-gray-400">Income</p>
@@ -174,6 +185,76 @@ const ReportsPage = () => {
                       <p className={`text-lg font-semibold ${curr >= 0 ? "text-green-400" : "text-red-400"}`}>${curr.toFixed(2)}</p>
                     </div>
                   </div>
+
+                  {/* Stacked income breakdown bar */}
+                  {income > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1.5">Income breakdown</p>
+                      <div className="w-full h-3 rounded-full overflow-hidden flex">
+                        <div
+                          className="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-700"
+                          style={{ width: `${spentPct.toFixed(1)}%` }}
+                          title={`Spent ${spentPct.toFixed(1)}%`}
+                        />
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-green-400 transition-all duration-700"
+                          style={{ width: `${savedPct.toFixed(1)}%` }}
+                          title={`Saved ${savedPct.toFixed(1)}%`}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs mt-1">
+                        <span className="text-red-400">Spent {spentPct.toFixed(1)}%</span>
+                        <span className="text-green-400">Saved {savedPct.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Savings rate health bar */}
+                  {savingsRate !== null && (
+                    <div>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <p className="text-xs text-gray-400">Savings rate health</p>
+                        <span className="text-xs font-bold" style={{ color: srColor }}>{savingsRate}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${Math.min(srNum, 100)}%`, backgroundColor: srColor }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {srNum >= 20 ? "Healthy savings rate 💪" : srNum >= 10 ? "Moderate — aim for 20%+" : "Low savings rate — try to cut spending"}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Top spending categories */}
+                  {top3.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">Top spending categories</p>
+                      <div className="space-y-1.5">
+                        {top3.map((cat, i) => {
+                          const barPct = income > 0 ? Math.min((cat.value / income) * 100, 100) : 0;
+                          return (
+                            <div key={cat.name}>
+                              <div className="flex justify-between text-xs mb-0.5">
+                                <span className="text-gray-300">{cat.name}</span>
+                                <span className="text-gray-400">${cat.value.toFixed(2)}</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${barPct.toFixed(1)}%`, backgroundColor: CAT_COLORS[i % CAT_COLORS.length] }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Net change footer */}
                   <div className="border-t border-gray-700 pt-3">
                     <p className="text-xs text-gray-400 mb-1">Net flow vs last month</p>
                     <p className={`text-xl font-bold ${changeColor}`}>
