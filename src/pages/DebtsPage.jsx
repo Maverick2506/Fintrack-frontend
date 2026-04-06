@@ -76,11 +76,22 @@ const DebtsPage = () => {
                   parseFloat(debt.total_amount)) *
                 100
               : 0;
+          const paidAmount = parseFloat(debt.total_amount) - parseFloat(debt.total_remaining);
+          const payoffMonths = debt.monthly_payment && parseFloat(debt.monthly_payment) > 0
+            ? Math.ceil(parseFloat(debt.total_remaining) / parseFloat(debt.monthly_payment))
+            : null;
 
           return (
-            <div key={debt.id} className="bg-gray-800 p-4 rounded-lg">
-              <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-bold text-white">{debt.name}</h2>
+            <div key={debt.id} className="bg-gray-800 p-5 rounded-lg">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h2 className="text-lg font-bold text-white">{debt.name}</h2>
+                  {debt.auto_pay && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-indigo-900 text-indigo-300 border border-indigo-700 px-2 py-0.5 rounded-full mt-1">
+                      🔄 Auto-Pay On
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => openModal("edit", debt)}
@@ -102,15 +113,21 @@ const DebtsPage = () => {
                   </button>
                 </div>
               </div>
-              <p className="text-sm text-gray-400">
-                Remaining: ${parseFloat(debt.total_remaining).toFixed(2)}
-              </p>
-              <div className="w-full bg-gray-700 rounded-full h-2.5 mt-4">
-                <div
-                  className="bg-blue-600 h-2.5 rounded-full"
-                  style={{ width: `${progress.toFixed(0)}%` }}
-                ></div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-400">Remaining: <span className="text-orange-400 font-semibold">${parseFloat(debt.total_remaining).toFixed(2)}</span></span>
+                <span className="text-gray-500">${paidAmount.toFixed(2)} paid ({progress.toFixed(0)}%)</span>
               </div>
+              <div className="w-full bg-gray-700 rounded-full h-2.5">
+                <div
+                  className="bg-gradient-to-r from-orange-500 to-red-500 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: progress > 0 ? `max(${progress.toFixed(1)}%, 4px)` : '0%' }}
+                />
+              </div>
+              {payoffMonths && (
+                <p className="text-xs text-gray-500 mt-2 text-right">
+                  Est. payoff in ~{payoffMonths} {payoffMonths === 1 ? 'month' : 'months'}
+                </p>
+              )}
             </div>
           );
         })}

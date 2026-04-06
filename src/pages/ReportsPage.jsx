@@ -110,9 +110,34 @@ const ReportsPage = () => {
     <div className="container mx-auto max-w-7xl p-4">
       <h1 className="text-2xl font-bold text-white mb-4">Monthly Reports</h1>
 
-      {/* Date Selector remains the same */}
+      {/* Date Selector */}
       <div className="flex gap-4 mb-6 bg-gray-800 p-4 rounded-lg">
-        {/* ... (existing date selector code) */}
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Month</label>
+          <select
+            name="month"
+            value={selectedDate.month}
+            onChange={handleDateChange}
+            className="bg-gray-700 text-white text-sm rounded px-3 py-2 border border-gray-600 focus:outline-none focus:border-indigo-500"
+          >
+            {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m, i) => (
+              <option key={i+1} value={i+1}>{m}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Year</label>
+          <select
+            name="year"
+            value={selectedDate.year}
+            onChange={handleDateChange}
+            className="bg-gray-700 text-white text-sm rounded px-3 py-2 border border-gray-600 focus:outline-none focus:border-indigo-500"
+          >
+            {[2023, 2024, 2025, 2026, 2027].map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading ? (

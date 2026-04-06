@@ -68,15 +68,14 @@ const SavingsPage = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {goals.map((goal) => {
-          const progress =
-            parseFloat(goal.goal_amount) > 0
-              ? (parseFloat(goal.current_amount) /
-                  parseFloat(goal.goal_amount)) *
-                100
-              : 0;
+          const current = parseFloat(goal.current_amount);
+          const target = parseFloat(goal.goal_amount);
+          const progress = target > 0 ? (current / target) * 100 : 0;
+          const remaining = target - current;
+
           return (
-            <div key={goal.id} className="bg-gray-800 p-4 rounded-lg">
-              <div className="flex justify-between items-center mb-2">
+            <div key={goal.id} className="bg-gray-800 p-5 rounded-lg">
+              <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-bold text-white">{goal.name}</h2>
                 <div>
                   <button
@@ -102,15 +101,20 @@ const SavingsPage = () => {
                   </button>
                 </div>
               </div>
-              <p className="text-sm text-gray-400">
-                ${parseFloat(goal.current_amount).toFixed(2)} / $
-                {parseFloat(goal.goal_amount).toFixed(2)}
-              </p>
-              <div className="w-full bg-gray-700 rounded-full h-2.5 mt-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-green-400 font-semibold">${current.toFixed(2)}</span>
+                <span className="text-gray-400">Goal: ${target.toFixed(2)}</span>
+              </div>
+              {/* Progress bar — min 4px so even a $170/$15000 goal shows as a visible sliver */}
+              <div className="w-full bg-gray-700 rounded-full h-2.5">
                 <div
-                  className="bg-green-500 h-2.5 rounded-full"
-                  style={{ width: `${progress.toFixed(0)}%` }}
-                ></div>
+                  className="bg-gradient-to-r from-green-500 to-emerald-400 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: progress > 0 ? `max(${progress.toFixed(2)}%, 4px)` : '0%' }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 mt-2">
+                <span>{progress.toFixed(1)}% complete</span>
+                <span>${remaining.toFixed(2)} remaining</span>
               </div>
             </div>
           );
