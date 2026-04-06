@@ -155,11 +155,6 @@ const ReportsPage = () => {
               const savedPct = income > 0 ? Math.max(100 - spentPct, 0) : 0;
               const srNum = parseFloat(savingsRate) || 0;
               const srColor = srNum >= 20 ? "#34d399" : srNum >= 10 ? "#fbbf24" : "#f87171";
-              // Top 3 categories by spend
-              const top3 = [...spendingData]
-                .sort((a, b) => b.value - a.value)
-                .slice(0, 3);
-              const CAT_COLORS = ["#0088FE","#00C49F","#FFBB28","#FF8042","#8884d8","#ff4d4d","#4ddbff"];
               return (
                 <div className="bg-gray-800 p-4 rounded-lg flex flex-col gap-4">
                   <h2 className="text-sm font-semibold text-gray-400">THIS MONTH vs LAST MONTH</h2>
@@ -228,31 +223,61 @@ const ReportsPage = () => {
                     </div>
                   )}
 
-                  {/* Top spending categories */}
-                  {top3.length > 0 && (
-                    <div>
-                      <p className="text-xs text-gray-400 mb-2">Top spending categories</p>
-                      <div className="space-y-1.5">
-                        {top3.map((cat, i) => {
-                          const barPct = income > 0 ? Math.min((cat.value / income) * 100, 100) : 0;
-                          return (
-                            <div key={cat.name}>
-                              <div className="flex justify-between text-xs mb-0.5">
-                                <span className="text-gray-300">{cat.name}</span>
-                                <span className="text-gray-400">${cat.value.toFixed(2)}</span>
-                              </div>
-                              <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{ width: `${barPct.toFixed(1)}%`, backgroundColor: CAT_COLORS[i % CAT_COLORS.length] }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                  {/* Budget compliance — unique info the pie chart doesn't show */}
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2">Budget compliance</p>
+                    {(() => {
+                      const tracked = spendingData.filter(cat => budgets[cat.name]);
+                      if (tracked.length === 0) {
+                        return (
+                          <p className="text-xs text-gray-500 italic">
+                            No budget limits set yet. Add limits on the right →
+                          </p>
+                        );
+                      }
+                      const within = tracked.filter(cat => cat.value <= budgets[cat.name]).length;
+                      const over = tracked.length - within;
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3 text-xs">
+                            <span className="flex items-center gap-1">
+                              <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
+                              <span className="text-green-400 font-semibold">{within} within budget</span>
+                            </span>
+                            {over > 0 && (
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
+                                <span className="text-red-400 font-semibold">{over} over budget</span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            {tracked.map(cat => {
+                              const limit = budgets[cat.name];
+                              const usedPct = Math.min((cat.value / limit) * 100, 100);
+                              const isOver = cat.value > limit;
+                              return (
+                                <div key={cat.name}>
+                                  <div className="flex justify-between text-xs mb-0.5">
+                                    <span className="text-gray-300">{cat.name}</span>
+                                    <span className={isOver ? "text-red-400 font-semibold" : "text-gray-400"}>
+                                      ${cat.value.toFixed(2)} / ${limit.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-700 ${isOver ? "bg-red-500" : "bg-green-500"}`}
+                                      style={{ width: `${usedPct.toFixed(1)}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
 
                   {/* Net change footer */}
                   <div className="border-t border-gray-700 pt-3">
