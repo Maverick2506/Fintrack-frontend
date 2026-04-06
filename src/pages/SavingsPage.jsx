@@ -75,26 +75,12 @@ const SavingsPage = () => {
 
           return (
             <div key={goal.id} className="bg-gray-800 p-5 rounded-lg">
-              <h2 className="text-lg font-bold text-white mb-3">{goal.name}</h2>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-green-400 font-semibold">${current.toFixed(2)}</span>
-                <span className="text-gray-400">Goal: ${target.toFixed(2)}</span>
-              </div>
-              {/* Progress bar — min 4px so even a $170/$15000 goal shows as a visible sliver */}
-              <div className="w-full bg-gray-700 rounded-full h-2.5">
-                <div
-                  className="bg-gradient-to-r from-green-500 to-emerald-400 h-2.5 rounded-full transition-all duration-500"
-                  style={{ width: progress > 0 ? `max(${progress.toFixed(2)}%, 4px)` : '0%' }}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-gray-500 mt-2 mb-4">
-                <span>{progress.toFixed(1)}% complete</span>
-                <span>${remaining.toFixed(2)} remaining</span>
-              </div>
-              <div className="flex gap-2">
+              <div className="flex justify-between items-start mb-3">
+                <h2 className="text-lg font-bold text-white">{goal.name}</h2>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                   <button
                     onClick={() => handleOpenEditModal(goal)}
-                    className="flex-1 text-sm bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1.5 rounded"
+                    className="text-sm bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-3 rounded"
                   >
                     Edit
                   </button>
@@ -103,16 +89,31 @@ const SavingsPage = () => {
                       setActiveGoalId(goal.id);
                       setDeleteModalOpen(true);
                     }}
-                    className="flex-1 text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 rounded"
+                    className="text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded"
                   >
                     Delete
                   </button>
                   <button
                     onClick={() => handleOpenSavingsModal(goal.id)}
-                    className="flex-1 text-sm bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 rounded"
+                    className="text-sm bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded"
                   >
-                    Contribute
+                    + Add
                   </button>
+                </div>
+              </div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-green-400 font-semibold">${current.toFixed(2)}</span>
+                <span className="text-gray-400">Goal: ${target.toFixed(2)}</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2.5">
+                <div
+                  className="bg-gradient-to-r from-green-500 to-emerald-400 h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: progress > 0 ? `max(${progress.toFixed(2)}%, 4px)` : '0%' }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-gray-400 mt-2">
+                <span>{progress.toFixed(1)}% complete</span>
+                <span>${remaining.toFixed(2)} remaining</span>
               </div>
             </div>
           );

@@ -22,8 +22,11 @@ const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
       <div style={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 6, padding: "8px 12px" }}>
-        <p className="text-white text-xs font-semibold">{payload[0].name}</p>
-        <p style={{ color: payload[0].fill }} className="text-sm font-bold">
+        <div className="flex items-center gap-2 mb-1">
+          <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, backgroundColor: payload[0].fill, flexShrink: 0 }} />
+          <p className="text-gray-300 text-xs font-semibold">{payload[0].name}</p>
+        </div>
+        <p className="text-white text-sm font-bold pl-[18px]">
           ${parseFloat(payload[0].value).toFixed(2)}
         </p>
       </div>

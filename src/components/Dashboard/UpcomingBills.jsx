@@ -36,7 +36,7 @@ const UpcomingBills = ({ bills, onMarkAsPaid, onEdit, onDelete }) => {
                     <span className={isPaying ? "line-through text-gray-500" : ""}>
                       {bill.name}
                     </span>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       {new Date(bill.due_date).toLocaleDateString("en-US", {
                         timeZone: "UTC",
                       })}

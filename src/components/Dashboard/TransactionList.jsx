@@ -57,7 +57,7 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
             <div className="flex-1 flex items-center">
               <div>
                 <span className="text-white">{transaction.name}</span>
-                <p className="text-xs text-gray-500">{transaction.category}</p>
+                <p className="text-xs text-gray-400">{transaction.category}</p>
               </div>
             </div>
             <div className="w-24 text-left text-sm text-gray-300">

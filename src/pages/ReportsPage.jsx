@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import dashboardService from "../services/dashboardService";
-import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import TransactionList from "../components/Dashboard/TransactionList";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
@@ -145,7 +144,56 @@ const ReportsPage = () => {
           <SpendingTrendsChart data={trendsData} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <MonthlySummary summary={reportData.monthlySummary} />
+            {/* Month-over-month comparison — fills the space and adds insight beyond the stats bar */}
+            {(() => {
+              const prev = reportData.monthlySummary.previousMonthNetFlow ?? 0;
+              const curr = reportData.monthlySummary.netFlow ?? 0;
+              const prevIncome = reportData.monthlySummary.totalIncome - curr + prev; // approximate
+              const incomeChange = reportData.monthlySummary.totalIncome - (reportData.monthlySummary.totalIncome - curr + prev);
+              const spendChange = spending - (reportData.monthlySummary.totalIncome - curr + prev - prev);
+              const netChange = curr - prev;
+              const arrow = (v) => v >= 0 ? "▲" : "▼";
+              const col = (v, invert = false) => {
+                if (invert) return v <= 0 ? "text-green-400" : "text-red-400";
+                return v >= 0 ? "text-green-400" : "text-red-400";
+              };
+              return (
+                <div className="bg-gray-800 p-4 rounded-lg flex flex-col justify-between">
+                  <h2 className="text-sm font-semibold text-gray-400 mb-4">THIS MONTH vs LAST MONTH</h2>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-xs text-gray-400">Income</p>
+                        <p className="text-xl font-bold text-green-400">${income.toFixed(2)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Last month net</p>
+                        <p className={`text-sm font-semibold ${col(prev)}`}>${prev.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-xs text-gray-400">Spent</p>
+                        <p className="text-xl font-bold text-red-400">${spending.toFixed(2)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Net balance</p>
+                        <p className={`text-xl font-bold ${col(curr)}`}>${curr.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-700 pt-3">
+                      <p className="text-xs text-gray-400 mb-1">Net flow change vs last month</p>
+                      <p className={`text-lg font-bold ${col(netChange)}`}>
+                        {arrow(netChange)} ${Math.abs(netChange).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {netChange >= 0 ? "Better than last month 🎉" : "Worse than last month — review spending"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Spending summary with optional budget limits */}
             <div className="bg-gray-800 p-4 rounded-lg">
