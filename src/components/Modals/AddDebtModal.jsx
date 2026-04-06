@@ -5,6 +5,9 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
   const [name, setName] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [monthlyPayment, setMonthlyPayment] = useState("");
+  const [autoPay, setAutoPay] = useState(false);
+  const [nextDueDate, setNextDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [paymentFrequency, setPaymentFrequency] = useState("monthly");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,7 +17,19 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
       name,
       total_amount: totalAmount,
       monthly_payment: monthlyPayment,
+      auto_pay: autoPay,
+      next_due_date: autoPay ? nextDueDate : null,
+      payment_frequency: autoPay ? paymentFrequency : "monthly",
     });
+    
+    // Reset form after submission
+    setName("");
+    setTotalAmount("");
+    setMonthlyPayment("");
+    setAutoPay(false);
+    setNextDueDate(new Date().toISOString().slice(0, 10));
+    setPaymentFrequency("monthly");
+    
     onClose();
     refreshData();
   };
@@ -74,6 +89,30 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
               required
             />
           </div>
+          
+          <div className="mb-4 flex items-center">
+             <input type="checkbox" id="autoPay" checked={autoPay} onChange={(e) => setAutoPay(e.target.checked)} className="mr-2" />
+             <label htmlFor="autoPay" className="text-sm font-medium text-gray-300">Enable Auto-Pay Engine</label>
+          </div>
+          
+          {autoPay && (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300">Start / Next Due Date</label>
+                <input type="date" value={nextDueDate} onChange={(e) => setNextDueDate(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2" required />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300">Payment Frequency</label>
+                <select value={paymentFrequency} onChange={(e) => setPaymentFrequency(e.target.value)} className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2">
+                  <option value="weekly">Weekly</option>
+                  <option value="bi-weekly">Bi-Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+            </>
+          )}
+
           <div className="flex justify-end space-x-4 mt-6">
             <button
               type="button"
