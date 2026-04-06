@@ -174,7 +174,7 @@ const ReportsPage = () => {
                       <p className={`text-lg font-semibold ${curr >= 0 ? "text-green-400" : "text-red-400"}`}>${curr.toFixed(2)}</p>
                     </div>
                   </div>
-                  <div className="border-t border-gray-700 pt-3 mt-auto">
+                  <div className="border-t border-gray-700 pt-3">
                     <p className="text-xs text-gray-400 mb-1">Net flow vs last month</p>
                     <p className={`text-xl font-bold ${changeColor}`}>
                       {arrow} ${Math.abs(netChange).toFixed(2)}

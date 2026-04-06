@@ -77,8 +77,17 @@ const DebtsPage = () => {
                 100
               : 0;
           const paidAmount = parseFloat(debt.total_amount) - parseFloat(debt.total_remaining);
-          const payoffMonths = debt.monthly_payment && parseFloat(debt.monthly_payment) > 0
-            ? Math.ceil(parseFloat(debt.total_remaining) / parseFloat(debt.monthly_payment))
+          
+          // Convert payment to monthly equivalent based on frequency
+          const paymentPerPeriod = parseFloat(debt.monthly_payment) || 0;
+          const freq = debt.payment_frequency || "monthly";
+          const paymentsPerMonth = freq === "bi-weekly" ? 26 / 12
+            : freq === "weekly" ? 52 / 12
+            : freq === "bi-monthly" ? 2
+            : 1; // monthly default
+          const effectiveMonthlyPayment = paymentPerPeriod * paymentsPerMonth;
+          const payoffMonths = effectiveMonthlyPayment > 0
+            ? Math.ceil(parseFloat(debt.total_remaining) / effectiveMonthlyPayment)
             : null;
 
           return (
@@ -114,7 +123,7 @@ const DebtsPage = () => {
                 </div>
               </div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-400">Remaining: <span className="text-orange-400 font-semibold">${parseFloat(debt.total_remaining).toFixed(2)}</span></span>
+                <span className="text-gray-400">Remaining: <span className="text-orange-400 font-semibold">${parseFloat(debt.total_remaining).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                 <span className="text-gray-400">${paidAmount.toFixed(2)} paid ({progress.toFixed(0)}%)</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5">
@@ -126,6 +135,7 @@ const DebtsPage = () => {
               {payoffMonths && (
                 <p className="text-xs text-gray-400 mt-2 text-right">
                   Est. payoff in ~{payoffMonths} {payoffMonths === 1 ? 'month' : 'months'}
+                  {freq !== 'monthly' && <span className="text-gray-500"> ({freq} payments)</span>}
                 </p>
               )}
             </div>

@@ -102,8 +102,12 @@ const SavingsPage = () => {
                 </div>
               </div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-green-400 font-semibold">${current.toFixed(2)}</span>
-                <span className="text-gray-400">Goal: ${target.toFixed(2)}</span>
+                <span className="text-green-400 font-semibold">
+                  ${current.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-gray-400">
+                  Goal: ${target.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5">
                 <div
@@ -113,7 +117,7 @@ const SavingsPage = () => {
               </div>
               <div className="flex justify-between text-xs text-gray-400 mt-2">
                 <span>{progress.toFixed(1)}% complete</span>
-                <span>${remaining.toFixed(2)} remaining</span>
+                <span>${remaining.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} remaining</span>
               </div>
             </div>
           );
