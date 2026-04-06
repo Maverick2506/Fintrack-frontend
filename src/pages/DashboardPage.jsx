@@ -11,7 +11,6 @@ import AddSavingsContributionModal from "../components/Modals/AddSavingsContribu
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import dashboardService from "../services/dashboardService";
 import FinancialAdviceCard from "../components/Dashboard/FinancialAdviceCard";
-import AdviceModal from "../components/Modals/AdviceModal";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
@@ -46,7 +45,7 @@ const DashboardPage = () => {
     toDelete: null,
     toEdit: null,
   });
-  const [advice, setAdvice] = useState("");
+  const [advice, setAdvice] = useState(() => localStorage.getItem("fintrack_advice") || "");
   const [adviceLoading, setAdviceLoading] = useState(false);
 
   const openModal = (type, payload = {}) => {
@@ -85,7 +84,6 @@ const DashboardPage = () => {
 
   // MODIFIED: This function now sends the entire dashboardData object to the AI
   const handleGetAdvice = async () => {
-    openModal("advice");
     setAdviceLoading(true);
     try {
       // Pass the whole object, which now includes credit card data and all upcoming bills
@@ -93,6 +91,7 @@ const DashboardPage = () => {
         dashboardData
       );
       setAdvice(adviceResponse.advice); // The backend now sends { advice: "..." }
+      localStorage.setItem("fintrack_advice", adviceResponse.advice);
     } catch (error) {
       setAdvice("Sorry, I could not get any advice at the moment.");
     } finally {
@@ -142,6 +141,7 @@ const DashboardPage = () => {
               onContribute={(id) => openModal("savings", { goalId: id })}
             />
             <FinancialAdviceCard
+              advice={advice}
               onGetAdvice={handleGetAdvice}
               isLoading={adviceLoading}
             />
@@ -207,12 +207,6 @@ const DashboardPage = () => {
         onClose={() => closeModal("delete")}
         onConfirm={handleDeleteConfirm}
         itemType="bill"
-      />
-      <AdviceModal
-        isOpen={modals.advice}
-        onClose={() => closeModal("advice")}
-        advice={advice}
-        isLoading={adviceLoading}
       />
     </div>
   );
