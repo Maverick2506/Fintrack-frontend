@@ -9,6 +9,16 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   const [nextDueDate, setNextDueDate] = useState(new Date().toISOString().slice(0, 10));
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
 
+  const getPaymentLabel = () => {
+    if (!autoPay) return "Monthly Payment/Estimate";
+    switch (paymentFrequency) {
+      case "weekly": return "Weekly Payment";
+      case "bi-weekly": return "Bi-Weekly Payment";
+      case "yearly": return "Yearly Payment";
+      default: return "Monthly Payment";
+    }
+  };
+
   useEffect(() => {
     if (debt) {
       setName(debt.name);
@@ -80,7 +90,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
               htmlFor="monthlyPayment"
               className="block text-sm font-medium text-gray-300"
             >
-              Monthly Payment
+              {getPaymentLabel()}
             </label>
             <input
               type="number"
