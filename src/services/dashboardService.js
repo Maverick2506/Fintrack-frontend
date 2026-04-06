@@ -205,6 +205,10 @@ const dashboardService = {
       "Credit card updated!"
     );
   },
+
+  fetchLedger: async () => {
+    return api.get("/expenses/all").then((res) => res.data);
+  },
 };
 
 export default dashboardService;

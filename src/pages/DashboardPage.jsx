@@ -140,6 +140,29 @@ const DashboardPage = () => {
               onPayDebt={(id) => openModal("debt", { debtId: id })}
               onContribute={(id) => openModal("savings", { goalId: id })}
             />
+            {/* Net Worth tile */}
+            {(() => {
+              const totalSavings = (savingsSummary || []).reduce((s, g) => s + parseFloat(g.current_amount || 0), 0);
+              const totalDebt = (debtSummary || []).reduce((s, d) => s + parseFloat(d.total_remaining || 0), 0);
+              const totalCC = (creditCardSummary || []).reduce((s, c) => s + parseFloat(c.currentBalance || 0), 0);
+              const netFlow = monthlySummary?.netFlow || 0;
+              const netWorth = totalSavings + netFlow - totalDebt - totalCC;
+              const positive = netWorth >= 0;
+              return (
+                <div className="bg-gray-800 p-4 rounded-lg">
+                  <h2 className="text-sm font-semibold text-gray-400 mb-3">NET WORTH (ESTIMATED)</h2>
+                  <p className={`text-3xl font-bold ${positive ? "text-green-400" : "text-red-400"}`}>
+                    {positive ? "" : "-"}${Math.abs(netWorth).toFixed(2)}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div className="text-xs text-gray-500">💰 Savings: <span className="text-green-400">${totalSavings.toFixed(2)}</span></div>
+                    <div className="text-xs text-gray-500">📈 Net Flow: <span className={netFlow >= 0 ? "text-green-400" : "text-red-400"}>${netFlow.toFixed(2)}</span></div>
+                    <div className="text-xs text-gray-500">🏦 Debts: <span className="text-red-400">-${totalDebt.toFixed(2)}</span></div>
+                    <div className="text-xs text-gray-500">💳 CC Balance: <span className="text-red-400">-${totalCC.toFixed(2)}</span></div>
+                  </div>
+                </div>
+              );
+            })()}
             <FinancialAdviceCard
               advice={advice}
               onGetAdvice={handleGetAdvice}

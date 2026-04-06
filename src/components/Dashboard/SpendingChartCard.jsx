@@ -18,6 +18,20 @@ const COLORS = [
   "#4ddbff",
 ];
 
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 6, padding: "8px 12px" }}>
+        <p className="text-white text-xs font-semibold">{payload[0].name}</p>
+        <p style={{ color: payload[0].fill }} className="text-sm font-bold">
+          ${parseFloat(payload[0].value).toFixed(2)}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 // Component now accepts an onCategoryClick prop
 const SpendingChartCard = ({ data, onCategoryClick }) => {
   return (
@@ -37,8 +51,8 @@ const SpendingChartCard = ({ data, onCategoryClick }) => {
               fill="#8884d8"
               dataKey="value"
               nameKey="name"
-              onClick={(pieData) => onCategoryClick(pieData.name)} // Handle click event
-              style={{ cursor: "pointer" }} // Change cursor to indicate it's clickable
+              onClick={(pieData) => onCategoryClick && onCategoryClick(pieData.name)}
+              style={{ cursor: "pointer" }}
             >
               {data.map((entry, index) => (
                 <Cell
@@ -47,12 +61,7 @@ const SpendingChartCard = ({ data, onCategoryClick }) => {
                 />
               ))}
             </Pie>
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#374151",
-                borderColor: "#4b5563",
-              }}
-            />
+            <Tooltip content={<CustomTooltip />} />
             <Legend iconType="circle" />
           </PieChart>
         </ResponsiveContainer>
@@ -62,3 +71,4 @@ const SpendingChartCard = ({ data, onCategoryClick }) => {
 };
 
 export default SpendingChartCard;
+

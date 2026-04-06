@@ -5,6 +5,7 @@ import ReportsPage from "./pages/ReportsPage";
 import DebtsPage from "./pages/DebtsPage";
 import SavingsPage from "./pages/SavingsPage";
 import CreditCardPage from "./pages/CreditCardPage";
+import LedgerPage from "./pages/LedgerPage";
 import LoginPage from "./pages/LoginPage";
 import Navbar from "./components/Layout/Navbar";
 import ProtectedRoute from "./components/Layout/ProtectedRoute";
@@ -63,6 +64,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <CreditCardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ledger"
+            element={
+              <ProtectedRoute>
+                <LedgerPage />
               </ProtectedRoute>
             }
           />
