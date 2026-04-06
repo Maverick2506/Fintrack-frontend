@@ -144,52 +144,44 @@ const ReportsPage = () => {
           <SpendingTrendsChart data={trendsData} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Month-over-month comparison — fills the space and adds insight beyond the stats bar */}
+            {/* Month-over-month comparison */}
             {(() => {
-              const prev = reportData.monthlySummary.previousMonthNetFlow ?? 0;
-              const curr = reportData.monthlySummary.netFlow ?? 0;
-              const prevIncome = reportData.monthlySummary.totalIncome - curr + prev; // approximate
-              const incomeChange = reportData.monthlySummary.totalIncome - (reportData.monthlySummary.totalIncome - curr + prev);
-              const spendChange = spending - (reportData.monthlySummary.totalIncome - curr + prev - prev);
+              const prev = reportData.monthlySummary?.previousMonthNetFlow ?? 0;
+              const curr = reportData.monthlySummary?.netFlow ?? 0;
               const netChange = curr - prev;
-              const arrow = (v) => v >= 0 ? "▲" : "▼";
-              const col = (v, invert = false) => {
-                if (invert) return v <= 0 ? "text-green-400" : "text-red-400";
-                return v >= 0 ? "text-green-400" : "text-red-400";
-              };
+              const arrow = netChange >= 0 ? "▲" : "▼";
+              const changeColor = netChange >= 0 ? "text-green-400" : "text-red-400";
               return (
-                <div className="bg-gray-800 p-4 rounded-lg flex flex-col justify-between">
-                  <h2 className="text-sm font-semibold text-gray-400 mb-4">THIS MONTH vs LAST MONTH</h2>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-xs text-gray-400">Income</p>
-                        <p className="text-xl font-bold text-green-400">${income.toFixed(2)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500">Last month net</p>
-                        <p className={`text-sm font-semibold ${col(prev)}`}>${prev.toFixed(2)}</p>
-                      </div>
+                <div className="bg-gray-800 p-4 rounded-lg flex flex-col gap-4">
+                  <h2 className="text-sm font-semibold text-gray-400">THIS MONTH vs LAST MONTH</h2>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-gray-400">Income</p>
+                      <p className="text-2xl font-bold text-green-400">${income.toFixed(2)}</p>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-xs text-gray-400">Spent</p>
-                        <p className="text-xl font-bold text-red-400">${spending.toFixed(2)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500">Net balance</p>
-                        <p className={`text-xl font-bold ${col(curr)}`}>${curr.toFixed(2)}</p>
-                      </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-400">Last month net</p>
+                      <p className={`text-lg font-semibold ${prev >= 0 ? "text-green-400" : "text-red-400"}`}>${prev.toFixed(2)}</p>
                     </div>
-                    <div className="border-t border-gray-700 pt-3">
-                      <p className="text-xs text-gray-400 mb-1">Net flow change vs last month</p>
-                      <p className={`text-lg font-bold ${col(netChange)}`}>
-                        {arrow(netChange)} ${Math.abs(netChange).toFixed(2)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {netChange >= 0 ? "Better than last month 🎉" : "Worse than last month — review spending"}
-                      </p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-gray-400">Spent</p>
+                      <p className="text-2xl font-bold text-red-400">${spending.toFixed(2)}</p>
                     </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-400">This month net</p>
+                      <p className={`text-lg font-semibold ${curr >= 0 ? "text-green-400" : "text-red-400"}`}>${curr.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-700 pt-3 mt-auto">
+                    <p className="text-xs text-gray-400 mb-1">Net flow vs last month</p>
+                    <p className={`text-xl font-bold ${changeColor}`}>
+                      {arrow} ${Math.abs(netChange).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {netChange >= 0 ? "Better than last month 🎉" : "Worse than last month — review spending"}
+                    </p>
                   </div>
                 </div>
               );
@@ -199,14 +191,14 @@ const ReportsPage = () => {
             <div className="bg-gray-800 p-4 rounded-lg">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-sm font-semibold text-gray-400">SPENDING BY CATEGORY</h2>
-                <span className="text-xs text-gray-500 italic">Click a segment to drill down</span>
+                <span className="text-xs text-gray-400 italic">Click a segment to drill down</span>
               </div>
               <SpendingChartCard data={spendingData} onCategoryClick={handleCategoryClick} />
 
               {/* Budget limits section */}
               {spendingData.length > 0 && (
                 <div className="mt-4 border-t border-gray-700 pt-3">
-                  <p className="text-xs text-gray-500 mb-2 font-semibold">OPTIONAL BUDGET LIMITS</p>
+                  <p className="text-xs text-gray-400 mb-2 font-semibold">OPTIONAL BUDGET LIMITS</p>
                   <div className="space-y-1.5">
                     {spendingData.map((cat) => {
                       const limit = budgets[cat.name];
@@ -216,7 +208,7 @@ const ReportsPage = () => {
                           <span className="text-gray-300 w-32 truncate">{cat.name}</span>
                           <span className={`font-semibold ${over ? "text-red-400" : "text-gray-400"}`}>
                             ${cat.value.toFixed(2)}
-                            {limit && <span className="text-gray-600"> / ${limit.toFixed(2)}</span>}
+                            {limit && <span className="text-gray-400"> / ${limit.toFixed(2)}</span>}
                             {over && <span className="ml-1 bg-red-900 text-red-300 text-[10px] px-1.5 py-0.5 rounded-full">Over</span>}
                           </span>
                           {editingBudget === cat.name ? (

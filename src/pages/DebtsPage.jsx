@@ -115,7 +115,7 @@ const DebtsPage = () => {
               </div>
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-gray-400">Remaining: <span className="text-orange-400 font-semibold">${parseFloat(debt.total_remaining).toFixed(2)}</span></span>
-                <span className="text-gray-500">${paidAmount.toFixed(2)} paid ({progress.toFixed(0)}%)</span>
+                <span className="text-gray-400">${paidAmount.toFixed(2)} paid ({progress.toFixed(0)}%)</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5">
                 <div
@@ -124,7 +124,7 @@ const DebtsPage = () => {
                 />
               </div>
               {payoffMonths && (
-                <p className="text-xs text-gray-500 mt-2 text-right">
+                <p className="text-xs text-gray-400 mt-2 text-right">
                   Est. payoff in ~{payoffMonths} {payoffMonths === 1 ? 'month' : 'months'}
                 </p>
               )}

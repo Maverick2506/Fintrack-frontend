@@ -118,7 +118,7 @@ const CreditCardPage = () => {
                   style={{ width: `${utilization.toFixed(0)}%` }}
                 ></div>
               </div>
-              <p className="text-xs text-right mt-1 text-gray-500">
+              <p className="text-xs text-right mt-1 text-gray-400">
                 {utilization.toFixed(0)}% Utilized
               </p>
             </div>

@@ -155,10 +155,10 @@ const DashboardPage = () => {
                     {positive ? "" : "-"}${Math.abs(netWorth).toFixed(2)}
                   </p>
                   <div className="grid grid-cols-2 gap-2 mt-3">
-                    <div className="text-xs text-gray-500">💰 Savings: <span className="text-green-400">${totalSavings.toFixed(2)}</span></div>
-                    <div className="text-xs text-gray-500">📈 Net Flow: <span className={netFlow >= 0 ? "text-green-400" : "text-red-400"}>${netFlow.toFixed(2)}</span></div>
-                    <div className="text-xs text-gray-500">🏦 Debts: <span className="text-red-400">-${totalDebt.toFixed(2)}</span></div>
-                    <div className="text-xs text-gray-500">💳 CC Balance: <span className="text-red-400">-${totalCC.toFixed(2)}</span></div>
+                    <div className="text-xs text-gray-400">💰 Savings: <span className="text-green-400">${totalSavings.toFixed(2)}</span></div>
+                    <div className="text-xs text-gray-400">📈 Net Flow: <span className={netFlow >= 0 ? "text-green-400" : "text-red-400"}>${netFlow.toFixed(2)}</span></div>
+                    <div className="text-xs text-gray-400">🏦 Debts: <span className="text-red-400">-${totalDebt.toFixed(2)}</span></div>
+                    <div className="text-xs text-gray-400">💳 CC Balance: <span className="text-red-400">-${totalCC.toFixed(2)}</span></div>
                   </div>
                 </div>
               );

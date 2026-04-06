@@ -34,7 +34,7 @@ const ProgressSection = ({
                   style={{ width: progress > 0 ? `max(${progress.toFixed(1)}%, 4px)` : '0%' }}
                 />
               </div>
-              <p className="text-xs text-gray-600 text-right mt-0.5">{progress.toFixed(0)}% paid</p>
+              <p className="text-xs text-gray-400 text-right mt-0.5">{progress.toFixed(0)}% paid</p>
             </div>
           );
         })}
@@ -61,7 +61,7 @@ const ProgressSection = ({
                   style={{ width: progress > 0 ? `max(${progress.toFixed(2)}%, 4px)` : '0%' }}
                 />
               </div>
-              <p className="text-xs text-gray-600 text-right mt-0.5">{progress.toFixed(1)}% complete</p>
+              <p className="text-xs text-gray-400 text-right mt-0.5">{progress.toFixed(1)}% complete</p>
             </div>
           );
         })}
