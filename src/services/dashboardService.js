@@ -1,6 +1,6 @@
 import axios from "axios";
 import toast from "react-hot-toast";
-import { getToken } from "../utils/auth"; // Corrected path
+import { getToken, logout } from "../utils/auth"; // Corrected path
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -17,6 +17,18 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Auto logout on token expiration / unauthorized
+      logout();
+      window.location.href = "/login";
+    }
     return Promise.reject(error);
   }
 );
