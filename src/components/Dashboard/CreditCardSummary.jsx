@@ -28,8 +28,8 @@ const CreditCardSummary = ({ creditCards }) => {
         {creditCards && creditCards.length > 0 ? (
           creditCards.slice(0, 2).map((card) => {
             const utilization =
-              parseFloat(card.creditLimit) > 0
-                ? (parseFloat(card.currentBalance) / parseFloat(card.creditLimit)) * 100
+              parseFloat(card.targetAmount) > 0
+                ? (parseFloat(card.initialBalance) / parseFloat(card.targetAmount)) * 100
                 : 0;
             return (
               <div key={card.id} className="group">
@@ -38,7 +38,7 @@ const CreditCardSummary = ({ creditCards }) => {
                     {card.name}
                   </span>
                   <span className="text-md font-bold text-white tracking-wide">
-                    ${parseFloat(card.currentBalance).toFixed(2)}
+                    ${parseFloat(card.initialBalance).toFixed(2)}
                   </span>
                 </div>
                 <div className="w-full bg-black/40 rounded-full h-2.5 overflow-hidden border border-white/5 shadow-inner">
