@@ -9,13 +9,13 @@ import {
 } from "recharts";
 
 const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884d8",
-  "#ff4d4d",
-  "#4ddbff",
+  "#34d399", // emerald-400
+  "#2dd4bf", // teal-400
+  "#3b82f6", // blue-500
+  "#818cf8", // indigo-400
+  "#c084fc", // purple-400
+  "#fb7185", // rose-400
+  "#fbbf24", // amber-400
 ];
 
 const CustomTooltip = ({ active, payload }) => {
@@ -38,9 +38,9 @@ const CustomTooltip = ({ active, payload }) => {
 // Component now accepts an onCategoryClick prop
 const SpendingChartCard = ({ data, onCategoryClick }) => {
   return (
-    <div className="bg-gray-800 p-4 rounded-lg">
-      <h2 className="text-sm font-semibold text-gray-400 mb-3">
-        SPENDING SUMMARY
+    <div className="glass-panel p-6">
+      <h2 className="text-sm tracking-widest font-bold text-gray-400/80 mb-6 uppercase">
+        Spending Summary
       </h2>
       <div style={{ width: "100%", height: 250 }}>
         <ResponsiveContainer>

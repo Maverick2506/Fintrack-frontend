@@ -142,23 +142,23 @@ const DashboardPage = () => {
             />
             {/* Net Worth tile */}
             {(() => {
-              const totalSavings = (savingsSummary || []).reduce((s, g) => s + parseFloat(g.current_amount || 0), 0);
-              const totalDebt = (debtSummary || []).reduce((s, d) => s + parseFloat(d.total_remaining || 0), 0);
-              const totalCC = (creditCardSummary || []).reduce((s, c) => s + parseFloat(c.currentBalance || 0), 0);
+              const totalSavings = (savingsSummary || []).reduce((s, g) => s + parseFloat(g.initialBalance || 0), 0);
+              const totalDebt = (debtSummary || []).reduce((s, d) => s + parseFloat(d.initialBalance || 0), 0);
+              const totalCC = (creditCardSummary || []).reduce((s, c) => s + parseFloat(c.initialBalance || 0), 0);
               const netFlow = monthlySummary?.netFlow || 0;
               const netWorth = totalSavings + netFlow - totalDebt - totalCC;
               const positive = netWorth >= 0;
               return (
-                <div className="bg-gray-800 p-4 rounded-lg">
-                  <h2 className="text-sm font-semibold text-gray-400 mb-3">NET WORTH (ESTIMATED)</h2>
-                  <p className={`text-3xl font-bold ${positive ? "text-green-400" : "text-red-400"}`}>
+                <div className="glass-panel p-6">
+                  <h2 className="text-sm tracking-widest font-bold text-gray-400/80 mb-4 uppercase">NET WORTH (ESTIMATED)</h2>
+                  <p className={`text-5xl tracking-tight font-extrabold pb-4 border-b border-white/10 ${positive ? "text-emerald-400 text-glow" : "text-rose-400 text-glow"} drop-shadow-lg`}>
                     {positive ? "" : "-"}${Math.abs(netWorth).toFixed(2)}
                   </p>
-                  <div className="grid grid-cols-2 gap-2 mt-3">
-                    <div className="text-xs text-gray-400">💰 Savings: <span className="text-green-400">${totalSavings.toFixed(2)}</span></div>
-                    <div className="text-xs text-gray-400">📈 Net Flow: <span className={netFlow >= 0 ? "text-green-400" : "text-red-400"}>${netFlow.toFixed(2)}</span></div>
-                    <div className="text-xs text-gray-400">🏦 Debts: <span className="text-red-400">-${totalDebt.toFixed(2)}</span></div>
-                    <div className="text-xs text-gray-400">💳 CC Balance: <span className="text-red-400">-${totalCC.toFixed(2)}</span></div>
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    <div className="glass-card p-3 text-xs font-semibold text-gray-300">💰 Savings <br/><span className="text-emerald-400 text-sm mt-1 block">${totalSavings.toFixed(2)}</span></div>
+                    <div className="glass-card p-3 text-xs font-semibold text-gray-300">📈 Net Flow <br/><span className={`text-sm mt-1 block ${netFlow >= 0 ? "text-emerald-400" : "text-rose-400"}`}>${netFlow.toFixed(2)}</span></div>
+                    <div className="glass-card p-3 text-xs font-semibold text-gray-300">🏦 Debts <br/><span className="text-rose-400 text-sm mt-1 block">-${totalDebt.toFixed(2)}</span></div>
+                    <div className="glass-card p-3 text-xs font-semibold text-gray-300">💳 CC Balance <br/><span className="text-rose-400 text-sm mt-1 block">-${totalCC.toFixed(2)}</span></div>
                   </div>
                 </div>
               );
@@ -172,25 +172,25 @@ const DashboardPage = () => {
         </main>
       </div>
 
-      <div className="fixed bottom-6 right-6 flex flex-col items-center gap-4">
+      <div className="fixed bottom-8 right-8 flex flex-col items-center gap-4 z-50">
         <button
           onClick={() => openModal("addDebt")}
           title="Add New Debt"
-          className="bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition-transform transform hover:scale-110"
+          className="backdrop-blur-xl bg-gradient-to-tr from-rose-600/80 to-rose-400/80 border border-white/20 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(225,29,72,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 hover:shadow-[0_0_25px_rgba(225,29,72,0.8)]"
         >
           <Landmark size={24} />
         </button>
         <button
           onClick={() => openModal("addSavingsGoal")}
           title="Add New Savings Goal"
-          className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition-transform transform hover:scale-110"
+          className="backdrop-blur-xl bg-gradient-to-tr from-teal-600/80 to-emerald-400/80 border border-white/20 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 hover:shadow-[0_0_25px_rgba(16,185,129,0.8)]"
         >
           <PiggyBank size={24} />
         </button>
         <button
           onClick={() => openModal("transaction")}
           title="Add Transaction"
-          className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition-transform transform hover:scale-110"
+          className="backdrop-blur-xl bg-gradient-to-tr from-blue-600/80 to-indigo-400/80 border border-white/20 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(79,70,229,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 hover:shadow-[0_0_25px_rgba(79,70,229,0.8)]"
         >
           <Plus size={32} />
         </button>

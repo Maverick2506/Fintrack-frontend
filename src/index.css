@@ -1,4 +1,25 @@
 @import "tailwindcss";
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+}
+
+@layer components {
+  .glass-panel {
+    @apply backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] rounded-2xl transition-all duration-300 hover:border-white/20 hover:shadow-[0_8px_40px_rgba(0,0,0,0.2)];
+  }
+  
+  .glass-card {
+    @apply backdrop-blur-md bg-white/5 border border-white/5 shadow-lg rounded-xl transition-all duration-300 hover:bg-white/10 hover:-translate-y-1 hover:shadow-emerald-500/10;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  }
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+}
 
 /* Hide arrows (spinners) on number input fields */
 input[type="number"]::-webkit-inner-spin-button,
