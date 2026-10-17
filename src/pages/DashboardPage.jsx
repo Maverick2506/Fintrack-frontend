@@ -60,13 +60,8 @@ const DashboardPage = () => {
       dashboardService.fetchDashboard(selectedYear, selectedMonth),
   });
 
-  const { data: spendingData, isLoading: spendingLoading } = useQuery({
-    queryKey: ["spendingData", selectedYear, selectedMonth],
-    queryFn: () =>
-      dashboardService.fetchSpendingSummary(selectedYear, selectedMonth),
-  });
-
-  const loading = dashboardLoading || spendingLoading;
+  const spendingData = dashboardData?.spendingSummary || [];
+  const loading = dashboardLoading;
   const [modals, setModals] = useState({
     transaction: false,
     debt: false,

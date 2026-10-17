@@ -1,26 +1,12 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import './index.css'
-import App from './App.jsx'
-import ErrorBoundary from './components/Layout/ErrorBoundary.jsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClientProvider } from "@tanstack/react-query";
+import "./index.css";
+import App from "./App.jsx";
+import ErrorBoundary from "./components/Layout/ErrorBoundary.jsx";
+import { queryClient } from "./utils/queryClient.js";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: false,
-      retry: (failureCount, error) => {
-        if (error?.response?.status === 401 || error?.name === 'CanceledError') {
-          return false;
-        }
-        return failureCount < 1;
-      },
-    },
-  },
-})
-
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -28,4 +14,4 @@ createRoot(document.getElementById('root')).render(
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>
-)
+);

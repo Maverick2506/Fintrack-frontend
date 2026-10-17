@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Pencil, X, Check } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
@@ -54,22 +54,21 @@ const ReportsPage = () => {
   const fetchReportData = useCallback(async () => {
     setLoading(true);
     try {
-      const [dashboardRes, spendingRes, expensesRes, trendsRes] = await Promise.all([
+      const [dashboardRes, expensesRes, trendsRes] = await Promise.all([
         dashboardService.fetchDashboard(selectedDate.year, selectedDate.month),
-        dashboardService.fetchSpendingSummary(selectedDate.year, selectedDate.month),
-        dashboardService.fetchMonthlyExpenses(selectedDate.year, selectedDate.month, sortConfig.key, sortConfig.direction),
+        dashboardService.fetchMonthlyExpenses(selectedDate.year, selectedDate.month),
         dashboardService.fetchTrends(selectedDate.year, selectedDate.month),
       ]);
       setReportData(dashboardRes);
-      setSpendingData(spendingRes);
-      setMonthlyExpenses(expensesRes);
-      setTrendsData(trendsRes);
+      setSpendingData(dashboardRes?.spendingSummary || []);
+      setMonthlyExpenses(expensesRes || []);
+      setTrendsData(trendsRes || []);
     } catch (err) {
       console.error("Error fetching report data:", err);
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, sortConfig]);
+  }, [selectedDate]);
 
   useEffect(() => { fetchReportData(); }, [fetchReportData]);
 
@@ -82,6 +81,27 @@ const ReportsPage = () => {
     if (sortConfig.key === key && sortConfig.direction === "ASC") direction = "DESC";
     setSortConfig({ key, direction });
   };
+
+  const sortedMonthlyExpenses = useMemo(() => {
+    if (!monthlyExpenses || monthlyExpenses.length === 0) return [];
+    return [...monthlyExpenses].sort((a, b) => {
+      let va = a[sortConfig.key] ?? a.date ?? a.due_date ?? "";
+      let vb = b[sortConfig.key] ?? b.date ?? b.due_date ?? "";
+      if (sortConfig.key === "due_date" || sortConfig.key === "date") {
+        va = new Date(va).getTime();
+        vb = new Date(vb).getTime();
+      } else if (sortConfig.key === "amount") {
+        va = parseFloat(va) || 0;
+        vb = parseFloat(vb) || 0;
+      } else if (typeof va === "string") {
+        va = va.toLowerCase();
+        vb = String(vb).toLowerCase();
+      }
+      if (va < vb) return sortConfig.direction === "ASC" ? -1 : 1;
+      if (va > vb) return sortConfig.direction === "ASC" ? 1 : -1;
+      return 0;
+    });
+  }, [monthlyExpenses, sortConfig]);
 
   const handleDelete = async () => {
     await dashboardService.deleteBill(activeExpenseId);
@@ -401,7 +421,7 @@ const ReportsPage = () => {
 
             <div className="md:col-span-2">
               <TransactionList
-                transactions={monthlyExpenses}
+                transactions={sortedMonthlyExpenses}
                 sortConfig={sortConfig}
                 onSort={handleSort}
                 onDelete={(id) => { setActiveExpenseId(id); setDeleteModalOpen(true); }}

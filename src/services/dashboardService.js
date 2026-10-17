@@ -1,6 +1,7 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 import { getToken, isLoggedIn, logout } from "../utils/auth";
+import { queryClient } from "../utils/queryClient";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -42,11 +43,18 @@ api.interceptors.response.use(
   }
 );
 
-const handleRequest = async (requestPromise, successMessage) => {
+const handleRequest = async (
+  requestPromise,
+  successMessage,
+  shouldInvalidate = true
+) => {
   try {
     const response = await requestPromise;
     if (successMessage) {
       toast.success(successMessage);
+    }
+    if (shouldInvalidate) {
+      queryClient.invalidateQueries();
     }
     return response.data;
   } catch (error) {
@@ -54,7 +62,9 @@ const handleRequest = async (requestPromise, successMessage) => {
       throw error;
     }
     console.error("API Error:", error);
-    toast.error(error.response?.data?.error || "An unexpected error occurred.");
+    toast.error(
+      error.response?.data?.error || "An unexpected error occurred."
+    );
     throw error;
   }
 };
@@ -76,7 +86,6 @@ const dashboardService = {
       .then((res) => res.data);
   },
 
-  // Function to fetch the 6-month trend data anchored to selected year/month
   fetchTrends: async (year, month) => {
     const params = new URLSearchParams();
     if (year) params.append("year", year);
@@ -153,7 +162,7 @@ const dashboardService = {
   deleteBill: async (billId) => {
     return handleRequest(
       api.delete(`/expenses/${billId}`),
-      "Bill deleted successfully."
+      "Transaction deleted."
     );
   },
 
@@ -185,11 +194,19 @@ const dashboardService = {
   },
 
   getFinancialAdvice: async (dashboardData) => {
-    return handleRequest(api.post(`/financial-advice`, dashboardData));
+    return handleRequest(
+      api.post(`/financial-advice`, dashboardData),
+      null,
+      false
+    );
   },
 
   categorizeExpense: async (name) => {
-    return handleRequest(api.post(`/categorize-expense`, { name }));
+    return handleRequest(
+      api.post(`/categorize-expense`, { name }),
+      null,
+      false
+    );
   },
 
   payDebt: async (debtId, paymentData) => {
