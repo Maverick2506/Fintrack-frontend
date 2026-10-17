@@ -13,6 +13,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
   const [name, setName] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [monthlyPayment, setMonthlyPayment] = useState("");
+  const [interestRate, setInterestRate] = useState("");
   const [autoPay, setAutoPay] = useState(false);
   const [nextDueDate, setNextDueDate] = useState(
     new Date().toISOString().slice(0, 10)
@@ -29,7 +30,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
   }, [isOpen, onClose]);
 
   const getPaymentLabel = () => {
-    if (!autoPay) return "Monthly Payment / Estimate";
+    if (!autoPay) return "Monthly Payment";
     switch (paymentFrequency) {
       case "weekly":
         return "Weekly Payment";
@@ -50,6 +51,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
       name,
       total_amount: totalAmount,
       monthly_payment: monthlyPayment,
+      interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
       auto_pay: autoPay,
       next_due_date: autoPay ? nextDueDate : null,
       payment_frequency: autoPay ? paymentFrequency : "monthly",
@@ -58,6 +60,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
     setName("");
     setTotalAmount("");
     setMonthlyPayment("");
+    setInterestRate("");
     setAutoPay(false);
     setNextDueDate(new Date().toISOString().slice(0, 10));
     setPaymentFrequency("monthly");
@@ -135,26 +138,51 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
             </div>
           </div>
 
-          {/* Payment per period */}
-          <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
-            <label
-              htmlFor="monthlyPayment"
-              className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
-            >
-              {getPaymentLabel()}
-            </label>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xs font-medium text-zinc-500">$</span>
-              <input
-                type="number"
-                id="monthlyPayment"
-                step="0.01"
-                value={monthlyPayment}
-                onChange={(e) => setMonthlyPayment(e.target.value)}
-                placeholder="0.00"
-                className="w-full bg-transparent text-sm font-medium text-zinc-100 placeholder-zinc-600 focus:outline-none tabular-nums"
-                required
-              />
+          {/* 2-Column: Payment per period + APR */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
+              <label
+                htmlFor="monthlyPayment"
+                className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+              >
+                {getPaymentLabel()}
+              </label>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs font-medium text-zinc-500">$</span>
+                <input
+                  type="number"
+                  id="monthlyPayment"
+                  step="0.01"
+                  value={monthlyPayment}
+                  onChange={(e) => setMonthlyPayment(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-transparent text-sm font-medium text-zinc-100 placeholder-zinc-600 focus:outline-none tabular-nums"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
+              <label
+                htmlFor="interestRate"
+                className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+              >
+                Interest Rate (APR)
+              </label>
+              <div className="flex items-baseline gap-1">
+                <input
+                  type="number"
+                  id="interestRate"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={interestRate}
+                  onChange={(e) => setInterestRate(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-transparent text-sm font-medium text-zinc-100 placeholder-zinc-600 focus:outline-none tabular-nums"
+                />
+                <span className="text-xs font-medium text-zinc-500">%</span>
+              </div>
             </div>
           </div>
 

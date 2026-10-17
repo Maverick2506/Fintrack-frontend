@@ -13,6 +13,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   const [name, setName] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [monthlyPayment, setMonthlyPayment] = useState("");
+  const [interestRate, setInterestRate] = useState("");
   const [autoPay, setAutoPay] = useState(false);
   const [nextDueDate, setNextDueDate] = useState(
     new Date().toISOString().slice(0, 10)
@@ -21,14 +22,21 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
 
   useEffect(() => {
     if (debt) {
-      setName(debt.name);
-      setTotalAmount(debt.total_amount);
-      setMonthlyPayment(debt.monthly_payment);
-      setAutoPay(debt.auto_pay || false);
-      setNextDueDate(
-        debt.next_due_date || new Date().toISOString().slice(0, 10)
+      setName(debt.name || "");
+      setTotalAmount(debt.total_amount ?? "");
+      setMonthlyPayment(debt.monthly_payment ?? "");
+      setInterestRate(
+        debt.interest_rate ?? debt.interestRate ?? ""
       );
-      setPaymentFrequency(debt.payment_frequency || "monthly");
+      setAutoPay(Boolean(debt.auto_pay ?? debt.autoPay));
+      setNextDueDate(
+        debt.next_due_date ||
+          debt.dueDate ||
+          new Date().toISOString().slice(0, 10)
+      );
+      setPaymentFrequency(
+        debt.payment_frequency || debt.paymentFrequency || "monthly"
+      );
     }
   }, [debt]);
 
@@ -42,7 +50,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   }, [isOpen, onClose]);
 
   const getPaymentLabel = () => {
-    if (!autoPay) return "Monthly Payment / Estimate";
+    if (!autoPay) return "Monthly Payment";
     switch (paymentFrequency) {
       case "weekly":
         return "Weekly Payment";
@@ -63,6 +71,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
       name,
       total_amount: totalAmount,
       monthly_payment: monthlyPayment,
+      interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
       auto_pay: autoPay,
       next_due_date: autoPay ? nextDueDate : null,
       payment_frequency: autoPay ? paymentFrequency : "monthly",
@@ -136,24 +145,49 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
             </div>
           </div>
 
-          <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
-            <label
-              htmlFor="monthlyPaymentEdit"
-              className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
-            >
-              {getPaymentLabel()}
-            </label>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xs font-medium text-zinc-500">$</span>
-              <input
-                type="number"
-                id="monthlyPaymentEdit"
-                step="0.01"
-                value={monthlyPayment}
-                onChange={(e) => setMonthlyPayment(e.target.value)}
-                className="w-full bg-transparent text-sm font-medium text-zinc-100 placeholder-zinc-600 focus:outline-none tabular-nums"
-                required
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
+              <label
+                htmlFor="monthlyPaymentEdit"
+                className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+              >
+                {getPaymentLabel()}
+              </label>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs font-medium text-zinc-500">$</span>
+                <input
+                  type="number"
+                  id="monthlyPaymentEdit"
+                  step="0.01"
+                  value={monthlyPayment}
+                  onChange={(e) => setMonthlyPayment(e.target.value)}
+                  className="w-full bg-transparent text-sm font-medium text-zinc-100 placeholder-zinc-600 focus:outline-none tabular-nums"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
+              <label
+                htmlFor="interestRateEdit"
+                className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+              >
+                Interest Rate (APR)
+              </label>
+              <div className="flex items-baseline gap-1">
+                <input
+                  type="number"
+                  id="interestRateEdit"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={interestRate}
+                  onChange={(e) => setInterestRate(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-transparent text-sm font-medium text-zinc-100 placeholder-zinc-600 focus:outline-none tabular-nums"
+                />
+                <span className="text-xs font-medium text-zinc-500">%</span>
+              </div>
             </div>
           </div>
 
