@@ -1,15 +1,23 @@
 import axios from "axios";
 import toast from "react-hot-toast";
-import { getToken, logout } from "../utils/auth"; // Corrected path
+import { getToken, isLoggedIn, logout } from "../utils/auth";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 15000,
 });
 
 api.interceptors.request.use(
   (config) => {
+    if (!isLoggedIn()) {
+      logout();
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login");
+      }
+      return Promise.reject(new axios.Cancel("Session expired"));
+    }
     const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -25,9 +33,10 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Auto logout on token expiration / unauthorized
       logout();
-      window.location.href = "/login";
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login");
+      }
     }
     return Promise.reject(error);
   }
@@ -41,6 +50,9 @@ const handleRequest = async (requestPromise, successMessage) => {
     }
     return response.data;
   } catch (error) {
+    if (axios.isCancel(error) || error.response?.status === 401) {
+      throw error;
+    }
     console.error("API Error:", error);
     toast.error(error.response?.data?.error || "An unexpected error occurred.");
     throw error;

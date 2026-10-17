@@ -48,7 +48,12 @@ const DashboardPage = () => {
     setSelectedMonth(now.getMonth() + 1);
   };
 
-  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+  const {
+    data: dashboardData,
+    isLoading: dashboardLoading,
+    isError: dashboardError,
+    refetch: refetchDashboard,
+  } = useQuery({
     queryKey: ["dashboardData", selectedYear, selectedMonth],
     queryFn: () =>
       dashboardService.fetchDashboard(selectedYear, selectedMonth),
@@ -156,10 +161,36 @@ const DashboardPage = () => {
     }
   };
 
-  if (loading || !dashboardData) {
+  if (loading) {
     return (
       <div className="bg-zinc-950 min-h-[80vh] text-zinc-500 text-sm flex items-center justify-center">
         Loading overview...
+      </div>
+    );
+  }
+
+  if (dashboardError || !dashboardData) {
+    return (
+      <div className="bg-zinc-950 min-h-[80vh] text-zinc-400 text-sm flex flex-col items-center justify-center gap-3 px-4 text-center">
+        <p>Unable to load your overview right now.</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => refetchDashboard()}
+            className="btn-secondary"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem("user_token");
+              localStorage.removeItem("fintrack_last_active");
+              window.location.replace("/login");
+            }}
+            className="btn-primary"
+          >
+            Sign In Again
+          </button>
+        </div>
       </div>
     );
   }
