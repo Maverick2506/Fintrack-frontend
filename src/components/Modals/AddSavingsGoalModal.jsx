@@ -20,14 +20,14 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center p-4 z-50">
-      <div className="bg-gray-800 p-6 rounded-lg w-full max-w-sm">
-        <h2 className="text-xl font-bold mb-4 text-white">New Savings Goal</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+      <div className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
+        <h2 className="text-lg font-semibold tracking-tight mb-5 text-zinc-100">New Savings Goal</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
             <label
               htmlFor="goalName"
-              className="block text-sm font-medium text-gray-300"
+              className="block text-xs font-medium text-zinc-400 mb-1.5"
             >
               Goal Name
             </label>
@@ -36,39 +36,42 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
               id="goalName"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+              className="minimal-input"
+              placeholder="e.g., Emergency Fund"
               required
             />
           </div>
-          <div className="mb-4">
+          <div>
             <label
               htmlFor="goalAmount"
-              className="block text-sm font-medium text-gray-300"
+              className="block text-xs font-medium text-zinc-400 mb-1.5"
             >
-              Goal Amount
+              Target Amount
             </label>
             <input
               type="number"
               id="goalAmount"
+              step="0.01"
               value={goalAmount}
               onChange={(e) => setGoalAmount(e.target.value)}
-              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+              className="minimal-input tabular-nums"
+              placeholder="0.00"
               required
             />
           </div>
-          <div className="flex justify-end space-x-4 mt-6">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-white/[0.06]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-md text-gray-300 hover:bg-gray-700"
+              className="btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              className="btn-primary"
             >
-              Add Goal
+              Create Goal
             </button>
           </div>
         </form>

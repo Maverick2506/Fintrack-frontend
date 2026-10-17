@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Pencil, X, Check } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import TransactionList from "../components/Dashboard/TransactionList";
@@ -25,12 +26,11 @@ const ReportsPage = () => {
   const [categoryTransactions, setCategoryTransactions] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: "due_date", direction: "ASC" });
 
-  // --- Optional Budget Limits (localStorage) ---
   const [budgets, setBudgets] = useState(() => {
     try { return JSON.parse(localStorage.getItem("fintrack_budgets") || "{}"); }
     catch { return {}; }
   });
-  const [editingBudget, setEditingBudget] = useState(null); // category name or null
+  const [editingBudget, setEditingBudget] = useState(null);
   const [budgetInput, setBudgetInput] = useState("");
 
   const saveBudget = (category) => {
@@ -100,36 +100,92 @@ const ReportsPage = () => {
     }
   };
 
-  // Derived stats
   const income = reportData?.monthlySummary?.totalIncome || 0;
   const spending = reportData?.monthlySummary?.totalSpending || 0;
   const savingsRate = income > 0 ? (((income - spending) / income) * 100).toFixed(1) : null;
   const spendingRate = income > 0 ? ((spending / income) * 100).toFixed(1) : null;
 
   return (
-    <div className="container mx-auto max-w-7xl p-4">
-      <h1 className="text-2xl font-bold text-white mb-4">Monthly Reports</h1>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 mb-8">
+        <div>
+          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+            Insights
+          </p>
+          <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight mt-0.5">
+            Monthly Analytics
+          </h1>
+        </div>
+
+        {/* Date Filter moved to top header for instant period switching */}
+        <div className="flex items-center gap-2">
+          <select
+            name="month"
+            value={selectedDate.month}
+            onChange={handleDateChange}
+            className="bg-zinc-900 text-zinc-200 text-xs font-medium rounded-lg px-3 py-2 border border-white/[0.08] focus:outline-none focus:border-zinc-500"
+          >
+            {MONTHS.map((m, i) => (
+              <option key={i + 1} value={i + 1}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select
+            name="year"
+            value={selectedDate.year}
+            onChange={handleDateChange}
+            className="bg-zinc-900 text-zinc-200 text-xs font-medium rounded-lg px-3 py-2 border border-white/[0.08] focus:outline-none focus:border-zinc-500"
+          >
+            {[2023, 2024, 2025, 2026, 2027].map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* Stats bar */}
       {!loading && reportData && income > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-gray-800 rounded-lg p-3">
-            <p className="text-xs text-gray-400">Income</p>
-            <p className="text-lg font-bold text-green-400">${income.toFixed(2)}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="glass-panel p-4">
+            <p className="text-xs font-medium text-zinc-500 mb-1">Income</p>
+            <p className="text-xl font-semibold text-emerald-400 tabular-nums">
+              ${income.toFixed(2)}
+            </p>
           </div>
-          <div className="bg-gray-800 rounded-lg p-3">
-            <p className="text-xs text-gray-400">Spent</p>
-            <p className="text-lg font-bold text-red-400">${spending.toFixed(2)}</p>
+          <div className="glass-panel p-4">
+            <p className="text-xs font-medium text-zinc-500 mb-1">Spent</p>
+            <p className="text-xl font-semibold text-rose-400 tabular-nums">
+              ${spending.toFixed(2)}
+            </p>
           </div>
-          <div className="bg-gray-800 rounded-lg p-3">
-            <p className="text-xs text-gray-400">Savings Rate</p>
-            <p className={`text-lg font-bold ${parseFloat(savingsRate) >= 20 ? "text-green-400" : parseFloat(savingsRate) >= 0 ? "text-yellow-400" : "text-red-400"}`}>
+          <div className="glass-panel p-4">
+            <p className="text-xs font-medium text-zinc-500 mb-1">Savings Rate</p>
+            <p
+              className={`text-xl font-semibold tabular-nums ${
+                parseFloat(savingsRate) >= 20
+                  ? "text-emerald-400"
+                  : parseFloat(savingsRate) >= 0
+                  ? "text-amber-400"
+                  : "text-rose-400"
+              }`}
+            >
               {savingsRate}%
             </p>
           </div>
-          <div className="bg-gray-800 rounded-lg p-3">
-            <p className="text-xs text-gray-400">Spending Rate</p>
-            <p className={`text-lg font-bold ${parseFloat(spendingRate) <= 70 ? "text-green-400" : parseFloat(spendingRate) <= 90 ? "text-yellow-400" : "text-red-400"}`}>
+          <div className="glass-panel p-4">
+            <p className="text-xs font-medium text-zinc-500 mb-1">Spending Rate</p>
+            <p
+              className={`text-xl font-semibold tabular-nums ${
+                parseFloat(spendingRate) <= 70
+                  ? "text-emerald-400"
+                  : parseFloat(spendingRate) <= 90
+                  ? "text-amber-400"
+                  : "text-rose-400"
+              }`}
+            >
               {spendingRate}%
             </p>
           </div>
@@ -137,10 +193,11 @@ const ReportsPage = () => {
       )}
 
       {loading ? (
-        <div className="text-center text-white">Loading report...</div>
+        <div className="text-center text-zinc-500 text-sm p-12">
+          Loading analytics...
+        </div>
       ) : reportData ? (
         <div className="space-y-6">
-          {/* 6-month trend — always rolling, no date filter */}
           <SpendingTrendsChart data={trendsData} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -150,123 +207,109 @@ const ReportsPage = () => {
               const curr = reportData.monthlySummary?.netFlow ?? 0;
               const netChange = curr - prev;
               const arrow = netChange >= 0 ? "▲" : "▼";
-              const changeColor = netChange >= 0 ? "text-green-400" : "text-red-400";
+              const changeColor = netChange >= 0 ? "text-emerald-400" : "text-rose-400";
               const spentPct = income > 0 ? Math.min((spending / income) * 100, 100) : 0;
               const savedPct = income > 0 ? Math.max(100 - spentPct, 0) : 0;
               const srNum = parseFloat(savingsRate) || 0;
-              const srColor = srNum >= 20 ? "#34d399" : srNum >= 10 ? "#fbbf24" : "#f87171";
+              const srColor = srNum >= 20 ? "#34d399" : srNum >= 10 ? "#fbbf24" : "#fb7185";
               return (
-                <div className="bg-gray-800 p-4 rounded-lg flex flex-col gap-4">
-                  <h2 className="text-sm font-semibold text-gray-400">THIS MONTH vs LAST MONTH</h2>
-
-                  {/* Income / Spent row */}
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-xs text-gray-400">Income</p>
-                      <p className="text-2xl font-bold text-green-400">${income.toFixed(2)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400">Last month net</p>
-                      <p className={`text-lg font-semibold ${prev >= 0 ? "text-green-400" : "text-red-400"}`}>${prev.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-xs text-gray-400">Spent</p>
-                      <p className="text-2xl font-bold text-red-400">${spending.toFixed(2)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400">This month net</p>
-                      <p className={`text-lg font-semibold ${curr >= 0 ? "text-green-400" : "text-red-400"}`}>${curr.toFixed(2)}</p>
-                    </div>
-                  </div>
-
-                  {/* Stacked income breakdown bar */}
-                  {income > 0 && (
-                    <div>
-                      <p className="text-xs text-gray-400 mb-1.5">Income breakdown</p>
-                      <div className="w-full h-3 rounded-full overflow-hidden flex">
-                        <div
-                          className="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-700"
-                          style={{ width: `${spentPct.toFixed(1)}%` }}
-                          title={`Spent ${spentPct.toFixed(1)}%`}
-                        />
-                        <div
-                          className="h-full bg-gradient-to-r from-emerald-500 to-green-400 transition-all duration-700"
-                          style={{ width: `${savedPct.toFixed(1)}%` }}
-                          title={`Saved ${savedPct.toFixed(1)}%`}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs mt-1">
-                        <span className="text-red-400">Spent {spentPct.toFixed(1)}%</span>
-                        <span className="text-green-400">Saved {savedPct.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Savings rate health bar */}
-                  {savingsRate !== null && (
-                    <div>
-                      <div className="flex justify-between items-center mb-1.5">
-                        <p className="text-xs text-gray-400">Savings rate health</p>
-                        <span className="text-xs font-bold" style={{ color: srColor }}>{savingsRate}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{ width: `${Math.min(srNum, 100)}%`, backgroundColor: srColor }}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {srNum >= 20 ? "Healthy savings rate 💪" : srNum >= 10 ? "Moderate — aim for 20%+" : "Low savings rate — try to cut spending"}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Budget compliance — unique info the pie chart doesn't show */}
+                <div className="glass-panel p-6 flex flex-col justify-between gap-5">
                   <div>
-                    <p className="text-xs text-gray-400 mb-2">Budget compliance</p>
-                    {(() => {
-                      const tracked = spendingData.filter(cat => budgets[cat.name]);
-                      if (tracked.length === 0) {
+                    <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-5">
+                      Month-over-Month Comparison
+                    </h2>
+
+                    <div className="grid grid-cols-2 gap-4 mb-5">
+                      <div className="glass-card p-3.5">
+                        <p className="text-xs text-zinc-500 mb-1">This Month Net</p>
+                        <p
+                          className={`text-xl font-semibold tabular-nums ${
+                            curr >= 0 ? "text-zinc-100" : "text-rose-400"
+                          }`}
+                        >
+                          ${curr.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="glass-card p-3.5">
+                        <p className="text-xs text-zinc-500 mb-1">Last Month Net</p>
+                        <p
+                          className={`text-xl font-semibold tabular-nums ${
+                            prev >= 0 ? "text-zinc-300" : "text-rose-400"
+                          }`}
+                        >
+                          ${prev.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {income > 0 && (
+                      <div className="mb-5">
+                        <p className="text-xs text-zinc-500 mb-1.5">Income Allocation</p>
+                        <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-zinc-800">
+                          <div
+                            className="h-full bg-rose-400 transition-all duration-500"
+                            style={{ width: `${spentPct.toFixed(1)}%` }}
+                          />
+                          <div
+                            className="h-full bg-emerald-400 transition-all duration-500"
+                            style={{ width: `${savedPct.toFixed(1)}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[11px] mt-1.5 tabular-nums">
+                          <span className="text-zinc-400">Spent {spentPct.toFixed(1)}%</span>
+                          <span className="text-zinc-400">Saved {savedPct.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {savingsRate !== null && (
+                      <div className="mb-5">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <p className="text-xs text-zinc-500">Savings Rate Health</p>
+                          <span className="text-xs font-semibold tabular-nums" style={{ color: srColor }}>
+                            {savingsRate}%
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(Math.max(0, srNum), 100)}%`, backgroundColor: srColor }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Budget compliance */}
+                    <div>
+                      <p className="text-xs text-zinc-500 mb-2">Budget Compliance</p>
+                      {(() => {
+                        const tracked = spendingData.filter((cat) => budgets[cat.name]);
+                        if (tracked.length === 0) {
+                          return (
+                            <p className="text-xs text-zinc-500">
+                              No category budget limits configured yet.
+                            </p>
+                          );
+                        }
                         return (
-                          <p className="text-xs text-gray-500 italic">
-                            No budget limits set yet. Add limits on the right →
-                          </p>
-                        );
-                      }
-                      const within = tracked.filter(cat => cat.value <= budgets[cat.name]).length;
-                      const over = tracked.length - within;
-                      return (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-3 text-xs">
-                            <span className="flex items-center gap-1">
-                              <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
-                              <span className="text-green-400 font-semibold">{within} within budget</span>
-                            </span>
-                            {over > 0 && (
-                              <span className="flex items-center gap-1">
-                                <span className="inline-block w-2 h-2 rounded-full bg-red-400" />
-                                <span className="text-red-400 font-semibold">{over} over budget</span>
-                              </span>
-                            )}
-                          </div>
-                          <div className="space-y-1.5">
-                            {tracked.map(cat => {
+                          <div className="space-y-2">
+                            {tracked.map((cat) => {
                               const limit = budgets[cat.name];
                               const usedPct = Math.min((cat.value / limit) * 100, 100);
                               const isOver = cat.value > limit;
                               return (
                                 <div key={cat.name}>
-                                  <div className="flex justify-between text-xs mb-0.5">
-                                    <span className="text-gray-300">{cat.name}</span>
-                                    <span className={isOver ? "text-red-400 font-semibold" : "text-gray-400"}>
+                                  <div className="flex justify-between text-xs mb-1 tabular-nums">
+                                    <span className="text-zinc-300">{cat.name}</span>
+                                    <span className={isOver ? "text-rose-400 font-medium" : "text-zinc-400"}>
                                       ${cat.value.toFixed(2)} / ${limit.toFixed(2)}
                                     </span>
                                   </div>
-                                  <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                  <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                                     <div
-                                      className={`h-full rounded-full transition-all duration-700 ${isOver ? "bg-red-500" : "bg-green-500"}`}
+                                      className={`h-full rounded-full transition-all duration-500 ${
+                                        isOver ? "bg-rose-400" : "bg-emerald-400"
+                                      }`}
                                       style={{ width: `${usedPct.toFixed(1)}%` }}
                                     />
                                   </div>
@@ -274,73 +317,73 @@ const ReportsPage = () => {
                               );
                             })}
                           </div>
-                        </div>
-                      );
-                    })()}
+                        );
+                      })()}
+                    </div>
                   </div>
 
-                  {/* Net change footer */}
-                  <div className="border-t border-gray-700 pt-3">
-                    <p className="text-xs text-gray-400 mb-1">Net flow vs last month</p>
-                    <p className={`text-xl font-bold ${changeColor}`}>
+                  <div className="border-t border-white/[0.06] pt-4 flex items-center justify-between">
+                    <span className="text-xs text-zinc-500">Net Delta vs. Prior Month</span>
+                    <span className={`text-sm font-semibold tabular-nums ${changeColor}`}>
                       {arrow} ${Math.abs(netChange).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {netChange >= 0 ? "Better than last month 🎉" : "Worse than last month — review spending"}
-                    </p>
+                    </span>
                   </div>
                 </div>
               );
             })()}
 
             {/* Spending summary with optional budget limits */}
-            <div className="bg-gray-800 p-4 rounded-lg">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-sm font-semibold text-gray-400">SPENDING BY CATEGORY</h2>
-                <span className="text-xs text-gray-400 italic">Click a segment to drill down</span>
-              </div>
+            <div className="space-y-4">
               <SpendingChartCard data={spendingData} onCategoryClick={handleCategoryClick} />
 
-              {/* Budget limits section */}
               {spendingData.length > 0 && (
-                <div className="mt-4 border-t border-gray-700 pt-3">
-                  <p className="text-xs text-gray-400 mb-2 font-semibold">OPTIONAL BUDGET LIMITS</p>
-                  <div className="space-y-1.5">
+                <div className="glass-panel p-5">
+                  <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">
+                    Category Budget Limits
+                  </p>
+                  <div className="space-y-2">
                     {spendingData.map((cat) => {
                       const limit = budgets[cat.name];
                       const over = limit && cat.value > limit;
                       return (
-                        <div key={cat.name} className="flex items-center justify-between text-xs">
-                          <span className="text-gray-300 w-32 truncate">{cat.name}</span>
-                          <span className={`font-semibold ${over ? "text-red-400" : "text-gray-400"}`}>
+                        <div key={cat.name} className="flex items-center justify-between text-xs py-1">
+                          <span className="text-zinc-300 font-medium w-32 truncate">{cat.name}</span>
+                          <span className={`tabular-nums ${over ? "text-rose-400 font-medium" : "text-zinc-400"}`}>
                             ${cat.value.toFixed(2)}
-                            {limit && <span className="text-gray-400"> / ${limit.toFixed(2)}</span>}
-                            {over && <span className="ml-1 bg-red-900 text-red-300 text-[10px] px-1.5 py-0.5 rounded-full">Over</span>}
+                            {limit && <span className="text-zinc-500"> / ${limit.toFixed(2)}</span>}
                           </span>
                           {editingBudget === cat.name ? (
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
-                                placeholder="limit"
+                                placeholder="Limit"
                                 value={budgetInput}
                                 onChange={(e) => setBudgetInput(e.target.value)}
-                                className="w-20 bg-gray-700 text-white rounded px-2 py-0.5 text-xs border border-gray-600 focus:outline-none"
+                                className="w-20 bg-zinc-950 text-zinc-100 rounded px-2 py-1 text-xs border border-white/10 focus:outline-none"
                                 autoFocus
                               />
-                              <button onClick={() => saveBudget(cat.name)} className="text-green-400 hover:text-green-300">✓</button>
-                              <button onClick={() => setEditingBudget(null)} className="text-gray-500 hover:text-gray-300">✗</button>
+                              <button onClick={() => saveBudget(cat.name)} className="btn-ghost-icon !p-1 text-emerald-400">
+                                <Check size={13} />
+                              </button>
+                              <button onClick={() => setEditingBudget(null)} className="btn-ghost-icon !p-1">
+                                <X size={13} />
+                              </button>
                             </div>
                           ) : (
-                            <div className="flex gap-1">
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={() => { setEditingBudget(cat.name); setBudgetInput(limit || ""); }}
-                                className="text-gray-600 hover:text-indigo-400 transition-colors"
-                                title="Set budget limit"
+                                className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer"
                               >
-                                {limit ? "✏️" : "+ limit"}
+                                {limit ? <Pencil size={12} /> : "+ Set limit"}
                               </button>
                               {limit && (
-                                <button onClick={() => removeBudget(cat.name)} className="text-gray-600 hover:text-red-400 transition-colors" title="Remove limit">✗</button>
+                                <button
+                                  onClick={() => removeBudget(cat.name)}
+                                  className="btn-ghost-icon !p-1 hover:text-rose-400"
+                                >
+                                  <X size={12} />
+                                </button>
                               )}
                             </div>
                           )}
@@ -353,35 +396,6 @@ const ReportsPage = () => {
             </div>
 
             <div className="md:col-span-2">
-              {/* Date filter — scoped to the Expenses list only */}
-              <div className="flex items-center gap-4 mb-3 bg-gray-800 px-4 py-3 rounded-lg">
-                <span className="text-xs text-gray-400 font-semibold">FILTER EXPENSES:</span>
-                <div>
-                  <select
-                    name="month"
-                    value={selectedDate.month}
-                    onChange={handleDateChange}
-                    className="bg-gray-700 text-white text-sm rounded px-3 py-1.5 border border-gray-600 focus:outline-none focus:border-indigo-500"
-                  >
-                    {MONTHS.map((m, i) => (
-                      <option key={i+1} value={i+1}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <select
-                    name="year"
-                    value={selectedDate.year}
-                    onChange={handleDateChange}
-                    className="bg-gray-700 text-white text-sm rounded px-3 py-1.5 border border-gray-600 focus:outline-none focus:border-indigo-500"
-                  >
-                    {[2023, 2024, 2025, 2026, 2027].map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-                <span className="text-xs text-gray-600">The trends chart always shows the last 6 months.</span>
-              </div>
               <TransactionList
                 transactions={monthlyExpenses}
                 sortConfig={sortConfig}
@@ -392,7 +406,7 @@ const ReportsPage = () => {
           </div>
         </div>
       ) : (
-        <p className="text-center text-white">Could not load data for the selected period.</p>
+        <p className="text-center text-zinc-500 text-sm">Could not load data for the selected period.</p>
       )}
 
       <CategoryDetailModal

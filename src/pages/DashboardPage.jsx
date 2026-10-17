@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Landmark, PiggyBank, Plus } from "lucide-react";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import UpcomingBills from "../components/Dashboard/UpcomingBills";
@@ -18,15 +17,47 @@ import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-12
+
+  const isCurrentMonth =
+    selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+  const selectedDate = new Date(selectedYear, selectedMonth - 1, 1);
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear((y) => y - 1);
+    } else {
+      setSelectedMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear((y) => y + 1);
+    } else {
+      setSelectedMonth((m) => m + 1);
+    }
+  };
+
+  const handleResetMonth = () => {
+    setSelectedYear(now.getFullYear());
+    setSelectedMonth(now.getMonth() + 1);
+  };
 
   const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
-    queryKey: ["dashboardData"],
-    queryFn: () => dashboardService.fetchDashboard(),
+    queryKey: ["dashboardData", selectedYear, selectedMonth],
+    queryFn: () =>
+      dashboardService.fetchDashboard(selectedYear, selectedMonth),
   });
 
   const { data: spendingData, isLoading: spendingLoading } = useQuery({
-    queryKey: ["spendingData"],
-    queryFn: () => dashboardService.fetchSpendingSummary(),
+    queryKey: ["spendingData", selectedYear, selectedMonth],
+    queryFn: () =>
+      dashboardService.fetchSpendingSummary(selectedYear, selectedMonth),
   });
 
   const loading = dashboardLoading || spendingLoading;
@@ -45,7 +76,9 @@ const DashboardPage = () => {
     toDelete: null,
     toEdit: null,
   });
-  const [advice, setAdvice] = useState(() => localStorage.getItem("fintrack_advice") || "");
+  const [advice, setAdvice] = useState(
+    () => localStorage.getItem("fintrack_advice") || ""
+  );
   const [adviceLoading, setAdviceLoading] = useState(false);
 
   const openModal = (type, payload = {}) => {
@@ -58,17 +91,43 @@ const DashboardPage = () => {
     setActive({ debtId: null, goalId: null, toDelete: null, toEdit: null });
   };
 
+  // Global keyboard shortcut: press "n" (outside inputs) to open New Transaction
+  useEffect(() => {
+    const anyModalOpen = Object.values(modals).some(Boolean);
+    const handleKeyDown = (e) => {
+      if (anyModalOpen) return;
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (
+        (e.key === "n" || e.key === "N") &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        openModal("transaction");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modals]);
+
+  const invalidateDashboard = () => {
+    queryClient.invalidateQueries({ queryKey: ["dashboardData"] });
+    queryClient.invalidateQueries({ queryKey: ["spendingData"] });
+  };
+
   const markAsPaidMutation = useMutation({
     mutationFn: (billId) => dashboardService.markBillAsPaid(billId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboardData"] });
+      invalidateDashboard();
     },
   });
 
   const deleteBillMutation = useMutation({
     mutationFn: (billId) => dashboardService.deleteBill(billId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboardData"] });
+      invalidateDashboard();
       closeModal("delete");
     },
   });
@@ -82,15 +141,13 @@ const DashboardPage = () => {
     deleteBillMutation.mutate(active.toDelete);
   };
 
-  // MODIFIED: This function now sends the entire dashboardData object to the AI
   const handleGetAdvice = async () => {
     setAdviceLoading(true);
     try {
-      // Pass the whole object, which now includes credit card data and all upcoming bills
       const adviceResponse = await dashboardService.getFinancialAdvice(
         dashboardData
       );
-      setAdvice(adviceResponse.advice); // The backend now sends { advice: "..." }
+      setAdvice(adviceResponse.advice);
       localStorage.setItem("fintrack_advice", adviceResponse.advice);
     } catch (error) {
       setAdvice("Sorry, I could not get any advice at the moment.");
@@ -101,8 +158,8 @@ const DashboardPage = () => {
 
   if (loading || !dashboardData) {
     return (
-      <div className="bg-gray-900 min-h-screen text-white flex items-center justify-center">
-        Loading...
+      <div className="bg-zinc-950 min-h-[80vh] text-zinc-500 text-sm flex items-center justify-center">
+        Loading overview...
       </div>
     );
   }
@@ -115,12 +172,95 @@ const DashboardPage = () => {
     creditCardSummary,
   } = dashboardData;
 
+  const totalSavings = (savingsSummary || []).reduce(
+    (s, g) => s + parseFloat(g.initialBalance || 0),
+    0
+  );
+  const totalDebt = (debtSummary || []).reduce(
+    (s, d) => s + parseFloat(d.initialBalance || 0),
+    0
+  );
+  const totalCC = (creditCardSummary || []).reduce(
+    (s, c) => s + parseFloat(c.initialBalance || 0),
+    0
+  );
+  const netFlow = monthlySummary?.netFlow || 0;
+  const netWorth = totalSavings + netFlow - totalDebt - totalCC;
+  const positiveNetWorth = netWorth >= 0;
+
   return (
-    <div className="min-h-screen text-gray-200 font-sans pb-24">
-      <div className="container mx-auto max-w-7xl p-4">
-        <Header />
-        <main className="flex flex-col lg:flex-row gap-6">
-          <div className="lg:w-1/2 space-y-6">
+    <div className="min-h-screen text-zinc-100 pb-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <Header
+          onAddTransaction={() => openModal("transaction")}
+          selectedDate={selectedDate}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          onResetMonth={handleResetMonth}
+          isCurrentMonth={isCurrentMonth}
+        />
+
+        {/* Top KPI Bento Strip */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Estimated Net Worth
+            </p>
+            <p
+              className={`text-2xl font-semibold tracking-tight tabular-nums ${
+                positiveNetWorth ? "text-zinc-100" : "text-rose-400"
+              }`}
+            >
+              {positiveNetWorth ? "" : "-"}$
+              {Math.abs(netWorth).toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Total Savings
+            </p>
+            <p className="text-2xl font-semibold tracking-tight text-emerald-400 tabular-nums">
+              $
+              {totalSavings.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Active Debt
+            </p>
+            <p className="text-2xl font-semibold tracking-tight text-zinc-200 tabular-nums">
+              $
+              {totalDebt.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Card Balances
+            </p>
+            <p className="text-2xl font-semibold tracking-tight text-zinc-200 tabular-nums">
+              $
+              {totalCC.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+        </div>
+
+        <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7 space-y-6">
             <MonthlySummary summary={monthlySummary} />
             <UpcomingBills
               bills={upcomingBills}
@@ -128,102 +268,58 @@ const DashboardPage = () => {
               onEdit={(bill) => openModal("transaction", { toEdit: bill })}
               onDelete={(billId) => openModal("delete", { toDelete: billId })}
             />
-            {spendingData.length > 0 && (
+            {spendingData && spendingData.length > 0 && (
               <SpendingChartCard data={spendingData} />
             )}
           </div>
-          <div className="lg:w-1/2 space-y-6">
+
+          <div className="lg:col-span-5 space-y-6">
+            <FinancialAdviceCard
+              advice={advice}
+              onGetAdvice={handleGetAdvice}
+              isLoading={adviceLoading}
+            />
             <CreditCardSummary creditCards={creditCardSummary} />
             <ProgressSection
               debtSummary={debtSummary}
               savingsSummary={savingsSummary}
               onPayDebt={(id) => openModal("debt", { debtId: id })}
               onContribute={(id) => openModal("savings", { goalId: id })}
-            />
-            {/* Net Worth tile */}
-            {(() => {
-              const totalSavings = (savingsSummary || []).reduce((s, g) => s + parseFloat(g.initialBalance || 0), 0);
-              const totalDebt = (debtSummary || []).reduce((s, d) => s + parseFloat(d.initialBalance || 0), 0);
-              const totalCC = (creditCardSummary || []).reduce((s, c) => s + parseFloat(c.initialBalance || 0), 0);
-              const netFlow = monthlySummary?.netFlow || 0;
-              const netWorth = totalSavings + netFlow - totalDebt - totalCC;
-              const positive = netWorth >= 0;
-              return (
-                <div className="glass-panel p-6">
-                  <h2 className="text-sm tracking-widest font-bold text-gray-400/80 mb-4 uppercase">NET WORTH (ESTIMATED)</h2>
-                  <p className={`text-5xl tracking-tight font-extrabold pb-4 border-b border-white/10 ${positive ? "text-emerald-400 text-glow" : "text-rose-400 text-glow"} drop-shadow-lg`}>
-                    {positive ? "" : "-"}${Math.abs(netWorth).toFixed(2)}
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    <div className="glass-card p-3 text-xs font-semibold text-gray-300">💰 Savings <br/><span className="text-emerald-400 text-sm mt-1 block">${totalSavings.toFixed(2)}</span></div>
-                    <div className="glass-card p-3 text-xs font-semibold text-gray-300">📈 Net Flow <br/><span className={`text-sm mt-1 block ${netFlow >= 0 ? "text-emerald-400" : "text-rose-400"}`}>${netFlow.toFixed(2)}</span></div>
-                    <div className="glass-card p-3 text-xs font-semibold text-gray-300">🏦 Debts <br/><span className="text-rose-400 text-sm mt-1 block">-${totalDebt.toFixed(2)}</span></div>
-                    <div className="glass-card p-3 text-xs font-semibold text-gray-300">💳 CC Balance <br/><span className="text-rose-400 text-sm mt-1 block">-${totalCC.toFixed(2)}</span></div>
-                  </div>
-                </div>
-              );
-            })()}
-            <FinancialAdviceCard
-              advice={advice}
-              onGetAdvice={handleGetAdvice}
-              isLoading={adviceLoading}
+              onAddDebt={() => openModal("addDebt")}
+              onAddSavingsGoal={() => openModal("addSavingsGoal")}
             />
           </div>
         </main>
-      </div>
-
-      <div className="fixed bottom-8 right-8 flex flex-col items-center gap-4 z-50">
-        <button
-          onClick={() => openModal("addDebt")}
-          title="Add New Debt"
-          className="backdrop-blur-xl bg-gradient-to-tr from-rose-600/80 to-rose-400/80 border border-white/20 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(225,29,72,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 hover:shadow-[0_0_25px_rgba(225,29,72,0.8)]"
-        >
-          <Landmark size={24} />
-        </button>
-        <button
-          onClick={() => openModal("addSavingsGoal")}
-          title="Add New Savings Goal"
-          className="backdrop-blur-xl bg-gradient-to-tr from-teal-600/80 to-emerald-400/80 border border-white/20 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 hover:shadow-[0_0_25px_rgba(16,185,129,0.8)]"
-        >
-          <PiggyBank size={24} />
-        </button>
-        <button
-          onClick={() => openModal("transaction")}
-          title="Add Transaction"
-          className="backdrop-blur-xl bg-gradient-to-tr from-blue-600/80 to-indigo-400/80 border border-white/20 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(79,70,229,0.5)] hover:scale-110 active:scale-95 transition-all duration-300 hover:shadow-[0_0_25px_rgba(79,70,229,0.8)]"
-        >
-          <Plus size={32} />
-        </button>
       </div>
 
       {/* All Modals */}
       <AddTransactionModal
         isOpen={modals.transaction}
         onClose={() => closeModal("transaction")}
-        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
+        refreshData={invalidateDashboard}
         existingTransaction={active.toEdit}
       />
       <AddDebtPaymentModal
         isOpen={modals.debt}
         onClose={() => closeModal("debt")}
-        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
+        refreshData={invalidateDashboard}
         debtId={active.debtId}
       />
       <AddDebtModal
         isOpen={modals.addDebt}
         onClose={() => closeModal("addDebt")}
-        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
+        refreshData={invalidateDashboard}
       />
       <AddSavingsContributionModal
         isOpen={modals.savings}
         onClose={() => closeModal("savings")}
-        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
+        refreshData={invalidateDashboard}
         goalId={active.goalId}
       />
       <AddSavingsGoalModal
         isOpen={modals.addSavingsGoal}
         onClose={() => closeModal("addSavingsGoal")}
-        refreshData={() => queryClient.invalidateQueries({ queryKey: ["dashboardData"] })}
+        refreshData={invalidateDashboard}
       />
       <ConfirmDeleteModal
         isOpen={modals.delete}

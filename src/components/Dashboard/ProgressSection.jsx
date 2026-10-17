@@ -1,80 +1,160 @@
 import React from "react";
+import { Plus } from "lucide-react";
 
 const ProgressSection = ({
   debtSummary,
   savingsSummary,
   onPayDebt,
   onContribute,
+  onAddDebt,
+  onAddSavingsGoal,
 }) => {
   return (
     <div className="glass-panel p-6">
-      <h2 className="text-sm tracking-widest font-bold text-gray-400/80 mb-6 uppercase">
-        Your Progress
-      </h2>
-      <div className="space-y-6">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+          Goals & Paydowns
+        </h2>
+        <div className="flex items-center gap-1.5">
+          {onAddDebt && (
+            <button
+              onClick={onAddDebt}
+              className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+            >
+              <Plus size={12} strokeWidth={2} className="text-zinc-400" />
+              <span>Debt</span>
+            </button>
+          )}
+          {onAddSavingsGoal && (
+            <button
+              onClick={onAddSavingsGoal}
+              className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+            >
+              <Plus size={12} strokeWidth={2} className="text-zinc-400" />
+              <span>Goal</span>
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="space-y-5">
         {/* --- All Debts --- */}
-        {debtSummary && debtSummary.length > 0 && debtSummary.map((debt) => {
-          const originalAmount = parseFloat(debt.targetAmount) || parseFloat(debt.initialBalance) || 1;
-          const currentAmount = parseFloat(debt.initialBalance) || 0;
-          const progress = ((originalAmount - currentAmount) / originalAmount) * 100;
-          
-          return (
-            <div key={debt.id} className="group">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-bold text-gray-200 group-hover:text-white transition-colors uppercase tracking-wider">{debt.name} Paydown</span>
-                <button
-                  onClick={() => onPayDebt(debt.id)}
-                  className="text-xs font-bold bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 py-1.5 px-3 rounded-full transition-colors border border-rose-500/20"
-                >
-                  Pay
-                </button>
+        {debtSummary &&
+          debtSummary.length > 0 &&
+          debtSummary.map((debt) => {
+            const originalAmount =
+              parseFloat(debt.targetAmount) ||
+              parseFloat(debt.initialBalance) ||
+              1;
+            const currentAmount = parseFloat(debt.initialBalance) || 0;
+            const progress =
+              ((originalAmount - currentAmount) / originalAmount) * 100;
+
+            return (
+              <div key={debt.id}>
+                <div className="flex justify-between items-center mb-1.5">
+                  <div>
+                    <span className="text-sm font-medium text-zinc-200">
+                      {debt.name}
+                    </span>
+                    <span className="ml-2 text-xs text-zinc-500 tabular-nums">
+                      ${currentAmount.toFixed(2)} left
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onPayDebt(debt.id)}
+                    className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+                  >
+                    Pay
+                  </button>
+                </div>
+                <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-rose-400 h-1.5 rounded-full transition-all duration-500"
+                    style={{
+                      width:
+                        progress > 0 ? `max(${progress.toFixed(1)}%, 4px)` : "0%",
+                    }}
+                  />
+                </div>
+                <p className="text-[11px] text-zinc-500 text-right mt-1 tabular-nums">
+                  {Math.max(0, progress).toFixed(0)}% paid
+                </p>
               </div>
-              <div className="w-full bg-black/40 rounded-full h-2.5 overflow-hidden border border-white/5 shadow-inner">
-                <div
-                  className="bg-gradient-to-r from-orange-400 to-rose-400 h-2.5 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(251,113,133,0.5)]"
-                  style={{ width: progress > 0 ? `max(${progress.toFixed(1)}%, 4px)` : '0%', minWidth: '4px' }}
-                />
-              </div>
-              <p className="text-[11px] font-semibold text-gray-400 text-right mt-1 tracking-wider">{Math.max(0, progress).toFixed(0)}% PAID</p>
-            </div>
-          );
-        })}
+            );
+          })}
 
         {/* --- All Savings Goals --- */}
-        {savingsSummary && savingsSummary.length > 0 && savingsSummary.map((goal) => {
-          const target = parseFloat(goal.targetAmount) || 1;
-          const current = parseFloat(goal.initialBalance) || 0;
-          const progress = (current / target) * 100;
-          
-          return (
-            <div key={goal.id} className="group">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-bold text-gray-200 group-hover:text-white transition-colors uppercase tracking-wider">{goal.name}</span>
-                <button
-                  onClick={() => onContribute(goal.id)}
-                  className="text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 py-1.5 px-3 rounded-full transition-colors border border-emerald-500/20"
-                >
-                  Contribute
-                </button>
-              </div>
-              <div className="w-full bg-black/40 rounded-full h-2.5 overflow-hidden border border-white/5 shadow-inner">
-                <div
-                  className="bg-gradient-to-r from-emerald-400 to-teal-300 h-2.5 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(52,211,153,0.5)]"
-                  style={{ width: progress > 0 ? `max(${progress.toFixed(2)}%, 4px)` : '0%', minWidth: '4px' }}
-                />
-              </div>
-              <p className="text-[11px] font-semibold text-gray-400 text-right mt-1 tracking-wider">{Math.min(100, Math.max(0, progress)).toFixed(1)}% COMPLETE</p>
-            </div>
-          );
-        })}
+        {savingsSummary &&
+          savingsSummary.length > 0 &&
+          savingsSummary.map((goal) => {
+            const target = parseFloat(goal.targetAmount) || 1;
+            const current = parseFloat(goal.initialBalance) || 0;
+            const progress = (current / target) * 100;
 
-        {(!debtSummary || debtSummary.length === 0) && (!savingsSummary || savingsSummary.length === 0) && (
-          <div className="p-4 rounded-xl border border-dashed border-white/20 text-center">
-            <p className="text-gray-400 text-sm font-medium">
-              ✨ No active debts or savings goals to track.
-            </p>
-          </div>
-        )}
+            return (
+              <div key={goal.id}>
+                <div className="flex justify-between items-center mb-1.5">
+                  <div>
+                    <span className="text-sm font-medium text-zinc-200">
+                      {goal.name}
+                    </span>
+                    <span className="ml-2 text-xs text-zinc-500 tabular-nums">
+                      ${current.toFixed(2)} / ${target.toFixed(2)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onContribute(goal.id)}
+                    className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+                  >
+                    + Add
+                  </button>
+                </div>
+                <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-emerald-400 h-1.5 rounded-full transition-all duration-500"
+                    style={{
+                      width:
+                        progress > 0 ? `max(${progress.toFixed(2)}%, 4px)` : "0%",
+                    }}
+                  />
+                </div>
+                <p className="text-[11px] text-zinc-500 text-right mt-1 tabular-nums">
+                  {Math.min(100, Math.max(0, progress)).toFixed(1)}% complete
+                </p>
+              </div>
+            );
+          })}
+
+        {(!debtSummary || debtSummary.length === 0) &&
+          (!savingsSummary || savingsSummary.length === 0) && (
+            <div className="py-5 px-4 rounded-xl border border-dashed border-white/[0.07] text-center">
+              <p className="text-zinc-500 text-xs font-medium mb-3">
+                No active debts or savings goals tracked yet.
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                {onAddDebt && (
+                  <button
+                    type="button"
+                    onClick={onAddDebt}
+                    className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+                  >
+                    <Plus size={11} />
+                    <span>Add first debt</span>
+                  </button>
+                )}
+                {onAddSavingsGoal && (
+                  <button
+                    type="button"
+                    onClick={onAddSavingsGoal}
+                    className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+                  >
+                    <Plus size={11} />
+                    <span>Create savings goal</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );

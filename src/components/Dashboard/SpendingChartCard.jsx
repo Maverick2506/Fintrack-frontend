@@ -9,24 +9,27 @@ import {
 } from "recharts";
 
 const COLORS = [
+  "#e4e4e7", // zinc-200
   "#34d399", // emerald-400
-  "#2dd4bf", // teal-400
-  "#3b82f6", // blue-500
-  "#818cf8", // indigo-400
-  "#c084fc", // purple-400
-  "#fb7185", // rose-400
+  "#60a5fa", // blue-400
+  "#a78bfa", // violet-400
   "#fbbf24", // amber-400
+  "#fb7185", // rose-400
+  "#71717a", // zinc-500
 ];
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
-      <div style={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 6, padding: "8px 12px" }}>
-        <div className="flex items-center gap-2 mb-1">
-          <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, backgroundColor: payload[0].fill, flexShrink: 0 }} />
-          <p className="text-gray-300 text-xs font-semibold">{payload[0].name}</p>
+      <div className="bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 shadow-xl">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span
+            className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+            style={{ backgroundColor: payload[0].fill }}
+          />
+          <p className="text-zinc-400 text-xs font-medium">{payload[0].name}</p>
         </div>
-        <p className="text-white text-sm font-bold pl-[18px]">
+        <p className="text-zinc-100 text-sm font-semibold pl-4 tabular-nums">
           ${parseFloat(payload[0].value).toFixed(2)}
         </p>
       </div>
@@ -35,27 +38,29 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-// Component now accepts an onCategoryClick prop
 const SpendingChartCard = ({ data, onCategoryClick }) => {
   return (
     <div className="glass-panel p-6">
-      <h2 className="text-sm tracking-widest font-bold text-gray-400/80 mb-6 uppercase">
-        Spending Summary
+      <h2 className="text-xs font-medium text-zinc-400 mb-4 uppercase tracking-wider">
+        Spending Breakdown
       </h2>
-      <div style={{ width: "100%", height: 250 }}>
+      <div style={{ width: "100%", height: 240 }}>
         <ResponsiveContainer>
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              labelLine={false}
-              outerRadius={80}
-              fill="#8884d8"
+              innerRadius={56}
+              outerRadius={78}
+              paddingAngle={3}
+              stroke="none"
               dataKey="value"
               nameKey="name"
-              onClick={(pieData) => onCategoryClick && onCategoryClick(pieData.name)}
-              style={{ cursor: "pointer" }}
+              onClick={(pieData) =>
+                onCategoryClick && onCategoryClick(pieData.name)
+              }
+              style={{ cursor: onCategoryClick ? "pointer" : "default" }}
             >
               {data.map((entry, index) => (
                 <Cell
@@ -65,7 +70,11 @@ const SpendingChartCard = ({ data, onCategoryClick }) => {
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} />
-            <Legend iconType="circle" />
+            <Legend
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: "12px", color: "#a1a1aa" }}
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>

@@ -3,10 +3,7 @@ import useIdleTimeout from "../../hooks/useIdleTimeout";
 
 const IdleTimeoutHandler = () => {
   const loggedIn = isLoggedIn();
-
-  if (loggedIn) {
-    useIdleTimeout();
-  }
+  useIdleTimeout(1200000, loggedIn);
 
   return null;
 };

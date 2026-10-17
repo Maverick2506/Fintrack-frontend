@@ -1,57 +1,84 @@
 import React, { useState } from "react";
+import { Pencil, Trash2, CheckCircle2 } from "lucide-react";
 
 const UpcomingBills = ({ bills, onMarkAsPaid, onEdit, onDelete }) => {
   const [paying, setPaying] = useState(new Set());
 
   const handleCheck = (billId) => {
     setPaying((prev) => new Set([...prev, billId]));
-    // Small delay so the strikethrough is visible before the list re-renders
-    setTimeout(() => onMarkAsPaid(billId), 600);
+    setTimeout(() => onMarkAsPaid(billId), 500);
   };
 
   return (
     <div className="glass-panel p-6">
-      <h2 className="text-sm tracking-widest font-bold text-gray-400/80 mb-4 uppercase">
-        Upcoming Bills
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+          Upcoming Bills
+        </h2>
+        <span className="text-xs font-medium text-zinc-500 tabular-nums">
+          {bills.length} due
+        </span>
+      </div>
+
       {bills.length > 0 ? (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-white/[0.05]">
           {bills.map((bill) => {
             const isPaying = paying.has(bill.id);
             return (
               <li
                 key={bill.id}
-                className={`glass-card p-3 flex items-center justify-between group transition-all duration-300 ${
-                  isPaying ? "opacity-40 scale-[0.98]" : "opacity-100"
+                className={`py-3 flex items-center justify-between group transition-opacity duration-200 ${
+                  isPaying ? "opacity-40" : "opacity-100"
                 }`}
               >
-                <div className="flex items-center">
+                <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={isPaying}
                     onChange={() => handleCheck(bill.id)}
-                    className="mr-3 h-5 w-5 rounded border-white/20 bg-black/20 text-emerald-500 focus:ring-emerald-500/50 cursor-pointer accent-emerald-500 transition-colors"
+                    className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-zinc-100 focus:ring-0 cursor-pointer accent-emerald-400"
                   />
                   <div>
-                    <span className={`font-medium ${isPaying ? "line-through text-gray-500" : "text-gray-200"}`}>
+                    <span
+                      className={`text-sm font-medium block ${
+                        isPaying ? "line-through text-zinc-500" : "text-zinc-200"
+                      }`}
+                    >
                       {bill.title}
                     </span>
-                    <p className="text-xs text-gray-400 font-medium">
+                    <span className="text-xs text-zinc-500 tabular-nums">
                       {new Date(bill.date).toLocaleDateString("en-US", {
                         timeZone: "UTC",
                         month: "short",
-                        day: "numeric"
+                        day: "numeric",
                       })}
-                    </p>
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <span className={`font-bold mr-4 ${isPaying ? "line-through text-gray-500" : "text-rose-300"}`}>
+
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`text-sm font-medium tabular-nums ${
+                      isPaying ? "line-through text-zinc-500" : "text-zinc-200"
+                    }`}
+                  >
                     ${parseFloat(bill.amount).toFixed(2)}
                   </span>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                    <button onClick={() => onEdit(bill)} title="Edit" className="hover:scale-110 transition-transform">✏️</button>
-                    <button onClick={() => onDelete(bill.id)} title="Delete" className="hover:scale-110 transition-transform">🗑️</button>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <button
+                      onClick={() => onEdit(bill)}
+                      title="Edit"
+                      className="btn-ghost-icon"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    <button
+                      onClick={() => onDelete(bill.id)}
+                      title="Delete"
+                      className="btn-ghost-icon hover:text-rose-400"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
               </li>
@@ -59,9 +86,12 @@ const UpcomingBills = ({ bills, onMarkAsPaid, onEdit, onDelete }) => {
           })}
         </ul>
       ) : (
-        <p className="text-gray-400 font-medium text-sm text-center py-4">
-          ✨ You're all caught up! No upcoming bills.
-        </p>
+        <div className="py-8 flex flex-col items-center justify-center text-center border border-dashed border-white/[0.06] rounded-xl">
+          <CheckCircle2 size={18} className="text-emerald-400/80 mb-2" />
+          <p className="text-zinc-400 text-xs font-medium">
+            All caught up — no upcoming bills.
+          </p>
+        </div>
       )}
     </div>
   );

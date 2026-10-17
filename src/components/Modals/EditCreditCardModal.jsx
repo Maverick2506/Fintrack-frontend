@@ -32,14 +32,14 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center p-4 z-50">
-      <div className="bg-gray-800 p-6 rounded-lg w-full max-w-sm">
-        <h2 className="text-xl font-bold mb-4 text-white">Edit Credit Card</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+      <div className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
+        <h2 className="text-lg font-semibold tracking-tight mb-5 text-zinc-100">Edit Credit Card</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
             <label
               htmlFor="cardName"
-              className="block text-sm font-medium text-gray-300"
+              className="block text-xs font-medium text-zinc-400 mb-1.5"
             >
               Card Name
             </label>
@@ -48,52 +48,53 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
               id="cardName"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+              className="minimal-input"
               required
             />
           </div>
-          <div className="mb-4">
+          <div>
             <label
               htmlFor="creditLimit"
-              className="block text-sm font-medium text-gray-300"
+              className="block text-xs font-medium text-zinc-400 mb-1.5"
             >
               Credit Limit
             </label>
             <input
               type="number"
               id="creditLimit"
+              step="0.01"
               value={creditLimit}
               onChange={(e) => setCreditLimit(e.target.value)}
-              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+              className="minimal-input tabular-nums"
               required
             />
           </div>
-          <div className="mb-4">
+          <div>
             <label
               htmlFor="dueDate"
-              className="block text-sm font-medium text-gray-300"
+              className="block text-xs font-medium text-zinc-400 mb-1.5"
             >
-              Due Date (Optional)
+              Statement Due Date (Optional)
             </label>
             <input
               type="date"
               id="dueDate"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white p-2"
+              className="minimal-input"
             />
           </div>
-          <div className="flex justify-end space-x-4 mt-6">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-white/[0.06]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-md text-gray-300 hover:bg-gray-700"
+              className="btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+              className="btn-primary"
             >
               Save Changes
             </button>

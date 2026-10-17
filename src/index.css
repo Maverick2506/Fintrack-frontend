@@ -5,20 +5,38 @@
 
 @layer components {
   .glass-panel {
-    @apply backdrop-blur-xl bg-white/5 border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] rounded-2xl transition-all duration-300 hover:border-white/20 hover:shadow-[0_8px_40px_rgba(0,0,0,0.2)];
+    @apply bg-zinc-900/50 border border-white/[0.07] rounded-2xl transition-colors duration-200 hover:border-white/[0.12];
   }
   
   .glass-card {
-    @apply backdrop-blur-md bg-white/5 border border-white/5 shadow-lg rounded-xl transition-all duration-300 hover:bg-white/10 hover:-translate-y-1 hover:shadow-emerald-500/10;
+    @apply bg-zinc-900/80 border border-white/[0.06] rounded-xl transition-colors duration-200 hover:bg-zinc-800/60 hover:border-white/[0.1];
   }
 
-  .text-glow {
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  .minimal-input {
+    @apply w-full bg-zinc-950 border border-white/[0.08] rounded-lg px-3.5 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 bg-zinc-100 hover:bg-white text-zinc-950 font-medium text-xs px-3.5 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/[0.08] hover:border-white/[0.15] font-medium text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer;
+  }
+
+  .btn-ghost-icon {
+    @apply p-1.5 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06] transition-colors cursor-pointer;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 body {
   font-family: 'Outfit', sans-serif;
+  background-color: #09090b;
+  color: #f4f4f5;
 }
 
 /* Hide arrows (spinners) on number input fields */

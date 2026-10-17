@@ -1,13 +1,27 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { logout } from "../../utils/auth"; // Corrected path
+import {
+  LayoutDashboard,
+  BarChart3,
+  Landmark,
+  PiggyBank,
+  CreditCard,
+  ReceiptText,
+  LogOut,
+} from "lucide-react";
+import { logout } from "../../utils/auth";
+
+const navItems = [
+  { to: "/", label: "Overview", icon: LayoutDashboard },
+  { to: "/reports", label: "Analytics", icon: BarChart3 },
+  { to: "/debts", label: "Debts", icon: Landmark },
+  { to: "/savings", label: "Savings", icon: PiggyBank },
+  { to: "/credit-cards", label: "Cards", icon: CreditCard },
+  { to: "/ledger", label: "Ledger", icon: ReceiptText },
+];
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const linkClass =
-    "px-4 py-2 rounded-md text-sm font-medium transition-colors";
-  const activeLinkClass = "bg-gray-700 text-white";
-  const inactiveLinkClass = "text-gray-300 hover:bg-gray-800 hover:text-white";
 
   const handleLogout = () => {
     logout();
@@ -16,64 +30,49 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-gray-900 p-4 flex justify-center sticky top-0 z-10">
-      <div className="flex flex-wrap items-center justify-center gap-y-2 gap-x-2">
-        <NavLink
-          to="/"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
-          }
-        >
-          Dashboard
-        </NavLink>
-        <NavLink
-          to="/reports"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
-          }
-        >
-          Reports
-        </NavLink>
-        <NavLink
-          to="/debts"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
-          }
-        >
-          Debts
-        </NavLink>
-        <NavLink
-          to="/savings"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
-          }
-        >
-          Savings
-        </NavLink>
-        <NavLink
-          to="/credit-cards"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
-          }
-        >
-          Credit Cards
-        </NavLink>
-        <NavLink
-          to="/ledger"
-          className={({ isActive }) =>
-            `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`
-          }
-        >
-          Ledger
-        </NavLink>
+    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-zinc-950/85 backdrop-blur-md">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+        {/* Brand */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-md bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-xs tracking-tighter">
+            F
+          </div>
+          <span className="font-semibold text-sm tracking-tight text-zinc-100">
+            FinTrack
+          </span>
+        </div>
+
+        {/* Navigation Links */}
+        <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          {navItems.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                  isActive
+                    ? "bg-white/[0.08] text-zinc-100"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                }`
+              }
+            >
+              <Icon size={14} strokeWidth={1.75} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Logout */}
         <button
           onClick={handleLogout}
-          className={`${linkClass} ${inactiveLinkClass}`}
+          title="Sign out"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-colors cursor-pointer"
         >
-          Logout
+          <LogOut size={14} strokeWidth={1.75} />
+          <span className="hidden sm:inline">Sign out</span>
         </button>
       </div>
-    </nav>
+    </header>
   );
 };
 

@@ -1,16 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
+import { Search, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 
 const CATEGORY_COLORS = {
-  Income:         "bg-green-900 text-green-300",
-  Essentials:     "bg-blue-900 text-blue-300",
-  "Food & Drink": "bg-orange-900 text-orange-300",
-  Subscription:   "bg-purple-900 text-purple-300",
-  Debt:           "bg-red-900 text-red-300",
-  Transportation: "bg-yellow-900 text-yellow-300",
-  Entertainment:  "bg-pink-900 text-pink-300",
-  Shopping:       "bg-cyan-900 text-cyan-300",
-  Other:          "bg-gray-700 text-gray-300",
+  Income:                "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  Essentials:            "bg-zinc-800 text-zinc-300 border-white/[0.08]",
+  "Food & Drink":        "bg-amber-500/10 text-amber-300 border-amber-500/20",
+  Subscription:          "bg-violet-500/10 text-violet-300 border-violet-500/20",
+  Debt:                  "bg-rose-500/10 text-rose-300 border-rose-500/20",
+  "Credit Card Payment": "bg-blue-500/10 text-blue-300 border-blue-500/20",
+  "Debt Payment":        "bg-blue-500/10 text-blue-300 border-blue-500/20",
+  "Savings Transfer":    "bg-teal-500/10 text-teal-300 border-teal-500/20",
+  Transportation:        "bg-zinc-800 text-zinc-300 border-white/[0.08]",
+  Entertainment:         "bg-pink-500/10 text-pink-300 border-pink-500/20",
+  Shopping:              "bg-sky-500/10 text-sky-300 border-sky-500/20",
+  Other:                 "bg-zinc-800/80 text-zinc-400 border-white/[0.06]",
 };
 
 const LedgerPage = () => {
@@ -19,7 +23,7 @@ const LedgerPage = () => {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("date");
   const [sortDir, setSortDir] = useState("desc");
-  const [typeFilter, setTypeFilter] = useState("all"); // all | income | expense
+  const [typeFilter, setTypeFilter] = useState("all");
 
   useEffect(() => {
     dashboardService.fetchLedger().then((data) => {
@@ -34,9 +38,8 @@ const LedgerPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (row.type !== "expense") return;
     await dashboardService.deleteBill(row.id);
-    setRows((prev) => prev.filter((r) => !(r.id === row.id && r.type === "expense")));
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
   };
 
   const filtered = useMemo(() => {
@@ -57,52 +60,83 @@ const LedgerPage = () => {
   const totalExpense = rows.filter((r) => r.type === "expense").reduce((s, r) => s + r.amount, 0);
 
   const SortIcon = ({ k }) => {
-    if (sortKey !== k) return <span className="text-gray-600 ml-1">↕</span>;
-    return <span className="text-indigo-400 ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>;
+    if (sortKey !== k) return <ArrowUpDown size={12} className="text-zinc-600 inline ml-1" />;
+    return sortDir === "asc" ? (
+      <ArrowUp size={12} className="text-zinc-200 inline ml-1" />
+    ) : (
+      <ArrowDown size={12} className="text-zinc-200 inline ml-1" />
+    );
   };
 
-  if (loading) return <div className="text-center text-white p-10">Loading ledger...</div>;
+  if (loading) {
+    return (
+      <div className="text-center text-zinc-500 text-sm p-12">
+        Loading ledger...
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto max-w-5xl p-4">
-      <h1 className="text-2xl font-bold text-white mb-6">Transaction Ledger</h1>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
+      <div className="pt-6 mb-8">
+        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+          Activity
+        </p>
+        <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight mt-0.5">
+          Transaction Ledger
+        </h1>
+      </div>
 
       {/* Summary bar */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-gray-800 rounded-lg p-4">
-          <p className="text-xs text-gray-400 mb-1">TOTAL INCOME</p>
-          <p className="text-xl font-bold text-green-400">+${totalIncome.toFixed(2)}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="glass-panel p-5">
+          <p className="text-xs font-medium text-zinc-500 mb-1">Total Income</p>
+          <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
+            +${totalIncome.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
         </div>
-        <div className="bg-gray-800 rounded-lg p-4">
-          <p className="text-xs text-gray-400 mb-1">TOTAL EXPENSES</p>
-          <p className="text-xl font-bold text-red-400">-${totalExpense.toFixed(2)}</p>
+        <div className="glass-panel p-5">
+          <p className="text-xs font-medium text-zinc-500 mb-1">Total Expenses</p>
+          <p className="text-2xl font-semibold text-rose-400 tabular-nums">
+            -${totalExpense.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
         </div>
-        <div className="bg-gray-800 rounded-lg p-4">
-          <p className="text-xs text-gray-400 mb-1">NET ALL TIME</p>
-          <p className={`text-xl font-bold ${totalIncome - totalExpense >= 0 ? "text-white" : "text-red-400"}`}>
-            ${(totalIncome - totalExpense).toFixed(2)}
+        <div className="glass-panel p-5">
+          <p className="text-xs font-medium text-zinc-500 mb-1">Net All-Time</p>
+          <p
+            className={`text-2xl font-semibold tabular-nums ${
+              totalIncome - totalExpense >= 0 ? "text-zinc-100" : "text-rose-400"
+            }`}
+          >
+            ${(totalIncome - totalExpense).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
       </div>
 
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Search transactions..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 bg-gray-800 text-white text-sm rounded-lg px-4 py-2 border border-gray-700 focus:outline-none focus:border-indigo-500"
-        />
-        <div className="flex gap-2">
-          {["all","income","expense"].map((t) => (
+        <div className="relative flex-1">
+          <Search
+            size={14}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
+          />
+          <input
+            type="text"
+            placeholder="Search transactions..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-zinc-900/60 text-zinc-100 text-xs rounded-xl pl-9 pr-4 py-2.5 border border-white/[0.07] focus:outline-none focus:border-zinc-500 placeholder-zinc-500 transition-colors"
+          />
+        </div>
+        <div className="inline-flex p-1 rounded-xl bg-zinc-900/80 border border-white/[0.06]">
+          {["all", "income", "expense", "transfer"].map((t) => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-colors ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors cursor-pointer ${
                 typeFilter === t
-                  ? t === "income" ? "bg-green-700 text-white" : t === "expense" ? "bg-red-700 text-white" : "bg-indigo-600 text-white"
-                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                  ? "bg-zinc-100 text-zinc-950"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               {t}
@@ -112,67 +146,103 @@ const LedgerPage = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-gray-800 rounded-lg overflow-hidden">
+      <div className="glass-panel overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-700 text-xs text-gray-400">
-              <th className="text-left p-3 cursor-pointer hover:text-white" onClick={() => handleSort("name")}>
-                Name <SortIcon k="name" />
+            <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+              <th
+                className="text-left py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
+                onClick={() => handleSort("name")}
+              >
+                Description <SortIcon k="name" />
               </th>
-              <th className="text-left p-3">Category</th>
-              <th className="text-left p-3 cursor-pointer hover:text-white" onClick={() => handleSort("date")}>
+              <th className="text-left py-3.5 px-4">Category</th>
+              <th
+                className="text-left py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
+                onClick={() => handleSort("date")}
+              >
                 Date <SortIcon k="date" />
               </th>
-              <th className="text-right p-3 cursor-pointer hover:text-white" onClick={() => handleSort("amount")}>
+              <th
+                className="text-right py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
+                onClick={() => handleSort("amount")}
+              >
                 Amount <SortIcon k="amount" />
               </th>
-              <th className="w-10 p-3"></th>
+              <th className="w-10 py-3.5 px-4"></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-white/[0.04]">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center text-gray-500 p-8">No transactions found.</td>
+                <td colSpan={5} className="text-center text-zinc-500 text-xs py-12">
+                  No transactions found.
+                </td>
               </tr>
             ) : (
               filtered.map((row, i) => (
                 <tr
                   key={`${row.type}-${row.id}-${i}`}
-                  className="border-b border-gray-700/50 hover:bg-gray-700/50 transition-colors group"
+                  className="hover:bg-white/[0.02] transition-colors group"
                 >
-                  <td className="p-3">
-                    <span className="text-white font-medium">{row.name}</span>
+                  <td className="py-3 px-4">
+                    <span className="text-zinc-200 font-medium text-sm">
+                      {row.name}
+                    </span>
                   </td>
-                  <td className="p-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[row.category] || CATEGORY_COLORS.Other}`}>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border ${
+                        CATEGORY_COLORS[row.category] || CATEGORY_COLORS.Other
+                      }`}
+                    >
                       {row.category}
                     </span>
                   </td>
-                  <td className="p-3 text-gray-400">
-                    {new Date(row.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  <td className="py-3 px-4 text-xs text-zinc-400 tabular-nums">
+                    {new Date(row.date + "T12:00:00").toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </td>
-                  <td className="p-3 text-right font-semibold">
-                    <span className={row.type === "income" ? "text-green-400" : "text-red-400"}>
-                      {row.type === "income" ? "+" : "-"}${row.amount.toFixed(2)}
+                  <td className="py-3 px-4 text-right font-medium text-sm tabular-nums">
+                    <span
+                      className={
+                        row.type === "income"
+                          ? "text-emerald-400"
+                          : row.type === "transfer"
+                          ? "text-zinc-400"
+                          : "text-zinc-200"
+                      }
+                    >
+                      {row.type === "income"
+                        ? "+"
+                        : row.type === "transfer"
+                        ? "⇄ "
+                        : "-"}
+                      ${row.amount.toFixed(2)}
                     </span>
                   </td>
-                  <td className="p-3 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                    {row.type === "expense" && (
-                      <button
-                        onClick={() => handleDelete(row)}
-                        title="Delete expense"
-                        className="text-gray-500 hover:text-red-400 transition-colors"
-                      >
-                        🗑️
-                      </button>
-                    )}
+                  <td className="py-3 px-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleDelete(row)}
+                      title="Delete transaction"
+                      className="btn-ghost-icon hover:text-rose-400"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-        <p className="text-xs text-gray-600 text-right p-3">{filtered.length} transactions</p>
+        <div className="border-t border-white/[0.05] px-4 py-2.5 flex justify-end">
+          <p className="text-[11px] text-zinc-500 tabular-nums">
+            {filtered.length} transactions
+          </p>
+        </div>
       </div>
     </div>
   );

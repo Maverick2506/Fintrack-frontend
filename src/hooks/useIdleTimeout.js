@@ -3,24 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { logout } from "../utils/auth";
 import toast from "react-hot-toast";
 
-const useIdleTimeout = (timeout = 1200000) => {
+const useIdleTimeout = (timeout = 1200000, enabled = true) => {
   // 20 minutes in milliseconds
   const navigate = useNavigate();
   const timeoutId = useRef(null);
 
-  const resetTimer = () => {
-    if (timeoutId.current) {
-      clearTimeout(timeoutId.current);
-    }
-    timeoutId.current = setTimeout(() => {
-      toast.error("You've been logged out due to inactivity.");
-      logout();
-      navigate("/login");
-      window.location.reload();
-    }, timeout);
-  };
-
   useEffect(() => {
+    if (!enabled) return;
+
+    const resetTimer = () => {
+      if (timeoutId.current) {
+        clearTimeout(timeoutId.current);
+      }
+      timeoutId.current = setTimeout(() => {
+        toast.error("You've been logged out due to inactivity.");
+        logout();
+        navigate("/login");
+        window.location.reload();
+      }, timeout);
+    };
+
     const events = [
       "mousemove",
       "mousedown",
@@ -45,7 +47,7 @@ const useIdleTimeout = (timeout = 1200000) => {
         window.removeEventListener(event, eventListener)
       );
     };
-  }, [navigate, timeout]);
+  }, [navigate, timeout, enabled]);
 
   return null; // This hook doesn't need to return anything
 };
