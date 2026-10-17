@@ -64,7 +64,7 @@ const UpcomingBills = ({ bills, onMarkAsPaid, onEdit, onDelete }) => {
                   >
                     ${parseFloat(bill.amount).toFixed(2)}
                   </span>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                  <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1">
                     <button
                       onClick={() => onEdit(bill)}
                       title="Edit"

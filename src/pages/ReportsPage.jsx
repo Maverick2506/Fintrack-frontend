@@ -58,7 +58,7 @@ const ReportsPage = () => {
         dashboardService.fetchDashboard(selectedDate.year, selectedDate.month),
         dashboardService.fetchSpendingSummary(selectedDate.year, selectedDate.month),
         dashboardService.fetchMonthlyExpenses(selectedDate.year, selectedDate.month, sortConfig.key, sortConfig.direction),
-        dashboardService.fetchTrends(),
+        dashboardService.fetchTrends(selectedDate.year, selectedDate.month),
       ]);
       setReportData(dashboardRes);
       setSpendingData(spendingRes);

@@ -57,6 +57,7 @@ const SpendingChartCard = ({ data, onCategoryClick }) => {
               stroke="none"
               dataKey="value"
               nameKey="name"
+              isAnimationActive={false}
               onClick={(pieData) =>
                 onCategoryClick && onCategoryClick(pieData.name)
               }

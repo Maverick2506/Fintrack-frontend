@@ -147,97 +147,124 @@ const LedgerPage = () => {
 
       {/* Table */}
       <div className="glass-panel overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-              <th
-                className="text-left py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
-                onClick={() => handleSort("name")}
-              >
-                Description <SortIcon k="name" />
-              </th>
-              <th className="text-left py-3.5 px-4">Category</th>
-              <th
-                className="text-left py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
-                onClick={() => handleSort("date")}
-              >
-                Date <SortIcon k="date" />
-              </th>
-              <th
-                className="text-right py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
-                onClick={() => handleSort("amount")}
-              >
-                Amount <SortIcon k="amount" />
-              </th>
-              <th className="w-10 py-3.5 px-4"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/[0.04]">
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="text-center text-zinc-500 text-xs py-12">
-                  No transactions found.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((row, i) => (
-                <tr
-                  key={`${row.type}-${row.id}-${i}`}
-                  className="hover:bg-white/[0.02] transition-colors group"
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                <th
+                  className="text-left py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
+                  onClick={() => handleSort("name")}
                 >
-                  <td className="py-3 px-4">
-                    <span className="text-zinc-200 font-medium text-sm">
-                      {row.name}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border ${
-                        CATEGORY_COLORS[row.category] || CATEGORY_COLORS.Other
-                      }`}
-                    >
-                      {row.category}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-xs text-zinc-400 tabular-nums">
-                    {new Date(row.date + "T12:00:00").toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </td>
-                  <td className="py-3 px-4 text-right font-medium text-sm tabular-nums">
-                    <span
-                      className={
-                        row.type === "income"
-                          ? "text-emerald-400"
-                          : row.type === "transfer"
-                          ? "text-zinc-400"
-                          : "text-zinc-200"
-                      }
-                    >
-                      {row.type === "income"
-                        ? "+"
-                        : row.type === "transfer"
-                        ? "⇄ "
-                        : "-"}
-                      ${row.amount.toFixed(2)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleDelete(row)}
-                      title="Delete transaction"
-                      className="btn-ghost-icon hover:text-rose-400"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                  Description <SortIcon k="name" />
+                </th>
+                <th className="hidden sm:table-cell text-left py-3.5 px-4">
+                  Category
+                </th>
+                <th
+                  className="hidden sm:table-cell text-left py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
+                  onClick={() => handleSort("date")}
+                >
+                  Date <SortIcon k="date" />
+                </th>
+                <th
+                  className="text-right py-3.5 px-3 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors whitespace-nowrap"
+                  onClick={() => handleSort("amount")}
+                >
+                  Amount <SortIcon k="amount" />
+                </th>
+                <th className="w-9 sm:w-10 py-3.5 pr-3 sm:px-4"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="text-center text-zinc-500 text-xs py-12"
+                  >
+                    No transactions found.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filtered.map((row, i) => {
+                  const formattedDate = new Date(
+                    row.date + "T12:00:00"
+                  ).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  });
+                  return (
+                    <tr
+                      key={`${row.type}-${row.id}-${i}`}
+                      className="hover:bg-white/[0.02] transition-colors group"
+                    >
+                      <td className="py-3 px-4">
+                        <span className="text-zinc-200 font-medium text-sm block">
+                          {row.name}
+                        </span>
+                        {/* Mobile inline Category + Date subtitle */}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 sm:hidden">
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
+                              CATEGORY_COLORS[row.category] ||
+                              CATEGORY_COLORS.Other
+                            }`}
+                          >
+                            {row.category}
+                          </span>
+                          <span className="text-[11px] text-zinc-500 tabular-nums">
+                            · {formattedDate}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="hidden sm:table-cell py-3 px-4">
+                        <span
+                          className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border whitespace-nowrap ${
+                            CATEGORY_COLORS[row.category] ||
+                            CATEGORY_COLORS.Other
+                          }`}
+                        >
+                          {row.category}
+                        </span>
+                      </td>
+                      <td className="hidden sm:table-cell py-3 px-4 text-xs text-zinc-400 tabular-nums whitespace-nowrap">
+                        {formattedDate}
+                      </td>
+                      <td className="py-3 px-3 sm:px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap">
+                        <span
+                          className={
+                            row.type === "income"
+                              ? "text-emerald-400"
+                              : row.type === "transfer"
+                              ? "text-zinc-400"
+                              : "text-zinc-200"
+                          }
+                        >
+                          {row.type === "income"
+                            ? "+"
+                            : row.type === "transfer"
+                            ? "⇄ "
+                            : "-"}
+                          ${row.amount.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-3 sm:px-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleDelete(row)}
+                          title="Delete transaction"
+                          className="btn-ghost-icon hover:text-rose-400"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
         <div className="border-t border-white/[0.05] px-4 py-2.5 flex justify-end">
           <p className="text-[11px] text-zinc-500 tabular-nums">
             {filtered.length} transactions

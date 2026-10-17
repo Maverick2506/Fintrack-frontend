@@ -64,9 +64,13 @@ const dashboardService = {
       .then((res) => res.data);
   },
 
-  // NEW: Function to fetch the 6-month trend data
-  fetchTrends: async () => {
-    return api.get("/trends").then((res) => res.data);
+  // Function to fetch the 6-month trend data anchored to selected year/month
+  fetchTrends: async (year, month) => {
+    const params = new URLSearchParams();
+    if (year) params.append("year", year);
+    if (month) params.append("month", month);
+    const qs = params.toString();
+    return api.get(`/trends${qs ? `?${qs}` : ""}`).then((res) => res.data);
   },
 
   fetchMonthlyExpenses: async (year, month, sortBy, sortOrder) => {

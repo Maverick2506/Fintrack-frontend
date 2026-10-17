@@ -47,7 +47,7 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
         </button>
         <button
           onClick={() => onSort("due_date")}
-          className="w-28 text-left hover:text-zinc-300 transition-colors cursor-pointer"
+          className="hidden sm:block w-28 text-left hover:text-zinc-300 transition-colors cursor-pointer"
         >
           Date {getSortIcon("due_date")}
         </button>
@@ -61,43 +61,52 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
       </div>
 
       <ul className="divide-y divide-white/[0.05]">
-        {transactions.map((transaction) => (
-          <li
-            key={transaction.id}
-            className="flex items-center justify-between group py-3 hover:bg-white/[0.02] px-1 rounded-lg transition-colors"
-          >
-            <div className="flex-1">
-              <span className="text-sm font-medium text-zinc-200 block">
-                {transaction.name}
-              </span>
-              <span className="text-xs text-zinc-500">
-                {transaction.category}
-              </span>
-            </div>
-            <div className="w-28 text-left text-xs text-zinc-400 tabular-nums">
-              {new Date(transaction.due_date).toLocaleDateString("en-US", {
-                timeZone: "UTC",
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </div>
-            <div className="w-24 text-right tabular-nums">
-              <span className="text-sm font-medium text-zinc-200">
-                -${parseFloat(transaction.amount).toFixed(2)}
-              </span>
-            </div>
-            <div className="w-8 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={() => onDelete(transaction.id)}
-                title="Delete"
-                className="btn-ghost-icon hover:text-rose-400"
-              >
-                <Trash2 size={13} />
-              </button>
-            </div>
-          </li>
-        ))}
+        {transactions.map((transaction) => {
+          const formattedDate = new Date(
+            transaction.due_date
+          ).toLocaleDateString("en-US", {
+            timeZone: "UTC",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+          return (
+            <li
+              key={transaction.id}
+              className="flex items-center justify-between gap-2 group py-3 hover:bg-white/[0.02] px-1 rounded-lg transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-zinc-200 block truncate">
+                  {transaction.name}
+                </span>
+                <span className="text-xs text-zinc-500">
+                  {transaction.category}
+                  <span className="sm:hidden tabular-nums">
+                    {" "}
+                    · {formattedDate}
+                  </span>
+                </span>
+              </div>
+              <div className="hidden sm:block w-28 text-left text-xs text-zinc-400 tabular-nums">
+                {formattedDate}
+              </div>
+              <div className="w-24 text-right tabular-nums shrink-0">
+                <span className="text-sm font-medium text-zinc-200">
+                  -${parseFloat(transaction.amount).toFixed(2)}
+                </span>
+              </div>
+              <div className="w-8 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                <button
+                  onClick={() => onDelete(transaction.id)}
+                  title="Delete"
+                  className="btn-ghost-icon hover:text-rose-400"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

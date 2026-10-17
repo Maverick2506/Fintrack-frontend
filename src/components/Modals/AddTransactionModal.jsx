@@ -179,7 +179,7 @@ const AddTransactionModal = ({
       onClick={onClose}
     >
       <div
-        className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-visible"
+        className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => {
           e.stopPropagation();
           if (openDropdown) setOpenDropdown(null);
@@ -325,6 +325,8 @@ const AddTransactionModal = ({
                             ? "Transit"
                             : catName === "Subscription"
                             ? "Subs"
+                            : catName === "Entertainment"
+                            ? "Leisure"
                             : catName}
                         </span>
                       </button>

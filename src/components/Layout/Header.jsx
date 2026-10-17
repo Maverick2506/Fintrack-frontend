@@ -59,12 +59,12 @@ const Header = ({
         <div className="flex items-center">
           <button
             onClick={onAddTransaction}
-            className="btn-primary group"
+            className="btn-primary w-full sm:w-auto justify-center group"
             title="Shortcut: Press N"
           >
             <Plus size={14} strokeWidth={2} />
             <span>Add Transaction</span>
-            <kbd className="ml-1 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-zinc-950/20 text-zinc-900 rounded border border-zinc-950/20">
+            <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-zinc-950/20 text-zinc-900 rounded border border-zinc-950/20">
               N
             </kbd>
           </button>

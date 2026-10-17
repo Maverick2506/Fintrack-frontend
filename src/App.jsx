@@ -23,7 +23,7 @@ function App() {
       />
       <IdleTimeoutHandler />
 
-      <div className="bg-zinc-950 text-zinc-100 min-h-screen">
+      <div className="bg-zinc-950 text-zinc-100 min-h-screen pb-20 md:pb-0">
         {loggedIn && <Navbar />}
         <Routes>
           <Route path="/login" element={<LoginPage />} />
