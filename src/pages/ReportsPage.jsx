@@ -147,7 +147,7 @@ const ReportsPage = () => {
       </div>
 
       {/* Stats bar */}
-      {!loading && reportData && income > 0 && (
+      {!loading && reportData && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="glass-panel p-4">
             <p className="text-xs font-medium text-zinc-500 mb-1">Income</p>
@@ -165,28 +165,32 @@ const ReportsPage = () => {
             <p className="text-xs font-medium text-zinc-500 mb-1">Savings Rate</p>
             <p
               className={`text-xl font-semibold tabular-nums ${
-                parseFloat(savingsRate) >= 20
+                savingsRate === null
+                  ? "text-zinc-500"
+                  : parseFloat(savingsRate) >= 20
                   ? "text-emerald-400"
                   : parseFloat(savingsRate) >= 0
                   ? "text-amber-400"
                   : "text-rose-400"
               }`}
             >
-              {savingsRate}%
+              {savingsRate !== null ? `${savingsRate}%` : "—"}
             </p>
           </div>
           <div className="glass-panel p-4">
             <p className="text-xs font-medium text-zinc-500 mb-1">Spending Rate</p>
             <p
               className={`text-xl font-semibold tabular-nums ${
-                parseFloat(spendingRate) <= 70
+                spendingRate === null
+                  ? "text-zinc-500"
+                  : parseFloat(spendingRate) <= 70
                   ? "text-emerald-400"
                   : parseFloat(spendingRate) <= 90
                   ? "text-amber-400"
                   : "text-rose-400"
               }`}
             >
-              {spendingRate}%
+              {spendingRate !== null ? `${spendingRate}%` : "—"}
             </p>
           </div>
         </div>

@@ -237,6 +237,20 @@ const dashboardService = {
   fetchLedger: async () => {
     return api.get("/expenses/all").then((res) => res.data);
   },
+
+  updateCheckingBalance: async (balance) => {
+    return handleRequest(
+      api.put("/checking", { balance }),
+      "Checking balance updated!"
+    );
+  },
+
+  bulkDeleteTransactions: async (ids) => {
+    return handleRequest(
+      api.post("/expenses/bulk-delete", { ids }),
+      `${ids.length} transaction${ids.length === 1 ? "" : "s"} deleted.`
+    );
+  },
 };
 
 export default dashboardService;

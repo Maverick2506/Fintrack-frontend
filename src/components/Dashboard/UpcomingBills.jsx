@@ -1,47 +1,161 @@
-import React, { useState } from "react";
-import { Pencil, Trash2, CheckCircle2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Pencil, Trash2, CheckCircle2, Check } from "lucide-react";
 
-const UpcomingBills = ({ bills, onMarkAsPaid, onEdit, onDelete }) => {
+const UpcomingBills = ({
+  bills,
+  onMarkAsPaid,
+  onEdit,
+  onDelete,
+  onBulkDelete,
+}) => {
   const [paying, setPaying] = useState(new Set());
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  useEffect(() => {
+    // Prune any selected IDs that are no longer in bills
+    setSelectedIds((prev) => {
+      const validIds = new Set(bills.map((b) => b.id));
+      const next = new Set([...prev].filter((id) => validIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+    if (bills.length === 0) {
+      setIsSelecting(false);
+    }
+  }, [bills]);
 
   const handleCheck = (billId) => {
     setPaying((prev) => new Set([...prev, billId]));
     setTimeout(() => onMarkAsPaid(billId), 500);
   };
 
+  const toggleSelectRow = (billId) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(billId)) next.delete(billId);
+      else next.add(billId);
+      return next;
+    });
+  };
+
+  const allSelected =
+    bills.length > 0 && bills.every((b) => selectedIds.has(b.id));
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(bills.map((b) => b.id)));
+    }
+  };
+
   return (
     <div className="glass-panel p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-          Upcoming Bills
-        </h2>
-        <span className="text-xs font-medium text-zinc-500 tabular-nums">
-          {bills.length} due
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+            Upcoming Bills
+          </h2>
+          <span className="text-xs font-medium text-zinc-500 tabular-nums">
+            {bills.length} due
+          </span>
+        </div>
+
+        {bills.length > 0 && (
+          <div className="flex items-center gap-2">
+            {isSelecting ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="text-xs font-medium text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer"
+                >
+                  {allSelected ? "Deselect all" : "Select all"}
+                </button>
+                {selectedIds.size > 0 && onBulkDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onBulkDelete(Array.from(selectedIds))}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={12} />
+                    <span>Delete ({selectedIds.size})</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSelecting(false);
+                    setSelectedIds(new Set());
+                  }}
+                  className="text-xs font-medium text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer"
+                >
+                  Done
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsSelecting(true)}
+                className="text-xs font-medium text-zinc-400 hover:text-zinc-200 px-2 py-1 rounded-lg hover:bg-white/[0.04] transition-colors cursor-pointer"
+              >
+                Select
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {bills.length > 0 ? (
         <ul className="divide-y divide-white/[0.05]">
           {bills.map((bill) => {
             const isPaying = paying.has(bill.id);
+            const isSelected = selectedIds.has(bill.id);
             return (
               <li
                 key={bill.id}
-                className={`py-3 flex items-center justify-between group transition-opacity duration-200 ${
+                onClick={() => {
+                  if (isSelecting) toggleSelectRow(bill.id);
+                }}
+                className={`py-3 flex items-center justify-between group transition-all duration-200 ${
                   isPaying ? "opacity-40" : "opacity-100"
-                }`}
+                } ${
+                  isSelecting
+                    ? "cursor-pointer rounded-lg px-2 -mx-2 hover:bg-white/[0.03]"
+                    : ""
+                } ${isSelecting && isSelected ? "bg-white/[0.04]" : ""}`}
               >
                 <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={isPaying}
-                    onChange={() => handleCheck(bill.id)}
-                    className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-zinc-100 focus:ring-0 cursor-pointer accent-emerald-400"
-                  />
+                  {isSelecting ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSelectRow(bill.id);
+                      }}
+                      className={`w-4 h-4 rounded flex items-center justify-center border transition-colors cursor-pointer ${
+                        isSelected
+                          ? "bg-zinc-100 border-zinc-100 text-zinc-950"
+                          : "border-white/20 bg-zinc-900/80 hover:border-zinc-400"
+                      }`}
+                    >
+                      {isSelected && <Check size={11} strokeWidth={3} />}
+                    </button>
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={isPaying}
+                      onChange={() => handleCheck(bill.id)}
+                      title="Mark bill as paid"
+                      className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-zinc-100 focus:ring-0 cursor-pointer accent-emerald-400"
+                    />
+                  )}
                   <div>
                     <span
                       className={`text-sm font-medium block ${
-                        isPaying ? "line-through text-zinc-500" : "text-zinc-200"
+                        isPaying
+                          ? "line-through text-zinc-500"
+                          : "text-zinc-200"
                       }`}
                     >
                       {bill.title}
@@ -64,22 +178,24 @@ const UpcomingBills = ({ bills, onMarkAsPaid, onEdit, onDelete }) => {
                   >
                     ${parseFloat(bill.amount).toFixed(2)}
                   </span>
-                  <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                    <button
-                      onClick={() => onEdit(bill)}
-                      title="Edit"
-                      className="btn-ghost-icon"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      onClick={() => onDelete(bill.id)}
-                      title="Delete"
-                      className="btn-ghost-icon hover:text-rose-400"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+                  {!isSelecting && (
+                    <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <button
+                        onClick={() => onEdit(bill)}
+                        title="Edit"
+                        className="btn-ghost-icon"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(bill.id)}
+                        title="Delete"
+                        className="btn-ghost-icon hover:text-rose-400"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </li>
             );
@@ -98,4 +214,3 @@ const UpcomingBills = ({ bills, onMarkAsPaid, onEdit, onDelete }) => {
 };
 
 export default UpcomingBills;
-

@@ -301,6 +301,7 @@ const CreditCardPage = () => {
         onClose={() => closeModal("deleteCard")}
         onConfirm={handleDelete}
         itemType="credit card"
+        itemName={activeCard?.name}
       />
     </div>
   );

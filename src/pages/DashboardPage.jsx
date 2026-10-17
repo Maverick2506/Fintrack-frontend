@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Check, X } from "lucide-react";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import UpcomingBills from "../components/Dashboard/UpcomingBills";
@@ -137,11 +138,23 @@ const DashboardPage = () => {
     },
   });
 
+  const bulkDeleteBillsMutation = useMutation({
+    mutationFn: (ids) => dashboardService.bulkDeleteTransactions(ids),
+    onSuccess: () => {
+      invalidateDashboard();
+      closeModal("delete");
+    },
+  });
+
   const handleMarkAsPaid = (billId) => {
     markAsPaidMutation.mutate(billId);
   };
 
   const handleDeleteConfirm = () => {
+    if (Array.isArray(active.toDeleteIds) && active.toDeleteIds.length > 0) {
+      bulkDeleteBillsMutation.mutate(active.toDeleteIds);
+      return;
+    }
     if (!active.toDelete) return;
     deleteBillMutation.mutate(active.toDelete);
   };
@@ -197,12 +210,14 @@ const DashboardPage = () => {
 
   const {
     monthlySummary,
+    checkingAccount,
     upcomingBills,
     debtSummary,
     savingsSummary,
     creditCardSummary,
   } = dashboardData;
 
+  const checkingBalance = parseFloat(checkingAccount?.currentBalance || 0);
   const totalSavings = (savingsSummary || []).reduce(
     (s, g) => s + parseFloat(g.initialBalance || 0),
     0
@@ -215,8 +230,7 @@ const DashboardPage = () => {
     (s, c) => s + parseFloat(c.initialBalance || 0),
     0
   );
-  const netFlow = monthlySummary?.netFlow || 0;
-  const netWorth = totalSavings + netFlow - totalDebt - totalCC;
+  const netWorth = checkingBalance + totalSavings - totalDebt - totalCC;
   const positiveNetWorth = netWorth >= 0;
 
   return (
@@ -233,21 +247,102 @@ const DashboardPage = () => {
 
         {/* Top KPI Bento Strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Estimated Net Worth
-            </p>
-            <p
-              className={`text-2xl font-semibold tracking-tight tabular-nums ${
-                positiveNetWorth ? "text-zinc-100" : "text-rose-400"
-              }`}
-            >
-              {positiveNetWorth ? "" : "-"}$
-              {Math.abs(netWorth).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </p>
+          <div className="glass-panel p-5 flex flex-col justify-between">
+            <div>
+              <p className="text-xs font-medium text-zinc-500 mb-1">
+                Estimated Net Worth
+              </p>
+              <p
+                className={`text-2xl font-semibold tracking-tight tabular-nums ${
+                  positiveNetWorth ? "text-zinc-100" : "text-rose-400"
+                }`}
+              >
+                {positiveNetWorth ? "" : "-"}$
+                {Math.abs(netWorth).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+            </div>
+
+            <div className="mt-2.5 pt-2 border-t border-white/[0.06]">
+              {active.editingChecking ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-zinc-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={active.checkingInput ?? ""}
+                    onChange={(e) =>
+                      setActive((prev) => ({
+                        ...prev,
+                        checkingInput: e.target.value,
+                      }))
+                    }
+                    className="w-full bg-zinc-950 text-zinc-100 rounded px-1.5 py-0.5 text-[11px] border border-white/10 focus:outline-none tabular-nums"
+                    placeholder="0.00"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await dashboardService.updateCheckingBalance(
+                        active.checkingInput || 0
+                      );
+                      setActive((prev) => ({
+                        ...prev,
+                        editingChecking: false,
+                      }));
+                      invalidateDashboard();
+                    }}
+                    className="btn-ghost-icon !p-1 text-emerald-400"
+                    title="Save checking balance"
+                  >
+                    <Check size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActive((prev) => ({
+                        ...prev,
+                        editingChecking: false,
+                      }))
+                    }
+                    className="btn-ghost-icon !p-1"
+                    title="Cancel"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                  <span className="truncate tabular-nums">
+                    Checking:{" "}
+                    <span className="text-zinc-300 font-medium">
+                      $
+                      {checkingBalance.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActive((prev) => ({
+                        ...prev,
+                        editingChecking: true,
+                        checkingInput: checkingBalance.toFixed(2),
+                      }))
+                    }
+                    className="text-zinc-500 hover:text-zinc-200 transition-colors p-0.5 cursor-pointer"
+                    title="Edit Primary Checking balance"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="glass-panel p-5">
@@ -298,6 +393,9 @@ const DashboardPage = () => {
               onMarkAsPaid={handleMarkAsPaid}
               onEdit={(bill) => openModal("transaction", { toEdit: bill })}
               onDelete={(billId) => openModal("delete", { toDelete: billId })}
+              onBulkDelete={(ids) =>
+                openModal("delete", { toDeleteIds: ids })
+              }
             />
             {spendingData && spendingData.length > 0 && (
               <SpendingChartCard data={spendingData} />
@@ -356,7 +454,18 @@ const DashboardPage = () => {
         isOpen={modals.delete}
         onClose={() => closeModal("delete")}
         onConfirm={handleDeleteConfirm}
-        itemType="bill"
+        itemType={
+          Array.isArray(active.toDeleteIds) && active.toDeleteIds.length > 0
+            ? "selected bills"
+            : "bill"
+        }
+        itemName={
+          Array.isArray(active.toDeleteIds) && active.toDeleteIds.length > 0
+            ? `${active.toDeleteIds.length} bill${
+                active.toDeleteIds.length === 1 ? "" : "s"
+              }`
+            : ""
+        }
       />
     </div>
   );

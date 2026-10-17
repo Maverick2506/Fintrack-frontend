@@ -1,23 +1,23 @@
 import { useState, useEffect } from "react";
+import { X, Calendar, Repeat, Landmark } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+
+const FREQUENCIES = [
+  { value: "weekly", label: "Weekly" },
+  { value: "bi-weekly", label: "Bi-weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" },
+];
 
 const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   const [name, setName] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [monthlyPayment, setMonthlyPayment] = useState("");
   const [autoPay, setAutoPay] = useState(false);
-  const [nextDueDate, setNextDueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [nextDueDate, setNextDueDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
-
-  const getPaymentLabel = () => {
-    if (!autoPay) return "Monthly Payment/Estimate";
-    switch (paymentFrequency) {
-      case "weekly": return "Weekly Payment";
-      case "bi-weekly": return "Bi-Weekly Payment";
-      case "yearly": return "Yearly Payment";
-      default: return "Monthly Payment";
-    }
-  };
 
   useEffect(() => {
     if (debt) {
@@ -25,10 +25,35 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
       setTotalAmount(debt.total_amount);
       setMonthlyPayment(debt.monthly_payment);
       setAutoPay(debt.auto_pay || false);
-      setNextDueDate(debt.next_due_date || new Date().toISOString().slice(0, 10));
+      setNextDueDate(
+        debt.next_due_date || new Date().toISOString().slice(0, 10)
+      );
       setPaymentFrequency(debt.payment_frequency || "monthly");
     }
   }, [debt]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
+
+  const getPaymentLabel = () => {
+    if (!autoPay) return "Monthly Payment / Estimate";
+    switch (paymentFrequency) {
+      case "weekly":
+        return "Weekly Payment";
+      case "bi-weekly":
+        return "Bi-weekly Payment";
+      case "yearly":
+        return "Yearly Payment";
+      default:
+        return "Monthly Payment";
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,118 +74,152 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-      <div className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
-        <h2 className="text-lg font-semibold tracking-tight mb-5 text-zinc-100">Edit Debt</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-zinc-900 border border-white/[0.09] rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div>
-            <label
-              htmlFor="debtName"
-              className="block text-xs font-medium text-zinc-400 mb-1.5"
-            >
-              Debt Name
-            </label>
-            <input
-              type="text"
-              id="debtName"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="minimal-input"
-              required
-            />
+            <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+              Liability
+            </p>
+            <h2 className="text-sm font-semibold text-zinc-100 mt-0.5">
+              Edit Debt
+            </h2>
           </div>
-          <div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-ghost-icon"
+            aria-label="Close modal"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-5 pb-5 space-y-4">
+          <div className="py-3 px-4 rounded-xl bg-zinc-950/70 border border-white/[0.06]">
             <label
-              htmlFor="totalAmount"
-              className="block text-xs font-medium text-zinc-400 mb-1.5"
+              htmlFor="totalAmountEdit"
+              className="block text-[11px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
             >
-              Total Amount
+              Total Principal / Balance
             </label>
-            <input
-              type="number"
-              id="totalAmount"
-              step="0.01"
-              value={totalAmount}
-              onChange={(e) => setTotalAmount(e.target.value)}
-              className="minimal-input tabular-nums"
-              required
-            />
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-medium text-rose-400 select-none">
+                $
+              </span>
+              <input
+                type="number"
+                id="totalAmountEdit"
+                step="0.01"
+                value={totalAmount}
+                onChange={(e) => setTotalAmount(e.target.value)}
+                className="w-full bg-transparent text-3xl font-semibold tracking-tight text-zinc-100 placeholder-zinc-700 focus:outline-none tabular-nums"
+                required
+              />
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-white/[0.06] flex items-center gap-2">
+              <Landmark size={14} className="text-zinc-500 flex-shrink-0" />
+              <input
+                type="text"
+                id="debtNameEdit"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
+                required
+              />
+            </div>
           </div>
-          <div>
+
+          <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
             <label
-              htmlFor="monthlyPayment"
-              className="block text-xs font-medium text-zinc-400 mb-1.5"
+              htmlFor="monthlyPaymentEdit"
+              className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
             >
               {getPaymentLabel()}
             </label>
-            <input
-              type="number"
-              id="monthlyPayment"
-              step="0.01"
-              value={monthlyPayment}
-              onChange={(e) => setMonthlyPayment(e.target.value)}
-              className="minimal-input tabular-nums"
-              required
-            />
-          </div>
-
-          <div className="flex items-center pt-1">
-            <input
-              type="checkbox"
-              id="autoPayEdit"
-              checked={autoPay}
-              onChange={(e) => setAutoPay(e.target.checked)}
-              className="mr-2.5 rounded border-zinc-700 bg-zinc-950 text-zinc-100 focus:ring-0"
-            />
-            <label htmlFor="autoPayEdit" className="text-xs font-medium text-zinc-300">
-              Enable Auto-Pay Schedule
-            </label>
-          </div>
-
-          {autoPay && (
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-                  Next Due Date
-                </label>
-                <input
-                  type="date"
-                  value={nextDueDate}
-                  onChange={(e) => setNextDueDate(e.target.value)}
-                  className="minimal-input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-                  Frequency
-                </label>
-                <select
-                  value={paymentFrequency}
-                  onChange={(e) => setPaymentFrequency(e.target.value)}
-                  className="minimal-input"
-                >
-                  <option value="weekly">Weekly</option>
-                  <option value="bi-weekly">Bi-Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xs font-medium text-zinc-500">$</span>
+              <input
+                type="number"
+                id="monthlyPaymentEdit"
+                step="0.01"
+                value={monthlyPayment}
+                onChange={(e) => setMonthlyPayment(e.target.value)}
+                className="w-full bg-transparent text-sm font-medium text-zinc-100 placeholder-zinc-600 focus:outline-none tabular-nums"
+                required
+              />
             </div>
-          )}
+          </div>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-white/[0.06]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-            >
+          <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] p-3.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-xs text-zinc-300">
+                <Repeat size={13} className="text-zinc-500" />
+                Enable Auto-Pay Schedule
+              </span>
+              <button
+                type="button"
+                onClick={() => setAutoPay((v) => !v)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
+                  autoPay
+                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    : "bg-zinc-900 text-zinc-400 border-white/[0.06]"
+                }`}
+              >
+                {autoPay ? "Active" : "Off"}
+              </button>
+            </div>
+
+            {autoPay && (
+              <div className="pt-2.5 border-t border-white/[0.05] space-y-3">
+                <div>
+                  <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-1 mb-1">
+                    <Calendar size={11} /> Next Payment Date
+                  </span>
+                  <input
+                    type="date"
+                    value={nextDueDate}
+                    onChange={(e) => setNextDueDate(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none tabular-nums"
+                    required
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider block mb-1.5">
+                    Payment Frequency
+                  </span>
+                  <div className="grid grid-cols-4 gap-1">
+                    {FREQUENCIES.map((f) => (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => setPaymentFrequency(f.value)}
+                        className={`py-1.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer ${
+                          paymentFrequency === f.value
+                            ? "bg-zinc-100 text-zinc-950"
+                            : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn-primary"
-            >
+            <button type="submit" className="btn-primary">
               Save Changes
             </button>
           </div>

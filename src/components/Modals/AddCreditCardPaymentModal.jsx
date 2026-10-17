@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 
 const AddCreditCardPaymentModal = ({
@@ -9,12 +10,22 @@ const AddCreditCardPaymentModal = ({
 }) => {
   const [amount, setAmount] = useState("");
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, onClose]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!cardId || !amount) return;
 
     try {
       await dashboardService.payCreditCard(cardId, { amount });
+      setAmount("");
       onClose();
       refreshData();
     } catch (error) {
@@ -25,40 +36,64 @@ const AddCreditCardPaymentModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-      <div className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
-        <h2 className="text-lg font-semibold tracking-tight mb-5 text-zinc-100">Log Card Payment</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-zinc-900 border border-white/[0.09] rounded-2xl w-full max-w-sm shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div>
+            <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+              Card Transfer
+            </p>
+            <h2 className="text-sm font-semibold text-zinc-100 mt-0.5">
+              Log Card Payment
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-ghost-icon"
+            aria-label="Close modal"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-5 pb-5 space-y-4">
+          <div className="py-3.5 px-4 rounded-xl bg-zinc-950/70 border border-white/[0.06]">
             <label
               htmlFor="paymentAmount"
-              className="block text-xs font-medium text-zinc-400 mb-1.5"
+              className="block text-[11px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
             >
               Payment Amount
             </label>
-            <input
-              type="number"
-              id="paymentAmount"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="minimal-input tabular-nums"
-              placeholder="0.00"
-              required
-            />
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-medium text-emerald-400 select-none">
+                $
+              </span>
+              <input
+                type="number"
+                id="paymentAmount"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full bg-transparent text-3xl font-semibold tracking-tight text-zinc-100 placeholder-zinc-700 focus:outline-none tabular-nums"
+                placeholder="0.00"
+                required
+                autoFocus
+              />
+            </div>
           </div>
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-white/[0.06]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-            >
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn-primary"
-            >
+            <button type="submit" className="btn-primary">
               Save Payment
             </button>
           </div>

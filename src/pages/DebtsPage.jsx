@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Landmark } from "lucide-react";
 import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddDebtPaymentModal from "../components/Modals/AddDebtPaymentModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
@@ -58,6 +58,29 @@ const DebtsPage = () => {
     );
   }
 
+  const totalRemaining = debts.reduce(
+    (s, d) => s + (parseFloat(d.total_remaining) || 0),
+    0
+  );
+  const totalPrincipal = debts.reduce(
+    (s, d) => s + (parseFloat(d.total_amount) || 0),
+    0
+  );
+  const totalPaid = Math.max(0, totalPrincipal - totalRemaining);
+  const totalMonthlyCommitment = debts.reduce((s, d) => {
+    const p = parseFloat(d.monthly_payment) || 0;
+    const freq = d.payment_frequency || "monthly";
+    const mult =
+      freq === "bi-weekly"
+        ? 26 / 12
+        : freq === "weekly"
+        ? 52 / 12
+        : freq === "yearly"
+        ? 1 / 12
+        : 1;
+    return s + p * mult;
+  }, 0);
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
       <div className="flex justify-between items-center pt-6 mb-8">
@@ -75,8 +98,52 @@ const DebtsPage = () => {
         </button>
       </div>
 
+      {debts.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Total Remaining Debt
+            </p>
+            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
+              $
+              {totalRemaining.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Total Paid Off
+            </p>
+            <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
+              $
+              {totalPaid.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Monthly Commitment
+            </p>
+            <p className="text-2xl font-semibold text-rose-400 tabular-nums">
+              $
+              {totalMonthlyCommitment.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+        </div>
+      )}
+
       {debts.length === 0 ? (
         <div className="glass-panel p-12 text-center flex flex-col items-center">
+          <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-zinc-400 mb-3">
+            <Landmark size={18} />
+          </div>
           <p className="text-zinc-300 text-sm font-medium mb-1">
             No active debts recorded
           </p>
@@ -224,6 +291,7 @@ const DebtsPage = () => {
         onClose={closeModal}
         onConfirm={handleDelete}
         itemType="debt"
+        itemName={activeDebt?.name}
       />
     </div>
   );

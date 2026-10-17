@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, PiggyBank, Calendar } from "lucide-react";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import EditSavingsGoalModal from "../components/Modals/EditSavingsGoalModal";
@@ -45,6 +45,7 @@ const SavingsPage = () => {
   const handleDelete = async () => {
     await dashboardService.deleteSavingsGoal(activeGoalId);
     setDeleteModalOpen(false);
+    setActiveGoal(null);
     fetchGoals();
   };
 
@@ -55,6 +56,17 @@ const SavingsPage = () => {
       </div>
     );
   }
+
+  const totalSaved = goals.reduce(
+    (s, g) => s + (parseFloat(g.current_amount) || 0),
+    0
+  );
+  const totalTarget = goals.reduce(
+    (s, g) => s + (parseFloat(g.goal_amount) || 0),
+    0
+  );
+  const overallProgress =
+    totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
@@ -76,8 +88,48 @@ const SavingsPage = () => {
         </button>
       </div>
 
+      {goals.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Total Saved
+            </p>
+            <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
+              $
+              {totalSaved.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Combined Target
+            </p>
+            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
+              $
+              {totalTarget.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+          <div className="glass-panel p-5">
+            <p className="text-xs font-medium text-zinc-500 mb-1">
+              Overall Progress
+            </p>
+            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
+              {overallProgress.toFixed(1)}%
+            </p>
+          </div>
+        </div>
+      )}
+
       {goals.length === 0 ? (
         <div className="glass-panel p-12 text-center flex flex-col items-center">
+          <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-zinc-400 mb-3">
+            <PiggyBank size={18} />
+          </div>
           <p className="text-zinc-300 text-sm font-medium mb-1">
             No savings goals created yet
           </p>
@@ -95,8 +147,8 @@ const SavingsPage = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {goals.map((goal) => {
-            const current = parseFloat(goal.current_amount);
-            const target = parseFloat(goal.goal_amount);
+            const current = parseFloat(goal.current_amount) || 0;
+            const target = parseFloat(goal.goal_amount) || 0;
             const progress = target > 0 ? (current / target) * 100 : 0;
             const remaining = Math.max(0, target - current);
 
@@ -107,9 +159,28 @@ const SavingsPage = () => {
               >
                 <div>
                   <div className="flex justify-between items-start mb-4">
-                    <h2 className="text-base font-semibold text-zinc-100">
-                      {goal.name}
-                    </h2>
+                    <div>
+                      <h2 className="text-base font-semibold text-zinc-100">
+                        {goal.name}
+                      </h2>
+                      {goal.target_date && (
+                        <p className="text-[11px] text-zinc-500 flex items-center gap-1 mt-0.5">
+                          <Calendar size={11} />
+                          <span>
+                            Target{" "}
+                            {new Date(goal.target_date).toLocaleDateString(
+                              "en-US",
+                              {
+                                timeZone: "UTC",
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              }
+                            )}
+                          </span>
+                        </p>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1 flex-shrink-0 ml-3">
                       <button
                         onClick={() => handleOpenEditModal(goal)}
@@ -121,6 +192,7 @@ const SavingsPage = () => {
                       <button
                         onClick={() => {
                           setActiveGoalId(goal.id);
+                          setActiveGoal(goal);
                           setDeleteModalOpen(true);
                         }}
                         title="Delete goal"
@@ -210,6 +282,7 @@ const SavingsPage = () => {
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         itemType="savings goal"
+        itemName={activeGoal?.name}
       />
     </div>
   );
