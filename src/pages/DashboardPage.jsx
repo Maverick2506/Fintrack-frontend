@@ -163,6 +163,25 @@ const DashboardPage = () => {
     },
   });
 
+  const updateCheckingMutation = useMutation({
+    mutationFn: (balance) => dashboardService.updateCheckingBalance(balance),
+    onSuccess: async () => {
+      setActive((prev) => ({
+        ...prev,
+        editingChecking: false,
+      }));
+      invalidateDashboard();
+      await refetchDashboard();
+    },
+  });
+
+  const handleSaveChecking = () => {
+    const raw = active.checkingInput;
+    const parsed = parseFloat(String(raw).replace(/[^0-9.-]/g, ""));
+    const balance = isNaN(parsed) ? 0 : parsed;
+    updateCheckingMutation.mutate(balance);
+  };
+
   const handleMarkAsPaid = (billId) => {
     markAsPaidMutation.mutate(billId);
   };
@@ -302,24 +321,28 @@ const DashboardPage = () => {
                         checkingInput: e.target.value,
                       }))
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSaveChecking();
+                      } else if (e.key === "Escape") {
+                        setActive((prev) => ({
+                          ...prev,
+                          editingChecking: false,
+                        }));
+                      }
+                    }}
                     className="w-full bg-zinc-950 text-zinc-100 rounded px-1.5 py-0.5 text-[11px] border border-white/10 focus:outline-none tabular-nums"
                     placeholder="0.00"
                     autoFocus
+                    disabled={updateCheckingMutation.isPending}
                   />
                   <button
                     type="button"
-                    onClick={async () => {
-                      await dashboardService.updateCheckingBalance(
-                        active.checkingInput || 0
-                      );
-                      setActive((prev) => ({
-                        ...prev,
-                        editingChecking: false,
-                      }));
-                      invalidateDashboard();
-                    }}
-                    className="btn-ghost-icon !p-1 text-emerald-400"
-                    title="Save checking balance"
+                    onClick={handleSaveChecking}
+                    disabled={updateCheckingMutation.isPending}
+                    className="btn-ghost-icon !p-1 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
+                    title="Save checking balance (Enter)"
                   >
                     <Check size={12} />
                   </button>
@@ -331,8 +354,9 @@ const DashboardPage = () => {
                         editingChecking: false,
                       }))
                     }
-                    className="btn-ghost-icon !p-1"
-                    title="Cancel"
+                    disabled={updateCheckingMutation.isPending}
+                    className="btn-ghost-icon !p-1 hover:text-zinc-300"
+                    title="Cancel (Esc)"
                   >
                     <X size={12} />
                   </button>
