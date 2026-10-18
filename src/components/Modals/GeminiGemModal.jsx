@@ -17,11 +17,13 @@ import dashboardService from "../../services/dashboardService";
 
 const GeminiGemModal = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState("auto"); // "auto" | "manual"
+  const [syncMethod, setSyncMethod] = useState("script"); // "script" | "formula"
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [copiedFormula, setCopiedFormula] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
   const [copiedInstructions, setCopiedInstructions] = useState(false);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -61,6 +63,13 @@ const GeminiGemModal = ({ isOpen, onClose }) => {
     navigator.clipboard.writeText(config.sheetFormula);
     setCopiedFormula(true);
     setTimeout(() => setCopiedFormula(false), 2200);
+  };
+
+  const handleCopyScript = () => {
+    if (!config?.appsScript) return;
+    navigator.clipboard.writeText(config.appsScript);
+    setCopiedScript(true);
+    setTimeout(() => setCopiedScript(false), 2200);
   };
 
   const handleCopyInstructions = () => {
@@ -103,6 +112,7 @@ const GeminiGemModal = ({ isOpen, onClose }) => {
           feedKey: res.feedKey,
           feedUrl: res.feedUrl,
           sheetFormula: res.sheetFormula,
+          appsScript: res.appsScript,
         }));
       }
     } catch (err) {
@@ -205,42 +215,121 @@ const GeminiGemModal = ({ isOpen, onClose }) => {
                 </p>
               </div>
 
-              {/* Step 1: Google Sheet Formula Card */}
-              <div className="bg-zinc-950/70 border border-white/[0.08] rounded-xl p-4 space-y-2.5">
-                <div className="flex items-center justify-between">
+              {/* Step 1: Connect FinTrack to Google Sheet */}
+              <div className="bg-zinc-950/70 border border-white/[0.08] rounded-xl p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[11px] font-bold">
                       1
                     </span>
                     <span className="text-xs font-semibold text-zinc-200">
-                      Google Sheet Live Sync Formula
+                      Sync FinTrack to Google Sheet
                     </span>
                   </div>
-                  <button
-                    onClick={handleCopyFormula}
-                    disabled={!config?.sheetFormula}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-[11px] font-medium text-zinc-200 transition-colors disabled:opacity-40"
-                  >
-                    {copiedFormula ? (
-                      <>
-                        <Check size={12} className="text-emerald-400" />
-                        <span className="text-emerald-400 font-semibold">Copied Formula!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={12} />
-                        <span>Copy Formula</span>
-                      </>
-                    )}
-                  </button>
+
+                  {/* Sync Method Toggle */}
+                  <div className="flex items-center bg-zinc-900 border border-white/10 rounded-lg p-0.5 text-[11px] self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setSyncMethod("script")}
+                      className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                        syncMethod === "script"
+                          ? "bg-indigo-600 text-white shadow-sm"
+                          : "text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      ⚡ Apps Script (Instant On-Open)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSyncMethod("formula")}
+                      className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                        syncMethod === "formula"
+                          ? "bg-indigo-600 text-white shadow-sm"
+                          : "text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      📋 Formula (=IMPORTDATA)
+                    </button>
+                  </div>
                 </div>
 
-                <div className="bg-zinc-900 border border-white/[0.06] rounded-lg p-2.5 font-mono text-[11px] text-indigo-300 break-all select-all">
-                  {config?.sheetFormula || "Generating live formula..."}
-                </div>
-                <p className="text-[10px] text-zinc-500">
-                  Create a new sheet at <a href="https://sheets.new" target="_blank" rel="noreferrer" className="text-indigo-400 underline hover:text-indigo-300">sheets.new</a>, name it <strong>FinTrack Live Data</strong>, and paste this into cell <strong>A1</strong>.
-                </p>
+                {syncMethod === "script" ? (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-zinc-400">
+                        <strong className="text-zinc-300">Recommended:</strong> Bypasses Google&apos;s 2-hour formula cache, refreshes on-open, and adds a manual 1-click refresh menu.
+                      </span>
+                      <button
+                        onClick={handleCopyScript}
+                        disabled={!config?.appsScript}
+                        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-[11px] font-medium text-zinc-200 transition-colors disabled:opacity-40"
+                      >
+                        {copiedScript ? (
+                          <>
+                            <Check size={12} className="text-emerald-400" />
+                            <span className="text-emerald-400 font-semibold">Copied Script!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>Copy Script</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="bg-zinc-900 border border-white/[0.06] rounded-lg p-2.5 font-mono text-[11px] text-emerald-300 max-h-32 overflow-y-auto select-all whitespace-pre">
+                      {config?.appsScript || "Generating live Apps Script..."}
+                    </div>
+
+                    <div className="bg-zinc-900/60 rounded-lg p-2.5 border border-white/[0.05] text-[11px] text-zinc-400 space-y-1">
+                      <p className="font-semibold text-zinc-300">Quick 20-Second Setup:</p>
+                      <ol className="list-decimal list-inside space-y-0.5 text-zinc-400">
+                        <li>Open your sheet at <a href="https://sheets.new" target="_blank" rel="noreferrer" className="text-indigo-400 underline hover:text-indigo-300">sheets.new</a>, name it <strong className="text-zinc-200">FinTrack Live Data</strong>.</li>
+                        <li>Click <strong className="text-zinc-200">Extensions &gt; Apps Script</strong>.</li>
+                        <li>Delete any placeholder code, paste the copied script, and click <strong className="text-zinc-200">Save (Disk icon)</strong>.</li>
+                        <li>Reload the sheet. It will pull fresh data and add a <strong className="text-zinc-200">FinTrack &gt; 🔄 Refresh Data Now</strong> menu!</li>
+                      </ol>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-zinc-400">
+                        Zero-code dynamic formula with timestamp cache-buster.
+                      </span>
+                      <button
+                        onClick={handleCopyFormula}
+                        disabled={!config?.sheetFormula}
+                        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-[11px] font-medium text-zinc-200 transition-colors disabled:opacity-40"
+                      >
+                        {copiedFormula ? (
+                          <>
+                            <Check size={12} className="text-emerald-400" />
+                            <span className="text-emerald-400 font-semibold">Copied Formula!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>Copy Formula</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="bg-zinc-900 border border-white/[0.06] rounded-lg p-2.5 font-mono text-[11px] text-indigo-300 break-all select-all">
+                      {config?.sheetFormula || "Generating live formula..."}
+                    </div>
+
+                    <div className="text-[10px] text-zinc-400 space-y-1 bg-zinc-900/60 rounded-lg p-2 border border-white/[0.05]">
+                      <p>Paste into cell <strong className="text-zinc-200">A1</strong> at <a href="https://sheets.new" target="_blank" rel="noreferrer" className="text-indigo-400 underline hover:text-indigo-300">sheets.new</a>.</p>
+                      <p className="text-zinc-500">
+                        💡 <strong>To auto-refresh every minute:</strong> In your Google Sheet, go to <strong className="text-zinc-300">File &gt; Settings &gt; Calculation</strong> and set Recalculation to <strong className="text-zinc-300">&apos;On change and every minute&apos;</strong>.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Step 2: System Instructions Card */}
