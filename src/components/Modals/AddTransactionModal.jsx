@@ -67,6 +67,8 @@ const AddTransactionModal = ({
   const [isPaid, setIsPaid] = useState(true);
   const [manualPaidOverride, setManualPaidOverride] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [hasManuallySelectedCategory, setHasManuallySelectedCategory] = useState(false);
+  const [suggestedSource, setSuggestedSource] = useState(null); // "history" | "ai" | null
   const [recurrence, setRecurrence] = useState("none");
   const [selectedCard, setSelectedCard] = useState("");
   const [selectedTargetAccount, setSelectedTargetAccount] = useState("");
@@ -103,6 +105,8 @@ const AddTransactionModal = ({
         setName(existingTransaction.name || existingTransaction.title || "");
         setAmount(existingTransaction.amount);
         setCategory(existingTransaction.category || "Other");
+        setHasManuallySelectedCategory(true);
+        setSuggestedSource(null);
         const txDate =
           existingTransaction.due_date ||
           existingTransaction.payment_date ||
@@ -135,6 +139,8 @@ const AddTransactionModal = ({
         setName("");
         setAmount("");
         setCategory("Essentials");
+        setHasManuallySelectedCategory(false);
+        setSuggestedSource(null);
         setDueDate(todayStr);
         setPaymentDate(todayStr);
         setIsPaid(true);
@@ -170,13 +176,53 @@ const AddTransactionModal = ({
     }
   };
 
+  // Real-time debounced auto-categorization (checks history first, then Gemini AI)
+  useEffect(() => {
+    if (
+      !isOpen ||
+      isEditing ||
+      type !== "expense" ||
+      hasManuallySelectedCategory
+    ) {
+      return;
+    }
+
+    const trimmed = name.trim();
+    if (trimmed.length < 2) {
+      setSuggestedSource(null);
+      return;
+    }
+
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      try {
+        setIsSuggesting(true);
+        const res = await dashboardService.categorizeExpense(trimmed);
+        if (isMounted && res?.category && !hasManuallySelectedCategory) {
+          setCategory(res.category);
+          setSuggestedSource(res.source || "ai");
+        }
+      } catch (err) {
+        console.error("Debounced categorize error:", err);
+      } finally {
+        if (isMounted) setIsSuggesting(false);
+      }
+    }, 450);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [name, type, isOpen, isEditing, hasManuallySelectedCategory]);
+
   const handleSuggestCategory = async () => {
     if (!name) return;
     setIsSuggesting(true);
     try {
-      const response = await dashboardService.categorizeExpense(name);
+      const response = await dashboardService.categorizeExpense(name.trim());
       if (response?.category) {
         setCategory(response.category);
+        setSuggestedSource(response.source || "ai");
       }
     } catch (error) {
       console.error("Error suggesting category:", error);
@@ -380,10 +426,17 @@ const AddTransactionModal = ({
                   type="button"
                   onClick={handleSuggestCategory}
                   disabled={isSuggesting || !name}
-                  title="Auto-detect category with AI"
+                  title="Auto-detect category with AI or past history"
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] text-[11px] font-medium text-zinc-300 disabled:opacity-35 transition-colors shrink-0 cursor-pointer"
                 >
-                  <Sparkles size={11} className="text-zinc-400" />
+                  <Sparkles
+                    size={11}
+                    className={
+                      isSuggesting
+                        ? "animate-spin text-indigo-400"
+                        : "text-zinc-400"
+                    }
+                  />
                   <span>{isSuggesting ? "..." : "Auto"}</span>
                 </button>
               )}
@@ -395,9 +448,21 @@ const AddTransactionModal = ({
               {/* 1-Click Category Pill Grid */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
-                    Category
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+                      Category
+                    </span>
+                    {suggestedSource === "history" && (
+                      <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-medium">
+                        Matched from history
+                      </span>
+                    )}
+                    {suggestedSource === "ai" && (
+                      <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20 flex items-center gap-1 font-medium">
+                        <Sparkles size={10} /> AI suggested
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[11px] text-zinc-500">{category}</span>
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
@@ -409,7 +474,11 @@ const AddTransactionModal = ({
                       <button
                         key={catName}
                         type="button"
-                        onClick={() => setCategory(catName)}
+                        onClick={() => {
+                          setCategory(catName);
+                          setHasManuallySelectedCategory(true);
+                          setSuggestedSource(null);
+                        }}
                         className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl border text-[11px] font-medium transition-all cursor-pointer ${
                           active
                             ? "bg-zinc-100 text-zinc-950 border-zinc-100 shadow-sm"

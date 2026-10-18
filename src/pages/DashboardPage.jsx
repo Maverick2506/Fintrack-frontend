@@ -92,6 +92,14 @@ const DashboardPage = () => {
   const [advice, setAdvice] = useState(
     () => localStorage.getItem("fintrack_advice") || ""
   );
+  const [structuredAdvice, setStructuredAdvice] = useState(() => {
+    try {
+      const saved = localStorage.getItem("fintrack_structured_advice");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [adviceLoading, setAdviceLoading] = useState(false);
 
   const openModal = (type, payload = {}) => {
@@ -174,6 +182,13 @@ const DashboardPage = () => {
       );
       setAdvice(adviceResponse.advice);
       localStorage.setItem("fintrack_advice", adviceResponse.advice);
+      if (adviceResponse.structured) {
+        setStructuredAdvice(adviceResponse.structured);
+        localStorage.setItem(
+          "fintrack_structured_advice",
+          JSON.stringify(adviceResponse.structured)
+        );
+      }
     } catch {
       setAdvice("Sorry, I could not get any advice at the moment.");
     } finally {
@@ -411,6 +426,7 @@ const DashboardPage = () => {
           <div className="lg:col-span-5 space-y-6">
             <FinancialAdviceCard
               advice={advice}
+              structured={structuredAdvice}
               onGetAdvice={handleGetAdvice}
               isLoading={adviceLoading}
             />
