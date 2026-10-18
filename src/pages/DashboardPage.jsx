@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Check, X } from "lucide-react";
 import Header from "../components/Layout/Header";
@@ -62,6 +62,18 @@ const DashboardPage = () => {
 
   const spendingData = dashboardData?.spendingSummary || [];
   const loading = dashboardLoading;
+
+  const upcomingBills = useMemo(() => {
+    const raw = dashboardData?.upcomingBills || [];
+    const startStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
+    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+    const endStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+    return raw.filter((b) => {
+      const d = b.date || b.due_date;
+      return d && d >= startStr && d <= endStr;
+    });
+  }, [dashboardData?.upcomingBills, selectedYear, selectedMonth]);
   const [modals, setModals] = useState({
     transaction: false,
     debt: false,
@@ -206,7 +218,6 @@ const DashboardPage = () => {
   const {
     monthlySummary,
     checkingAccount,
-    upcomingBills,
     debtSummary,
     savingsSummary,
     creditCardSummary,
