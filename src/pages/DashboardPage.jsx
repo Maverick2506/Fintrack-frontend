@@ -15,6 +15,7 @@ import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
+import GeminiGemModal from "../components/Modals/GeminiGemModal";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
@@ -82,6 +83,7 @@ const DashboardPage = () => {
     advice: false,
     addDebt: false,
     addSavingsGoal: false,
+    geminiModal: false,
   });
   const [active, setActive] = useState({
     debtId: null,
@@ -429,6 +431,7 @@ const DashboardPage = () => {
               structured={structuredAdvice}
               onGetAdvice={handleGetAdvice}
               isLoading={adviceLoading}
+              onOpenGemModal={() => openModal("geminiModal")}
             />
             <CreditCardSummary creditCards={creditCardSummary} />
             <ProgressSection
@@ -488,6 +491,10 @@ const DashboardPage = () => {
               }`
             : ""
         }
+      />
+      <GeminiGemModal
+        isOpen={modals.geminiModal}
+        onClose={() => closeModal("geminiModal")}
       />
     </div>
   );

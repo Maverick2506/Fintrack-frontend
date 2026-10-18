@@ -268,6 +268,17 @@ const dashboardService = {
       `${ids.length} transaction${ids.length === 1 ? "" : "s"} deleted.`
     );
   },
+
+  getGeminiLiveConfig: async () => {
+    return api.get("/export/gemini-config").then((res) => res.data);
+  },
+
+  regenerateFeedKey: async () => {
+    return handleRequest(
+      api.post("/export/regenerate-key"),
+      "New secret feed key generated!"
+    );
+  },
 };
 
 export default dashboardService;

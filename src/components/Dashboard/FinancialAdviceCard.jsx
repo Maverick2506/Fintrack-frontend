@@ -28,6 +28,7 @@ const FinancialAdviceCard = ({
   structured,
   onGetAdvice,
   isLoading,
+  onOpenGemModal,
 }) => {
   const data = structured || (typeof advice === "object" ? advice : null);
   const rawAdviceText = typeof advice === "string" ? advice : data?.summary || "";
@@ -53,6 +54,16 @@ const FinancialAdviceCard = ({
           <span>AI Financial Advisor</span>
         </h2>
         <div className="flex items-center gap-2">
+          {onOpenGemModal && (
+            <button
+              onClick={onOpenGemModal}
+              className="btn-secondary !py-1 !px-2.5 !text-[11px] flex items-center gap-1.5 text-zinc-300 hover:text-white"
+              title="Link live FinTrack data into your Google Gemini app / Custom Gem"
+            >
+              <Sparkles size={11} className="text-indigo-400" />
+              <span>Gemini Gem</span>
+            </button>
+          )}
           <button
             onClick={onGetAdvice}
             disabled={isLoading}
