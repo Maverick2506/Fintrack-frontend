@@ -19,6 +19,7 @@ const GeminiGemModal = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState("auto"); // "auto" | "manual"
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [copiedFormula, setCopiedFormula] = useState(false);
   const [copiedInstructions, setCopiedInstructions] = useState(false);
@@ -43,11 +44,13 @@ const GeminiGemModal = ({ isOpen, onClose }) => {
 
   const loadConfig = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await dashboardService.getGeminiLiveConfig();
       setConfig(data);
     } catch (err) {
       console.error("Failed to load Gemini config:", err);
+      setLoadError("Unable to load live feed configuration. Please check connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -178,6 +181,17 @@ const GeminiGemModal = ({ isOpen, onClose }) => {
               <RefreshCw size={20} className="animate-spin text-indigo-400" />
               <span>Generating live integration payload...</span>
             </div>
+          ) : loadError ? (
+            <div className="py-10 flex flex-col items-center justify-center gap-3 text-center bg-zinc-950/60 rounded-xl border border-white/[0.06] p-6">
+              <p className="text-xs text-rose-400 max-w-sm">{loadError}</p>
+              <button
+                onClick={loadConfig}
+                className="btn-secondary !py-1.5 !px-3 !text-xs flex items-center gap-1.5"
+              >
+                <RefreshCw size={12} />
+                <span>Retry Connection</span>
+              </button>
+            </div>
           ) : activeTab === "auto" ? (
             <>
               {/* Automated Explanation Banner */}
@@ -204,7 +218,8 @@ const GeminiGemModal = ({ isOpen, onClose }) => {
                   </div>
                   <button
                     onClick={handleCopyFormula}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-[11px] font-medium text-zinc-200 transition-colors"
+                    disabled={!config?.sheetFormula}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-[11px] font-medium text-zinc-200 transition-colors disabled:opacity-40"
                   >
                     {copiedFormula ? (
                       <>
@@ -221,7 +236,7 @@ const GeminiGemModal = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="bg-zinc-900 border border-white/[0.06] rounded-lg p-2.5 font-mono text-[11px] text-indigo-300 break-all select-all">
-                  {config?.sheetFormula || '=IMPORTDATA("...")'}
+                  {config?.sheetFormula || "Generating live formula..."}
                 </div>
                 <p className="text-[10px] text-zinc-500">
                   Create a new sheet at <a href="https://sheets.new" target="_blank" rel="noreferrer" className="text-indigo-400 underline hover:text-indigo-300">sheets.new</a>, name it <strong>FinTrack Live Data</strong>, and paste this into cell <strong>A1</strong>.
