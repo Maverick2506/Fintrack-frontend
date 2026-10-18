@@ -25,6 +25,9 @@ const ConfirmDeleteModal = ({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-dialog-title"
         className="bg-zinc-900 border border-white/[0.09] p-5 rounded-2xl w-full max-w-sm shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -34,7 +37,7 @@ const ConfirmDeleteModal = ({
               <AlertTriangle size={16} />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-zinc-100">
+              <h2 id="delete-dialog-title" className="text-sm font-semibold text-zinc-100">
                 Delete {itemType}?
               </h2>
               {itemName && (

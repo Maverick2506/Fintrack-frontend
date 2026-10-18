@@ -162,7 +162,7 @@ const DashboardPage = () => {
       );
       setAdvice(adviceResponse.advice);
       localStorage.setItem("fintrack_advice", adviceResponse.advice);
-    } catch (error) {
+    } catch {
       setAdvice("Sorry, I could not get any advice at the moment.");
     } finally {
       setAdviceLoading(false);

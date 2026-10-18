@@ -23,6 +23,7 @@ const Header = ({
               onClick={onPrevMonth}
               className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] rounded-md transition-colors cursor-pointer"
               title="Previous month"
+              aria-label="Previous month"
             >
               <ChevronLeft size={13} />
             </button>
@@ -34,6 +35,7 @@ const Header = ({
               onClick={onNextMonth}
               className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] rounded-md transition-colors cursor-pointer"
               title="Next month"
+              aria-label="Next month"
             >
               <ChevronRight size={13} />
             </button>

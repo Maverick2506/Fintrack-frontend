@@ -259,6 +259,9 @@ const AddTransactionModal = ({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-tx-title"
         className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => {
           e.stopPropagation();
@@ -267,7 +270,7 @@ const AddTransactionModal = ({
       >
         {/* Top Header Bar with Type Switcher & Close Button */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/[0.06]">
-          <h2 className="text-sm font-semibold text-zinc-200 tracking-tight">
+          <h2 id="add-tx-title" className="text-sm font-semibold text-zinc-200 tracking-tight">
             {isEditing ? "Edit Transaction" : "New Transaction"}
           </h2>
 
@@ -384,7 +387,9 @@ const AddTransactionModal = ({
                   <span className="text-[11px] text-zinc-500">{category}</span>
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
-                  {CATEGORY_CONFIG.map(({ name: catName, icon: Icon }) => {
+                  {CATEGORY_CONFIG.map((catItem) => {
+                    const CatIcon = catItem.icon;
+                    const catName = catItem.name;
                     const active = category === catName;
                     return (
                       <button
@@ -397,7 +402,7 @@ const AddTransactionModal = ({
                             : "bg-zinc-950/60 text-zinc-400 border-white/[0.06] hover:border-white/[0.15] hover:text-zinc-200"
                         }`}
                       >
-                        <Icon size={14} strokeWidth={active ? 2 : 1.75} />
+                        <CatIcon size={14} strokeWidth={active ? 2 : 1.75} />
                         <span className="truncate max-w-full">
                           {catName === "Food & Drink"
                             ? "Food"

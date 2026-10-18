@@ -14,7 +14,7 @@ const LoginPage = () => {
       await login(password);
       navigate("/");
       window.location.reload();
-    } catch (error) {
+    } catch {
       toast.error("Invalid password.");
     }
   };
@@ -25,7 +25,7 @@ const LoginPage = () => {
       toast.success("Dev bypass activated!");
       navigate("/");
       window.location.reload();
-    } catch (error) {
+    } catch {
       toast.error("Dev bypass failed.");
     }
   };

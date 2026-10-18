@@ -77,6 +77,9 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-debt-title"
         className="bg-zinc-900 border border-white/[0.09] rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -85,7 +88,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
             <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
               Liability
             </p>
-            <h2 className="text-sm font-semibold text-zinc-100 mt-0.5">
+            <h2 id="add-debt-title" className="text-sm font-semibold text-zinc-100 mt-0.5">
               Add New Debt
             </h2>
           </div>

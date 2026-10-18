@@ -5,9 +5,14 @@ const CategoryDetailModal = ({ isOpen, onClose, category, transactions }) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-      <div className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cat-detail-title"
+        className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl"
+      >
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
-          <h2 className="text-base font-semibold tracking-tight text-zinc-100">
+          <h2 id="cat-detail-title" className="text-base font-semibold tracking-tight text-zinc-100">
             {category}
           </h2>
           <span className="text-xs text-zinc-500">
