@@ -142,13 +142,22 @@ const UpcomingBills = ({
                       {isSelected && <Check size={11} strokeWidth={3} />}
                     </button>
                   ) : (
-                    <input
-                      type="checkbox"
-                      checked={isPaying}
-                      onChange={() => handleCheck(bill.id)}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCheck(bill.id);
+                      }}
                       title="Mark bill as paid"
-                      className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-zinc-100 focus:ring-0 cursor-pointer accent-emerald-400"
-                    />
+                      aria-label={`Mark ${bill.title} as paid`}
+                      className={`w-4 h-4 rounded flex items-center justify-center border transition-all cursor-pointer ${
+                        isPaying
+                          ? "bg-emerald-500 border-emerald-400 text-zinc-950 shadow-sm"
+                          : "border-white/20 bg-zinc-900/80 hover:border-emerald-500/60 hover:bg-emerald-500/10"
+                      }`}
+                    >
+                      {isPaying && <Check size={11} strokeWidth={3} />}
+                    </button>
                   )}
                   <div>
                     <span
@@ -171,13 +180,27 @@ const UpcomingBills = ({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span
-                    className={`text-sm font-medium tabular-nums ${
-                      isPaying ? "line-through text-zinc-500" : "text-zinc-200"
-                    }`}
-                  >
-                    ${parseFloat(bill.amount).toFixed(2)}
-                  </span>
+                  <div className="text-right">
+                    <span
+                      className={`text-sm font-medium tabular-nums block ${
+                        isPaying ? "line-through text-zinc-500" : "text-zinc-200"
+                      }`}
+                    >
+                      ${parseFloat(bill.amount).toFixed(2)}
+                    </span>
+                    {bill.isTaxExclusive &&
+                      parseFloat(bill.taxRate) > 0 &&
+                      !bill.taxApplied && (
+                        <span className="text-[10px] text-amber-400/90 tabular-nums font-medium block">
+                          + {parseFloat(bill.taxRate)}% tax due (~$
+                          {(
+                            parseFloat(bill.amount) *
+                            (1 + parseFloat(bill.taxRate) / 100)
+                          ).toFixed(2)}
+                          )
+                        </span>
+                      )}
+                  </div>
                   {!isSelecting && (
                     <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1">
                       <button

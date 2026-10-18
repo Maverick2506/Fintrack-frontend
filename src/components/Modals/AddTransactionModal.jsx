@@ -20,6 +20,7 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  Percent,
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 
@@ -69,6 +70,8 @@ const AddTransactionModal = ({
   const [recurrence, setRecurrence] = useState("none");
   const [selectedCard, setSelectedCard] = useState("");
   const [selectedTargetAccount, setSelectedTargetAccount] = useState("");
+  const [isTaxExclusive, setIsTaxExclusive] = useState(false);
+  const [taxRate, setTaxRate] = useState("13");
   const [openDropdown, setOpenDropdown] = useState(null); // "payment" | "schedule" | "paydown" | null
   const isEditing = !!existingTransaction;
 
@@ -115,6 +118,13 @@ const AddTransactionModal = ({
             : txDate <= todayStr
         );
         setRecurrence(existingTransaction.recurrence || "none");
+        setIsTaxExclusive(Boolean(existingTransaction.isTaxExclusive));
+        setTaxRate(
+          existingTransaction.taxRate !== null &&
+          existingTransaction.taxRate !== undefined
+            ? String(existingTransaction.taxRate)
+            : "13"
+        );
         setSelectedCard(existingTransaction.creditCardId || "");
         setSelectedTargetAccount(
           existingTransaction.targetAccountId ||
@@ -129,6 +139,8 @@ const AddTransactionModal = ({
         setPaymentDate(todayStr);
         setIsPaid(true);
         setRecurrence("none");
+        setIsTaxExclusive(false);
+        setTaxRate("13");
         setSelectedCard("");
         setSelectedTargetAccount("");
         setType("expense");
@@ -218,6 +230,8 @@ const AddTransactionModal = ({
           category,
           is_paid: isPaid,
           recurrence,
+          isTaxExclusive,
+          taxRate: isTaxExclusive ? parseFloat(taxRate) || 0 : null,
           creditCardId:
             category === "Debt" && selectedTargetAccount
               ? null
@@ -583,7 +597,7 @@ const AddTransactionModal = ({
                   </button>
 
                   {openDropdown === "schedule" && (
-                    <div className="absolute right-0 mt-1.5 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 divide-y divide-white/[0.04]">
+                    <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 divide-y divide-white/[0.04]">
                       {RECURRENCE_OPTIONS.map((opt) => {
                         const isSelected = recurrence === opt.value;
                         return (
@@ -776,6 +790,86 @@ const AddTransactionModal = ({
                   {isPaid ? "Paid" : "Upcoming"}
                 </button>
               </div>
+
+              {/* Tax Exclusive on Due Date Toggle & Rate Selector */}
+              <div className="rounded-xl bg-zinc-950/60 border border-white/[0.07] p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Percent size={13} className="text-amber-400" />
+                    <div>
+                      <span className="text-xs font-medium text-zinc-200 block">
+                        Tax applied on due date
+                      </span>
+                      <span className="text-[10px] text-zinc-500 block">
+                        Amount entered is exclusive of tax
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsTaxExclusive((v) => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      isTaxExclusive ? "bg-amber-500" : "bg-zinc-800"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                        isTaxExclusive ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {isTaxExclusive && (
+                  <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-zinc-400">Rate:</span>
+                      <div className="flex items-center gap-1 bg-zinc-900 border border-white/10 rounded-lg px-2 py-1 w-16">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          value={taxRate}
+                          onChange={(e) => setTaxRate(e.target.value)}
+                          className="w-full bg-transparent text-xs text-zinc-100 text-right focus:outline-none tabular-nums font-medium"
+                        />
+                        <span className="text-xs text-zinc-500">%</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {["5", "13", "15"].map((preset) => (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => setTaxRate(preset)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors cursor-pointer ${
+                              taxRate === preset
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                : "bg-white/[0.03] text-zinc-400 border-white/[0.06] hover:text-zinc-200"
+                            }`}
+                          >
+                            {preset}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {amount && !isNaN(parseFloat(amount)) && (
+                      <div className="text-right">
+                        <span className="text-[10px] text-zinc-400 block leading-tight">
+                          Total on due date:
+                        </span>
+                        <span className="text-xs font-semibold text-amber-300 tabular-nums">
+                          ${(
+                            parseFloat(amount) *
+                            (1 + (parseFloat(taxRate) || 0) / 100)
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-2.5">
@@ -829,7 +923,7 @@ const AddTransactionModal = ({
                 </button>
 
                 {openDropdown === "schedule" && (
-                  <div className="absolute right-0 mt-1.5 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 divide-y divide-white/[0.04]">
+                  <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 divide-y divide-white/[0.04]">
                     {RECURRENCE_OPTIONS.map((opt) => {
                       const isSelected = recurrence === opt.value;
                       return (
