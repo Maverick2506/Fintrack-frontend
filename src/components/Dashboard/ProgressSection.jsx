@@ -9,6 +9,10 @@ const ProgressSection = ({
   onAddDebt,
   onAddSavingsGoal,
 }) => {
+  const activeDebts = (debtSummary || []).filter(
+    (d) => (parseFloat(d.initialBalance) || 0) > 0 && d.isActive !== false
+  );
+
   return (
     <div className="glass-panel p-6">
       <div className="flex items-center justify-between mb-5">
@@ -37,10 +41,9 @@ const ProgressSection = ({
         </div>
       </div>
       <div className="space-y-5">
-        {/* --- All Debts --- */}
-        {debtSummary &&
-          debtSummary.length > 0 &&
-          debtSummary.map((debt) => {
+        {/* --- Active Debts --- */}
+        {activeDebts.length > 0 &&
+          activeDebts.map((debt) => {
             const originalAmount =
               parseFloat(debt.targetAmount) ||
               parseFloat(debt.initialBalance) ||
@@ -125,7 +128,7 @@ const ProgressSection = ({
             );
           })}
 
-        {(!debtSummary || debtSummary.length === 0) &&
+        {activeDebts.length === 0 &&
           (!savingsSummary || savingsSummary.length === 0) && (
             <div className="py-5 px-4 rounded-xl border border-dashed border-white/[0.07] text-center">
               <p className="text-zinc-500 text-xs font-medium mb-3">

@@ -232,12 +232,18 @@ const AddTransactionModal = ({
   };
 
   const paydownOptions = [
-    ...debts.map((d) => ({
-      id: d.id,
-      name: d.name,
-      kind: "Debt",
-      balance: parseFloat(d.total_remaining ?? d.initialBalance ?? 0),
-    })),
+    ...debts
+      .filter(
+        (d) =>
+          parseFloat(d.total_remaining ?? d.initialBalance ?? 0) > 0 ||
+          (selectedTargetAccount && String(d.id) === String(selectedTargetAccount))
+      )
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        kind: "Debt",
+        balance: parseFloat(d.total_remaining ?? d.initialBalance ?? 0),
+      })),
     ...creditCards.map((c) => ({
       id: c.id,
       name: c.name,
