@@ -274,6 +274,7 @@ const DebtsPage = () => {
         onClose={closeModal}
         refreshData={fetchDebts}
         debtId={activeDebt?.id}
+        debt={activeDebt}
       />
       <AddDebtModal
         isOpen={modals.add}

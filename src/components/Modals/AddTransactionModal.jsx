@@ -378,12 +378,23 @@ const AddTransactionModal = ({
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Hero Amount + Merchant/Title Block */}
           <div className="bg-zinc-950/80 border border-white/[0.07] rounded-xl p-4">
-            <label
-              htmlFor="amount"
-              className="block text-[11px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
-            >
-              {type === "expense" ? "Expense Amount" : "Income Amount"}
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label
+                htmlFor="amount"
+                className="block text-[11px] font-medium text-zinc-500 uppercase tracking-wider"
+              >
+                {type === "expense" ? "Expense Amount" : "Income Amount"}
+              </label>
+              {category === "Debt" && activeTargetObj && !amount && (
+                <button
+                  type="button"
+                  onClick={() => setAmount(activeTargetObj.balance.toFixed(2))}
+                  className="text-[10px] text-rose-300 hover:text-rose-200 underline font-medium cursor-pointer"
+                >
+                  Pay Full (${activeTargetObj.balance.toFixed(2)})
+                </button>
+              )}
+            </div>
             <div className="flex items-baseline gap-1.5">
               <span
                 className={`text-2xl font-semibold ${
@@ -518,33 +529,55 @@ const AddTransactionModal = ({
                     }
                     className="w-full bg-rose-500/[0.06] hover:bg-rose-500/[0.1] border border-rose-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-300">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-300 shrink-0">
                         {activeTargetObj?.kind === "Credit Card" ? (
                           <CreditCard size={14} />
                         ) : (
                           <Landmark size={14} />
                         )}
                       </div>
-                      <div className="text-left">
+                      <div className="text-left truncate">
                         <p className="text-[10px] font-medium text-rose-300/80 uppercase tracking-wider leading-none mb-1">
                           Pay Towards (Debt / Credit Card)
                         </p>
-                        <p className="text-xs font-medium text-zinc-100 leading-none">
+                        <p className="text-xs font-medium text-zinc-100 leading-none truncate">
                           {activeTargetObj
-                            ? `${activeTargetObj.name} ($${activeTargetObj.balance.toFixed(
-                                2
-                              )} left)`
+                            ? activeTargetObj.name
                             : "Select Debt or Credit Card to pay down..."}
                         </p>
                       </div>
                     </div>
-                    <ChevronDown
-                      size={14}
-                      className={`text-zinc-400 transition-transform ${
-                        openDropdown === "paydown" ? "rotate-180" : ""
-                      }`}
-                    />
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {activeTargetObj && (
+                        <div className="text-right">
+                          {parseFloat(amount) > 0 ? (
+                            <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 tabular-nums inline-block">
+                              $
+                              {Math.max(
+                                0,
+                                activeTargetObj.balance -
+                                  (parseFloat(amount) || 0)
+                              ).toFixed(2)}{" "}
+                              left
+                              {parseFloat(amount) >= activeTargetObj.balance &&
+                                " 🎉"}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-medium text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.07] tabular-nums inline-block">
+                              ${activeTargetObj.balance.toFixed(2)} left
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <ChevronDown
+                        size={14}
+                        className={`text-zinc-400 transition-transform ${
+                          openDropdown === "paydown" ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
                   </button>
 
                   {openDropdown === "paydown" && (

@@ -36,14 +36,14 @@ const CreditCardPage = () => {
 
   const openModal = (type, cardId = null, card = null) => {
     setActiveCardId(cardId);
-    if (type === "editCard") setActiveCard(card);
+    if (type === "editCard" || type === "addPayment") setActiveCard(card);
     setModals((prev) => ({ ...prev, [type]: true }));
   };
 
   const closeModal = (type) => {
     setModals((prev) => ({ ...prev, [type]: false }));
     setActiveCardId(null);
-    if (type === "editCard") setActiveCard(null);
+    if (type === "editCard" || type === "addPayment") setActiveCard(null);
   };
 
   const handleDelete = async () => {
@@ -266,7 +266,7 @@ const CreditCardPage = () => {
                       {utilization.toFixed(0)}% utilization
                     </span>
                     <button
-                      onClick={() => openModal("addPayment", card.id)}
+                      onClick={() => openModal("addPayment", card.id, card)}
                       className="btn-secondary !py-1 !px-3 !text-xs"
                     >
                       Pay Balance
@@ -289,6 +289,7 @@ const CreditCardPage = () => {
         onClose={() => closeModal("addPayment")}
         refreshData={fetchCreditCards}
         cardId={activeCardId}
+        card={activeCard}
       />
       <EditCreditCardModal
         isOpen={modals.editCard}
