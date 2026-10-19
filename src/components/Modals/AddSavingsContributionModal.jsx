@@ -9,6 +9,7 @@ const AddSavingsContributionModal = ({
   goalId,
 }) => {
   const [amount, setAmount] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -21,8 +22,10 @@ const AddSavingsContributionModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!goalId || !amount) return;
 
+    setIsSubmitting(true);
     try {
       await dashboardService.contributeToSavingsGoal(goalId, {
         amount: amount,
@@ -32,6 +35,8 @@ const AddSavingsContributionModal = ({
       refreshData();
     } catch (error) {
       console.error("Error logging savings contribution:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -95,8 +100,12 @@ const AddSavingsContributionModal = ({
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Save Contribution
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`btn-primary ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting ? "Saving..." : "Save Contribution"}
             </button>
           </div>
         </form>

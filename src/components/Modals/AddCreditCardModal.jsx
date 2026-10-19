@@ -7,6 +7,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
   const [creditLimit, setCreditLimit] = useState("");
   const [currentBalance, setCurrentBalance] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const clearForm = () => {
     setName("");
@@ -29,6 +30,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!name || !creditLimit) return;
 
     const payload = {
@@ -38,6 +40,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
       dueDate: dueDate || null,
     };
 
+    setIsSubmitting(true);
     try {
       await dashboardService.addCreditCard(payload);
       clearForm();
@@ -45,6 +48,8 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
       refreshData();
     } catch (error) {
       console.error("Submit failed:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -168,8 +173,12 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
             >
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Add Card
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`btn-primary ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting ? "Adding..." : "Add Card"}
             </button>
           </div>
         </form>

@@ -7,6 +7,7 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   const [goalAmount, setGoalAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("");
   const [targetDate, setTargetDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (goal) {
@@ -32,16 +33,24 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!name || !goalAmount) return;
 
-    await dashboardService.updateSavingsGoal(goal.id, {
-      name,
-      goal_amount: goalAmount,
-      current_amount: currentAmount,
-      target_date: targetDate || null,
-    });
-    onClose();
-    refreshData();
+    setIsSubmitting(true);
+    try {
+      await dashboardService.updateSavingsGoal(goal.id, {
+        name,
+        goal_amount: goalAmount,
+        current_amount: currentAmount,
+        target_date: targetDate || null,
+      });
+      onClose();
+      refreshData();
+    } catch (err) {
+      console.error("Failed to update savings goal:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -151,8 +160,12 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Save Changes
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`btn-primary ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

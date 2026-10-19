@@ -75,6 +75,7 @@ const AddTransactionModal = ({
   const [isTaxExclusive, setIsTaxExclusive] = useState(false);
   const [taxRate, setTaxRate] = useState("13");
   const [openDropdown, setOpenDropdown] = useState(null); // "payment" | "schedule" | "paydown" | null
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!existingTransaction;
 
   const { data: creditCards = [] } = useQuery({
@@ -102,8 +103,13 @@ const AddTransactionModal = ({
               existingTransaction.category === "Income"
           );
         setType(isInc ? "income" : "expense");
-        setName(existingTransaction.name || existingTransaction.title || "");
-        setAmount(existingTransaction.amount);
+        const initialAmount =
+          existingTransaction.isTaxExclusive &&
+          existingTransaction.baseAmount !== null &&
+          existingTransaction.baseAmount !== undefined
+            ? existingTransaction.baseAmount
+            : existingTransaction.amount;
+        setAmount(initialAmount);
         setCategory(existingTransaction.category || "Other");
         setHasManuallySelectedCategory(true);
         setSuggestedSource(null);
@@ -271,43 +277,52 @@ const AddTransactionModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const isExpense = type === "expense";
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const isExpense = type === "expense";
 
-    const payload = isExpense
-      ? {
-          id: existingTransaction?.id,
-          name,
-          amount,
-          due_date: dueDate,
-          category,
-          is_paid: isPaid,
-          recurrence,
-          isTaxExclusive,
-          taxRate: isTaxExclusive ? parseFloat(taxRate) || 0 : null,
-          creditCardId:
-            category === "Debt" && selectedTargetAccount
-              ? null
-              : selectedCard || null,
-          targetAccountId:
-            category === "Debt" ? selectedTargetAccount || null : null,
-          paid_with_credit_card:
-            category === "Debt" && selectedTargetAccount
-              ? false
-              : !!selectedCard,
-        }
-      : {
-          id: existingTransaction?.id,
-          name,
-          amount,
-          payment_date: paymentDate,
-          category: "Income",
-          recurrence,
-        };
+      const payload = isExpense
+        ? {
+            id: existingTransaction?.id,
+            name,
+            amount,
+            baseAmount: isTaxExclusive ? parseFloat(amount) || 0 : null,
+            due_date: dueDate,
+            category,
+            is_paid: isPaid,
+            recurrence,
+            isTaxExclusive,
+            taxRate: isTaxExclusive ? parseFloat(taxRate) || 0 : null,
+            creditCardId:
+              category === "Debt" && selectedTargetAccount
+                ? null
+                : selectedCard || null,
+            targetAccountId:
+              category === "Debt" ? selectedTargetAccount || null : null,
+            paid_with_credit_card:
+              category === "Debt" && selectedTargetAccount
+                ? false
+                : !!selectedCard,
+          }
+        : {
+            id: existingTransaction?.id,
+            name,
+            amount,
+            payment_date: paymentDate,
+            category: "Income",
+            recurrence,
+          };
 
-    await dashboardService.saveTransaction(payload, isEditing);
+      await dashboardService.saveTransaction(payload, isEditing);
 
-    onClose();
-    refreshData();
+      onClose();
+      refreshData();
+    } catch (err) {
+      console.error("Failed to save transaction:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -1075,8 +1090,14 @@ const AddTransactionModal = ({
             >
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              {isEditing
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`btn-primary ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting
+                ? "Saving..."
+                : isEditing
                 ? "Save Changes"
                 : type === "income"
                 ? "Record Income"

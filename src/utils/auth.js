@@ -1,4 +1,5 @@
 import axios from "axios";
+import { queryClient } from "./queryClient";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 export const IDLE_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
@@ -56,6 +57,11 @@ export const devLogin = async () => {
 export const logout = () => {
   localStorage.removeItem("user_token");
   localStorage.removeItem(LAST_ACTIVE_KEY);
+  try {
+    queryClient.clear();
+  } catch (err) {
+    console.error("Error clearing queryClient cache on logout:", err);
+  }
 };
 
 export const getToken = () => {

@@ -7,6 +7,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const [goalAmount, setGoalAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("");
   const [targetDate, setTargetDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -19,20 +20,28 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!name || !goalAmount) return;
 
-    await dashboardService.addSavingsGoal({
-      name,
-      goal_amount: goalAmount,
-      current_amount: currentAmount || 0,
-      target_date: targetDate || null,
-    });
-    setName("");
-    setGoalAmount("");
-    setCurrentAmount("");
-    setTargetDate("");
-    onClose();
-    refreshData();
+    setIsSubmitting(true);
+    try {
+      await dashboardService.addSavingsGoal({
+        name,
+        goal_amount: goalAmount,
+        current_amount: currentAmount || 0,
+        target_date: targetDate || null,
+      });
+      setName("");
+      setGoalAmount("");
+      setCurrentAmount("");
+      setTargetDate("");
+      onClose();
+      refreshData();
+    } catch (err) {
+      console.error("Failed to add savings goal:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -149,8 +158,12 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Create Goal
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`btn-primary ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting ? "Creating..." : "Create Goal"}
             </button>
           </div>
         </form>

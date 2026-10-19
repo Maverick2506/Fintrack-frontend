@@ -19,6 +19,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
     new Date().toISOString().slice(0, 10)
   );
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,28 +46,36 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!name || !totalAmount || !monthlyPayment) return;
 
-    await dashboardService.addDebt({
-      name,
-      total_amount: totalAmount,
-      monthly_payment: monthlyPayment,
-      interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
-      auto_pay: autoPay,
-      next_due_date: autoPay ? nextDueDate : null,
-      payment_frequency: autoPay ? paymentFrequency : "monthly",
-    });
+    setIsSubmitting(true);
+    try {
+      await dashboardService.addDebt({
+        name,
+        total_amount: totalAmount,
+        monthly_payment: monthlyPayment,
+        interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
+        auto_pay: autoPay,
+        next_due_date: autoPay ? nextDueDate : null,
+        payment_frequency: autoPay ? paymentFrequency : "monthly",
+      });
 
-    setName("");
-    setTotalAmount("");
-    setMonthlyPayment("");
-    setInterestRate("");
-    setAutoPay(false);
-    setNextDueDate(new Date().toISOString().slice(0, 10));
-    setPaymentFrequency("monthly");
+      setName("");
+      setTotalAmount("");
+      setMonthlyPayment("");
+      setInterestRate("");
+      setAutoPay(false);
+      setNextDueDate(new Date().toISOString().slice(0, 10));
+      setPaymentFrequency("monthly");
 
-    onClose();
-    refreshData();
+      onClose();
+      refreshData();
+    } catch (err) {
+      console.error("Failed to add debt:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -252,8 +261,12 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Add Debt
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`btn-primary ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting ? "Adding..." : "Add Debt"}
             </button>
           </div>
         </form>

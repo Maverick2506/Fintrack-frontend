@@ -19,6 +19,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
     new Date().toISOString().slice(0, 10)
   );
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (debt) {
@@ -65,19 +66,27 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!name || !totalAmount || !monthlyPayment) return;
 
-    await dashboardService.updateDebt(debt.id, {
-      name,
-      total_amount: totalAmount,
-      monthly_payment: monthlyPayment,
-      interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
-      auto_pay: autoPay,
-      next_due_date: autoPay ? nextDueDate : null,
-      payment_frequency: autoPay ? paymentFrequency : "monthly",
-    });
-    onClose();
-    refreshData();
+    setIsSubmitting(true);
+    try {
+      await dashboardService.updateDebt(debt.id, {
+        name,
+        total_amount: totalAmount,
+        monthly_payment: monthlyPayment,
+        interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
+        auto_pay: autoPay,
+        next_due_date: autoPay ? nextDueDate : null,
+        payment_frequency: autoPay ? paymentFrequency : "monthly",
+      });
+      onClose();
+      refreshData();
+    } catch (err) {
+      console.error("Failed to update debt:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -253,8 +262,12 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Save Changes
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`btn-primary ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

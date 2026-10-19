@@ -6,6 +6,7 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
   const [name, setName] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (card) {
@@ -28,15 +29,23 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!name || !creditLimit) return;
 
-    await dashboardService.updateCreditCard(card.id, {
-      name,
-      creditLimit,
-      dueDate: dueDate || null,
-    });
-    onClose();
-    refreshData();
+    setIsSubmitting(true);
+    try {
+      await dashboardService.updateCreditCard(card.id, {
+        name,
+        creditLimit,
+        dueDate: dueDate || null,
+      });
+      onClose();
+      refreshData();
+    } catch (err) {
+      console.error("Failed to update card:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -124,8 +133,12 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
             <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              Save Changes
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`btn-primary ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
