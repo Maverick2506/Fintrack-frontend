@@ -76,6 +76,7 @@ const AddTransactionModal = ({
   const [taxRate, setTaxRate] = useState("13");
   const [openDropdown, setOpenDropdown] = useState(null); // "payment" | "schedule" | "paydown" | null
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const isEditing = !!existingTransaction;
 
   const { data: creditCards = [] } = useQuery({
@@ -94,7 +95,9 @@ const AddTransactionModal = ({
     if (isOpen) {
       setOpenDropdown(null);
       setManualPaidOverride(false);
+      setError(null);
       if (isEditing) {
+        setName(existingTransaction.name || existingTransaction.title || "");
         const isInc =
           existingTransaction.type === "income" ||
           existingTransaction.type === "INCOME" ||
@@ -278,6 +281,19 @@ const AddTransactionModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
+    setError(null);
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Transaction title/name cannot be empty.");
+      return;
+    }
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      setError("Please enter a valid amount greater than 0.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const isExpense = type === "expense";
@@ -285,7 +301,7 @@ const AddTransactionModal = ({
       const payload = isExpense
         ? {
             id: existingTransaction?.id,
-            name,
+            name: trimmedName,
             amount,
             baseAmount: isTaxExclusive ? parseFloat(amount) || 0 : null,
             due_date: dueDate,
@@ -307,7 +323,7 @@ const AddTransactionModal = ({
           }
         : {
             id: existingTransaction?.id,
-            name,
+            name: trimmedName,
             amount,
             payment_date: paymentDate,
             category: "Income",
@@ -320,6 +336,12 @@ const AddTransactionModal = ({
       refreshData();
     } catch (err) {
       console.error("Failed to save transaction:", err);
+      const msg =
+        err?.response?.data?.details?.[0]?.message ||
+        err?.response?.data?.error ||
+        err.message ||
+        "Failed to save transaction.";
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -397,6 +419,13 @@ const AddTransactionModal = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 flex items-start gap-2">
+              <span className="font-semibold text-rose-300">Error:</span>
+              <span>{error}</span>
+            </div>
+          )}
+
           {/* Hero Amount + Merchant/Title Block */}
           <div className="bg-zinc-950/80 border border-white/[0.07] rounded-xl p-4">
             <div className="flex items-center justify-between mb-1">
