@@ -272,15 +272,17 @@ const AddTransactionModal = ({
     (p) => String(p.id) === String(selectedTargetAccount)
   );
 
-  const activeSavingsGoal = savingsGoals.find(
-    (g) =>
-      String(g.id) ===
-      String(
-        selectedTargetAccount ||
-          existingTransaction?.targetAccountId ||
-          existingTransaction?.toAccountId
-      )
-  );
+  const activeSavingsGoal =
+    isEditing && category === existingTransaction?.category
+      ? savingsGoals.find(
+          (g) =>
+            String(g.id) ===
+            String(
+              existingTransaction?.targetAccountId ||
+                existingTransaction?.toAccountId
+            )
+        )
+      : null;
 
   const handleSelectTargetAccount = (opt) => {
     if (!opt) {
