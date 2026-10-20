@@ -255,6 +255,17 @@ const dashboardService = {
     return api.get("/expenses/all").then((res) => res.data);
   },
 
+  fetchSubscriptions: async () => {
+    return api.get("/subscriptions").then((res) => res.data);
+  },
+
+  cancelSubscription: async (transactionId) => {
+    return handleRequest(
+      api.put(`/expenses/${transactionId}`, { recurrence: "none" }),
+      "Subscription cancelled (future recurring occurrences stopped)."
+    );
+  },
+
   updateCheckingBalance: async (balance) => {
     return handleRequest(
       api.put("/checking", { balance }),

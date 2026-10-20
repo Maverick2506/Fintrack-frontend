@@ -13,6 +13,7 @@ const DebtsPage = lazy(() => import("./pages/DebtsPage"));
 const SavingsPage = lazy(() => import("./pages/SavingsPage"));
 const CreditCardPage = lazy(() => import("./pages/CreditCardPage"));
 const LedgerPage = lazy(() => import("./pages/LedgerPage"));
+const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 
 const PageFallback = () => (
@@ -73,6 +74,14 @@ function AppLayout() {
               element={
                 <ProtectedRoute>
                   <CreditCardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subscriptions"
+              element={
+                <ProtectedRoute>
+                  <SubscriptionsPage />
                 </ProtectedRoute>
               }
             />

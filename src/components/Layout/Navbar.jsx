@@ -7,6 +7,7 @@ import {
   PiggyBank,
   CreditCard,
   ReceiptText,
+  Repeat,
   LogOut,
 } from "lucide-react";
 import { logout } from "../../utils/auth";
@@ -17,6 +18,7 @@ const navItems = [
   { to: "/debts", label: "Debts", icon: Landmark },
   { to: "/savings", label: "Savings", icon: PiggyBank },
   { to: "/credit-cards", label: "Cards", icon: CreditCard },
+  { to: "/subscriptions", label: "Subscriptions", icon: Repeat },
   { to: "/ledger", label: "Ledger", icon: ReceiptText },
 ];
 
@@ -79,7 +81,7 @@ const Navbar = () => {
       </header>
 
       {/* Mobile Bottom Navigation Dock (< 768px) */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/[0.08] bg-zinc-950/95 backdrop-blur-lg px-2 py-1.5 grid grid-cols-6 gap-1">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-white/[0.08] bg-zinc-950/95 backdrop-blur-lg px-1 py-1.5 grid grid-cols-7 gap-0.5">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
