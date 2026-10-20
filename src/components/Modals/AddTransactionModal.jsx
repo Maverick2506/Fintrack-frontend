@@ -307,7 +307,9 @@ const AddTransactionModal = ({
       const finalTargetAccountId =
         category === "Debt"
           ? selectedTargetAccount || null
-          : existingTargetId;
+          : isEditing && category === existingTransaction?.category
+          ? existingTargetId
+          : null;
 
       const hasTarget = Boolean(finalTargetAccountId);
 
@@ -543,6 +545,9 @@ const AddTransactionModal = ({
                         type="button"
                         onClick={() => {
                           setCategory(catName);
+                          if (catName !== "Debt") {
+                            setSelectedTargetAccount("");
+                          }
                           setHasManuallySelectedCategory(true);
                           setSuggestedSource(null);
                         }}
