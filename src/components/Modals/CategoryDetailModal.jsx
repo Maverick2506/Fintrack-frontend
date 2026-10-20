@@ -22,21 +22,49 @@ const CategoryDetailModal = ({ isOpen, onClose, category, transactions }) => {
         </div>
         {transactions.length > 0 ? (
           <ul className="divide-y divide-white/[0.05] max-h-80 overflow-y-auto">
-            {transactions.map((t) => (
-              <li key={t.id} className="flex justify-between items-center py-2.5">
-                <div>
-                  <span className="text-sm font-medium text-zinc-200">{t.name}</span>
-                  <p className="text-xs text-zinc-500">
-                    {new Date(t.due_date).toLocaleDateString("en-US", {
-                      timeZone: "UTC",
-                    })}
-                  </p>
-                </div>
-                <span className="text-sm font-semibold tabular-nums text-rose-400">
-                  -{formatCurrency(Math.abs(parseFloat(t.amount) || 0))}
-                </span>
-              </li>
-            ))}
+            {transactions.map((t) => {
+              const isUpcoming = t.is_paid === false;
+              return (
+                <li
+                  key={t.id}
+                  className={`flex justify-between items-center py-2.5 ${
+                    isUpcoming ? "opacity-75" : ""
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-sm font-medium ${
+                          isUpcoming ? "text-zinc-400" : "text-zinc-200"
+                        }`}
+                      >
+                        {t.name}
+                      </span>
+                      {isUpcoming && (
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap"
+                          title="Upcoming / not yet cleared"
+                        >
+                          Upcoming
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      {new Date(t.due_date || t.date).toLocaleDateString("en-US", {
+                        timeZone: "UTC",
+                      })}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-sm font-semibold tabular-nums ${
+                      isUpcoming ? "text-rose-400/80" : "text-rose-400"
+                    }`}
+                  >
+                    -{formatCurrency(Math.abs(parseFloat(t.amount) || 0))}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className="text-xs text-zinc-500 py-6 text-center">
