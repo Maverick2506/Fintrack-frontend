@@ -17,6 +17,7 @@ import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 import GeminiGemModal from "../components/Modals/GeminiGemModal";
+import { formatCurrency } from "../utils/formatUtils";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
@@ -260,20 +261,31 @@ const DashboardPage = () => {
     creditCardSummary,
   } = dashboardData;
 
-  const checkingBalance = parseFloat(checkingAccount?.currentBalance || 0);
-  const totalSavings = (savingsSummary || []).reduce(
-    (s, g) => s + parseFloat(g.initialBalance || 0),
-    0
-  );
-  const totalDebt = (debtSummary || []).reduce(
-    (s, d) => s + parseFloat(d.initialBalance || 0),
-    0
-  );
-  const totalCC = (creditCardSummary || []).reduce(
-    (s, c) => s + parseFloat(c.initialBalance || 0),
-    0
-  );
-  const netWorth = checkingBalance + totalSavings - totalDebt - totalCC;
+  const balancesSummary = dashboardData.balancesSummary || {
+    checking: parseFloat(checkingAccount?.currentBalance || 0),
+    savings: (savingsSummary || []).reduce(
+      (s, g) => s + parseFloat(g.initialBalance || 0),
+      0
+    ),
+    debt: (debtSummary || []).reduce(
+      (s, d) => s + parseFloat(d.initialBalance || 0),
+      0
+    ),
+    cards: (creditCardSummary || []).reduce(
+      (s, c) => s + parseFloat(c.initialBalance || 0),
+      0
+    ),
+    netWorth:
+      parseFloat(checkingAccount?.currentBalance || 0) +
+      (savingsSummary || []).reduce((s, g) => s + parseFloat(g.initialBalance || 0), 0) -
+      (debtSummary || []).reduce((s, d) => s + parseFloat(d.initialBalance || 0), 0) -
+      (creditCardSummary || []).reduce((s, c) => s + parseFloat(c.initialBalance || 0), 0),
+  };
+  const checkingBalance = balancesSummary.checking;
+  const totalSavings = balancesSummary.savings;
+  const totalDebt = balancesSummary.debt;
+  const totalCC = balancesSummary.cards;
+  const netWorth = balancesSummary.netWorth;
   const positiveNetWorth = netWorth >= 0;
 
   return (
@@ -300,11 +312,7 @@ const DashboardPage = () => {
                   positiveNetWorth ? "text-zinc-100" : "text-rose-400"
                 }`}
               >
-                {positiveNetWorth ? "" : "-"}$
-                {Math.abs(netWorth).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {formatCurrency(netWorth)}
               </p>
             </div>
 
@@ -367,11 +375,7 @@ const DashboardPage = () => {
                   <span className="truncate tabular-nums">
                     Checking:{" "}
                     <span className="text-zinc-300 font-medium">
-                      $
-                      {checkingBalance.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                      {formatCurrency(checkingBalance)}
                     </span>
                   </span>
                   <button
@@ -398,11 +402,7 @@ const DashboardPage = () => {
               Total Savings
             </p>
             <p className="text-2xl font-semibold tracking-tight text-emerald-400 tabular-nums">
-              $
-              {totalSavings.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              {formatCurrency(totalSavings)}
             </p>
           </div>
 
@@ -411,11 +411,7 @@ const DashboardPage = () => {
               Active Debt
             </p>
             <p className="text-2xl font-semibold tracking-tight text-zinc-200 tabular-nums">
-              $
-              {totalDebt.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              {formatCurrency(totalDebt)}
             </p>
           </div>
 
@@ -424,11 +420,7 @@ const DashboardPage = () => {
               Card Balances
             </p>
             <p className="text-2xl font-semibold tracking-tight text-zinc-200 tabular-nums">
-              $
-              {totalCC.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              {formatCurrency(totalCC)}
             </p>
           </div>
         </div>
