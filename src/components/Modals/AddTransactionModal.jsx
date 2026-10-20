@@ -298,6 +298,19 @@ const AddTransactionModal = ({
     try {
       const isExpense = type === "expense";
 
+      const existingTargetId =
+        selectedTargetAccount ||
+        existingTransaction?.targetAccountId ||
+        existingTransaction?.toAccountId ||
+        null;
+
+      const finalTargetAccountId =
+        category === "Debt"
+          ? selectedTargetAccount || null
+          : existingTargetId;
+
+      const hasTarget = Boolean(finalTargetAccountId);
+
       const payload = isExpense
         ? {
             id: existingTransaction?.id,
@@ -310,16 +323,9 @@ const AddTransactionModal = ({
             recurrence,
             isTaxExclusive,
             taxRate: isTaxExclusive ? parseFloat(taxRate) || 0 : null,
-            creditCardId:
-              category === "Debt" && selectedTargetAccount
-                ? null
-                : selectedCard || null,
-            targetAccountId:
-              category === "Debt" ? selectedTargetAccount || null : null,
-            paid_with_credit_card:
-              category === "Debt" && selectedTargetAccount
-                ? false
-                : !!selectedCard,
+            creditCardId: hasTarget ? null : selectedCard || null,
+            targetAccountId: finalTargetAccountId,
+            paid_with_credit_card: hasTarget ? false : !!selectedCard,
           }
         : {
             id: existingTransaction?.id,
