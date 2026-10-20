@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { formatCurrency } from "../utils/formatUtils";
+import { formatCurrency, formatShortDate } from "../utils/formatUtils";
+import { simulate } from "../utils/debtMath";
+import DebtPayoffPlanner from "../components/Debts/DebtPayoffPlanner";
 import {
   Plus,
   Pencil,
@@ -195,116 +197,148 @@ const DebtsPage = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {activeDebts.map((debt) => {
-                const progress =
-                  parseFloat(debt.total_amount) > 0
-                    ? ((parseFloat(debt.total_amount) -
-                        parseFloat(debt.total_remaining)) /
-                        parseFloat(debt.total_amount)) *
-                      100
-                    : 0;
-                const paidAmount =
-                  parseFloat(debt.total_amount) - parseFloat(debt.total_remaining);
+            <>
+              {activeDebts.length > 0 && (
+                <DebtPayoffPlanner
+                  debts={activeDebts}
+                  onEditDebt={(debt) => openModal("edit", debt)}
+                />
+              )}
 
-                const paymentPerPeriod = parseFloat(debt.monthly_payment) || 0;
-                const freq = debt.payment_frequency || "monthly";
-                const paymentsPerMonth =
-                  freq === "bi-weekly"
-                    ? 26 / 12
-                    : freq === "weekly"
-                    ? 52 / 12
-                    : freq === "yearly"
-                    ? 1 / 12
-                    : 1;
-                const effectiveMonthlyPayment = paymentPerPeriod * paymentsPerMonth;
-                const payoffMonths =
-                  effectiveMonthlyPayment > 0
-                    ? Math.ceil(
-                        parseFloat(debt.total_remaining) / effectiveMonthlyPayment
-                      )
-                    : null;
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {activeDebts.map((debt) => {
+                  const progress =
+                    parseFloat(debt.total_amount) > 0
+                      ? ((parseFloat(debt.total_amount) -
+                          parseFloat(debt.total_remaining)) /
+                          parseFloat(debt.total_amount)) *
+                        100
+                      : 0;
+                  const paidAmount =
+                    parseFloat(debt.total_amount) - parseFloat(debt.total_remaining);
 
-                return (
-                  <div
-                    key={debt.id}
-                    className="glass-panel p-5 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h2 className="text-base font-semibold text-zinc-100">
-                            {debt.name}
-                          </h2>
-                          {debt.auto_pay && (
-                            <span className="inline-flex items-center gap-1 text-[11px] bg-white/[0.06] text-zinc-300 border border-white/[0.08] px-2 py-0.5 rounded-full mt-1">
-                              <RefreshCw size={10} />
-                              <span>Auto-Pay</span>
-                            </span>
-                          )}
+                  const freq = debt.payment_frequency || "monthly";
+                  const hasApr =
+                    debt.interest_rate !== null &&
+                    debt.interest_rate !== undefined &&
+                    debt.interest_rate !== "" &&
+                    parseFloat(debt.interest_rate) > 0;
+
+                  const singleSim = simulate([debt], 0);
+                  const debtDetail = singleSim.perDebt[0];
+                  const isInsolvent = debtDetail && !debtDetail.isSolvent;
+                  const payoffMonths = debtDetail?.payoffMonth;
+
+                  return (
+                    <div
+                      key={debt.id}
+                      className="glass-panel p-5 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h2 className="text-base font-semibold text-zinc-100">
+                              {debt.name}
+                            </h2>
+                            {debt.auto_pay && (
+                              <span className="inline-flex items-center gap-1 text-[11px] bg-white/[0.06] text-zinc-300 border border-white/[0.08] px-2 py-0.5 rounded-full mt-1">
+                                <RefreshCw size={10} />
+                                <span>Auto-Pay</span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => openModal("edit", debt)}
+                              title="Edit debt"
+                              className="btn-ghost-icon"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => openModal("delete", debt)}
+                              title="Delete debt"
+                              className="btn-ghost-icon hover:text-rose-400"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => openModal("pay", debt)}
+                              className="btn-secondary ml-1"
+                            >
+                              Pay
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => openModal("edit", debt)}
-                            title="Edit debt"
-                            className="btn-ghost-icon"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={() => openModal("delete", debt)}
-                            title="Delete debt"
-                            className="btn-ghost-icon hover:text-rose-400"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => openModal("pay", debt)}
-                            className="btn-secondary ml-1"
-                          >
-                            Pay
-                          </button>
+
+                        <div className="mb-4">
+                          <p className="text-xs text-zinc-500 mb-0.5">Remaining</p>
+                          <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
+                            {formatCurrency(debt.total_remaining)}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="mb-4">
-                        <p className="text-xs text-zinc-500 mb-0.5">Remaining</p>
-                        <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-                          {formatCurrency(debt.total_remaining)}
-                        </p>
+                      <div>
+                        <div className="flex justify-between text-xs text-zinc-500 mb-1.5 tabular-nums">
+                          <span>{formatCurrency(paidAmount)} paid</span>
+                          <span>{progress.toFixed(0)}%</span>
+                        </div>
+                        <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-rose-400 h-1.5 rounded-full transition-all duration-500"
+                            style={{
+                              width:
+                                progress > 0
+                                  ? `max(${progress.toFixed(1)}%, 4px)`
+                                  : "0%",
+                            }}
+                          />
+                        </div>
+
+                        {isInsolvent ? (
+                          <p className="text-[11px] text-rose-400 font-medium mt-2.5 text-right tabular-nums">
+                            This payment never pays off the debt (${debtDetail?.solvencyInterest}/mo interest)
+                          </p>
+                        ) : !hasApr ? (
+                          <div className="mt-2.5 flex items-center justify-between text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() => openModal("edit", debt)}
+                              className="text-amber-400 hover:text-amber-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Pencil size={10} />
+                              <span>Add interest rate for accurate estimate</span>
+                            </button>
+                            {payoffMonths && (
+                              <span className="text-zinc-500 tabular-nums">
+                                ~{payoffMonths} mos (0% APR)
+                              </span>
+                            )}
+                          </div>
+                        ) : payoffMonths ? (
+                          <p className="text-[11px] text-zinc-400 mt-2.5 text-right tabular-nums">
+                            Est. payoff in ~{payoffMonths}{" "}
+                            {payoffMonths === 1 ? "month" : "months"}
+                            {debtDetail?.payoffDate && (
+                              <span> ({formatShortDate(debtDetail.payoffDate)})</span>
+                            )}
+                            {debtDetail?.totalInterest > 0 && (
+                              <span className="text-zinc-500">
+                                {" "}· {formatCurrency(debtDetail.totalInterest)} interest
+                              </span>
+                            )}
+                            {freq !== "monthly" && (
+                              <span className="text-zinc-600"> ({freq})</span>
+                            )}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs text-zinc-500 mb-1.5 tabular-nums">
-                        <span>{formatCurrency(paidAmount)} paid</span>
-                        <span>{progress.toFixed(0)}%</span>
-                      </div>
-                      <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-rose-400 h-1.5 rounded-full transition-all duration-500"
-                          style={{
-                            width:
-                              progress > 0
-                                ? `max(${progress.toFixed(1)}%, 4px)`
-                                : "0%",
-                          }}
-                        />
-                      </div>
-                      {payoffMonths && (
-                        <p className="text-[11px] text-zinc-500 mt-2.5 text-right tabular-nums">
-                          Est. payoff in ~{payoffMonths}{" "}
-                          {payoffMonths === 1 ? "month" : "months"}
-                          {freq !== "monthly" && (
-                            <span className="text-zinc-600"> ({freq})</span>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
 
           {/* --- Paid Off & Archived Section --- */}
