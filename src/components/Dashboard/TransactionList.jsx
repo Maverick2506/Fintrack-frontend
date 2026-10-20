@@ -71,15 +71,32 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
             day: "numeric",
             year: "numeric",
           });
+          const isUpcoming = transaction.is_paid === false;
           return (
             <li
               key={transaction.id}
-              className="flex items-center justify-between gap-2 group py-3 hover:bg-white/[0.02] px-1 rounded-lg transition-colors"
+              className={`flex items-center justify-between gap-2 group py-3 hover:bg-white/[0.02] px-1 rounded-lg transition-colors ${
+                isUpcoming ? "opacity-75" : ""
+              }`}
             >
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-zinc-200 block truncate">
-                  {transaction.name}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-sm font-medium block truncate ${
+                      isUpcoming ? "text-zinc-400" : "text-zinc-200"
+                    }`}
+                  >
+                    {transaction.name}
+                  </span>
+                  {isUpcoming && (
+                    <span
+                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap shrink-0"
+                      title="Upcoming / not yet cleared"
+                    >
+                      Upcoming
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-zinc-500">
                   {transaction.category}
                   <span className="sm:hidden tabular-nums">
@@ -92,7 +109,11 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
                 {formattedDate}
               </div>
               <div className="w-24 text-right tabular-nums shrink-0">
-                <span className="text-sm font-medium text-zinc-200">
+                <span
+                  className={`text-sm font-medium ${
+                    isUpcoming ? "text-zinc-400" : "text-zinc-200"
+                  }`}
+                >
                   -{formatCurrency(Math.abs(parseFloat(transaction.amount) || 0))}
                 </span>
               </div>
