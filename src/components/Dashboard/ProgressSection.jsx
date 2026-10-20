@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus } from "lucide-react";
+import { formatCurrency } from "../../utils/formatUtils";
 
 const ProgressSection = ({
   debtSummary,
@@ -60,7 +61,7 @@ const ProgressSection = ({
                       {debt.name}
                     </span>
                     <span className="ml-2 text-xs text-zinc-500 tabular-nums">
-                      ${currentAmount.toFixed(2)} left
+                      {formatCurrency(currentAmount)} left
                     </span>
                   </div>
                   <button
@@ -102,7 +103,7 @@ const ProgressSection = ({
                       {goal.name}
                     </span>
                     <span className="ml-2 text-xs text-zinc-500 tabular-nums">
-                      ${current.toFixed(2)} / ${target.toFixed(2)}
+                      {formatCurrency(current)} / {formatCurrency(target)}
                     </span>
                   </div>
                   <button

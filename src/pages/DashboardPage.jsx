@@ -88,6 +88,7 @@ const DashboardPage = () => {
   });
   const [active, setActive] = useState({
     debtId: null,
+    debt: null,
     goalId: null,
     toDelete: null,
     toEdit: null,
@@ -112,7 +113,7 @@ const DashboardPage = () => {
 
   const closeModal = (type) => {
     setModals((prev) => ({ ...prev, [type]: false }));
-    setActive({ debtId: null, goalId: null, toDelete: null, toEdit: null });
+    setActive({ debtId: null, debt: null, goalId: null, toDelete: null, toEdit: null });
   };
 
   // Global keyboard shortcut: press "n" (outside inputs) to open New Transaction
@@ -482,6 +483,7 @@ const DashboardPage = () => {
         onClose={() => closeModal("debt")}
         refreshData={invalidateDashboard}
         debtId={active.debtId}
+        debt={active.debt}
       />
       <AddDebtModal
         isOpen={modals.addDebt}

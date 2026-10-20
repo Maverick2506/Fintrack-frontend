@@ -538,7 +538,11 @@ const AddTransactionModal = ({
                   {CATEGORY_CONFIG.map((catItem) => {
                     const CatIcon = catItem.icon;
                     const catName = catItem.name;
-                    const active = category === catName;
+                    const active =
+                      category === catName ||
+                      (catName === "Debt" &&
+                        (category === "Credit Card Payment" ||
+                          Boolean(selectedTargetAccount)));
                     return (
                       <button
                         key={catName}
@@ -575,8 +579,10 @@ const AddTransactionModal = ({
                 </div>
               </div>
 
-              {/* Pay Down Target Picker when Category === "Debt" */}
-              {category === "Debt" && (
+              {/* Pay Down Target Picker when Category === "Debt" or "Credit Card Payment" or has target account */}
+              {(category === "Debt" ||
+                category === "Credit Card Payment" ||
+                Boolean(selectedTargetAccount)) && (
                 <div
                   className="relative"
                   onClick={(e) => e.stopPropagation()}
@@ -600,7 +606,9 @@ const AddTransactionModal = ({
                       </div>
                       <div className="text-left truncate">
                         <p className="text-[10px] font-medium text-rose-300/80 uppercase tracking-wider leading-none mb-1">
-                          Pay Towards (Debt / Credit Card)
+                          {activeTargetObj?.kind === "Credit Card"
+                            ? "Pays Credit Card"
+                            : "Pay Towards (Debt / Card)"}
                         </p>
                         <p className="text-xs font-medium text-zinc-100 leading-none truncate">
                           {activeTargetObj
