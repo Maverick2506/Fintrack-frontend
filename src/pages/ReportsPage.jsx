@@ -33,6 +33,17 @@ const ReportsPage = () => {
   const [editingBudget, setEditingBudget] = useState(null);
   const [budgetInput, setBudgetInput] = useState("");
 
+  const currentYear = new Date().getFullYear();
+  const availableYears = useMemo(() => {
+    const start = 2023;
+    const end = Math.max(currentYear + 2, 2027);
+    const years = [];
+    for (let y = start; y <= end; y++) {
+      years.push(y);
+    }
+    return years;
+  }, [currentYear]);
+
   const saveBudget = (category) => {
     const val = parseFloat(budgetInput);
     if (!isNaN(val) && val > 0) {
@@ -157,7 +168,7 @@ const ReportsPage = () => {
             onChange={handleDateChange}
             className="bg-zinc-900 text-zinc-200 text-xs font-medium rounded-lg px-3 py-2 border border-white/[0.08] focus:outline-none focus:border-zinc-500"
           >
-            {[2023, 2024, 2025, 2026, 2027].map((y) => (
+            {availableYears.map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>

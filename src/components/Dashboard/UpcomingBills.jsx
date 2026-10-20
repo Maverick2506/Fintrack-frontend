@@ -31,9 +31,21 @@ const UpcomingBills = ({
     }
   }, [bills]);
 
-  const handleCheck = (billId) => {
+  const handleCheck = async (billId) => {
     setPaying((prev) => new Set([...prev, billId]));
-    setTimeout(() => onMarkAsPaid(billId), 500);
+    try {
+      await new Promise((r) => setTimeout(r, 300));
+      if (onMarkAsPaid) {
+        await onMarkAsPaid(billId);
+      }
+    } catch (err) {
+      console.error("Failed to mark bill as paid:", err);
+      setPaying((prev) => {
+        const next = new Set(prev);
+        next.delete(billId);
+        return next;
+      });
+    }
   };
 
   const toggleSelectRow = (billId) => {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Check, X } from "lucide-react";
+import { logout } from "../utils/auth";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import UpcomingBills from "../components/Dashboard/UpcomingBills";
@@ -238,8 +239,7 @@ const DashboardPage = () => {
           </button>
           <button
             onClick={() => {
-              localStorage.removeItem("user_token");
-              localStorage.removeItem("fintrack_last_active");
+              logout();
               window.location.replace("/login");
             }}
             className="btn-primary"
@@ -461,7 +461,7 @@ const DashboardPage = () => {
             <ProgressSection
               debtSummary={debtSummary}
               savingsSummary={savingsSummary}
-              onPayDebt={(id) => openModal("debt", { debtId: id })}
+              onPayDebt={(id) => openModal("debt", { debtId: id, debt: debtSummary?.find((d) => d.id === id) })}
               onContribute={(id) => openModal("savings", { goalId: id })}
               onAddDebt={() => openModal("addDebt")}
               onAddSavingsGoal={() => openModal("addSavingsGoal")}

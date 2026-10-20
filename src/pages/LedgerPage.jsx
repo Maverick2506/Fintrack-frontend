@@ -37,6 +37,7 @@ const CATEGORY_COLORS = {
 const LedgerPage = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("date");
   const [sortDir, setSortDir] = useState("desc");
@@ -55,10 +56,19 @@ const LedgerPage = () => {
 
   const loadLedger = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await dashboardService.fetchLedger();
       setRows(data);
       setSelectedIds(new Set());
+      setLastClickedIndex(null);
+    } catch (err) {
+      console.error("Failed to fetch ledger:", err);
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Failed to load transaction ledger"
+      );
     } finally {
       setLoading(false);
     }
@@ -67,6 +77,11 @@ const LedgerPage = () => {
   useEffect(() => {
     loadLedger();
   }, [loadLedger]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setLastClickedIndex(null);
+  }, [search, typeFilter, categoryFilter, monthFilter]);
 
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -78,24 +93,37 @@ const LedgerPage = () => {
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
-    await dashboardService.deleteBill(deleteTarget.id);
-    setRows((prev) => prev.filter((r) => r.id !== deleteTarget.id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(deleteTarget.id);
-      return next;
-    });
-    setDeleteTarget(null);
+    try {
+      await dashboardService.deleteBill(deleteTarget.id);
+      setRows((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(deleteTarget.id);
+        return next;
+      });
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error("Failed to delete transaction:", err);
+    }
   };
 
   const handleConfirmBulkDelete = async () => {
-    const ids = Array.from(selectedIds);
+    const ids = filtered.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
     if (ids.length === 0) return;
-    await dashboardService.bulkDeleteTransactions(ids);
-    const idSet = new Set(ids);
-    setRows((prev) => prev.filter((r) => !idSet.has(r.id)));
-    setSelectedIds(new Set());
-    setIsBulkDeleteModalOpen(false);
+    try {
+      await dashboardService.bulkDeleteTransactions(ids);
+      const idSet = new Set(ids);
+      setRows((prev) => prev.filter((r) => !idSet.has(r.id)));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+      setLastClickedIndex(null);
+      setIsBulkDeleteModalOpen(false);
+    } catch (err) {
+      console.error("Failed to bulk delete:", err);
+    }
   };
 
   const availableCategories = useMemo(() => {
@@ -209,6 +237,22 @@ const LedgerPage = () => {
     return (
       <div className="text-center text-zinc-500 text-sm p-12">
         Loading ledger...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-20 text-center">
+        <div className="glass-panel p-8 max-w-md mx-auto">
+          <p className="text-rose-400 text-sm mb-4">{error}</p>
+          <button
+            onClick={loadLedger}
+            className="btn-primary justify-center mx-auto cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

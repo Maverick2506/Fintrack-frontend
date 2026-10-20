@@ -4,7 +4,7 @@ import { isLoggedIn } from "../../utils/auth"; // Corrected path
 
 const ProtectedRoute = ({ children }) => {
   if (!isLoggedIn()) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
   return children;
 };

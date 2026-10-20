@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Calendar, Repeat, Landmark } from "lucide-react";
+import { X, Calendar, Repeat, Landmark, AlertCircle } from "lucide-react";
+import { getLocalTodayStr } from "../../utils/dateUtils";
 import dashboardService from "../../services/dashboardService";
 
 const FREQUENCIES = [
@@ -16,10 +17,11 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
   const [interestRate, setInterestRate] = useState("");
   const [autoPay, setAutoPay] = useState(false);
   const [nextDueDate, setNextDueDate] = useState(
-    new Date().toISOString().slice(0, 10)
+    getLocalTodayStr()
   );
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -50,6 +52,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
     if (!name || !totalAmount || !monthlyPayment) return;
 
     setIsSubmitting(true);
+    setError(null);
     try {
       await dashboardService.addDebt({
         name,
@@ -66,13 +69,15 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
       setMonthlyPayment("");
       setInterestRate("");
       setAutoPay(false);
-      setNextDueDate(new Date().toISOString().slice(0, 10));
+      setNextDueDate(getLocalTodayStr());
+      setError(null);
       setPaymentFrequency("monthly");
 
       onClose();
       refreshData();
     } catch (err) {
       console.error("Failed to add debt:", err);
+      setError(err?.response?.data?.error || err?.message || "Failed to add debt.");
     } finally {
       setIsSubmitting(false);
     }
@@ -256,6 +261,13 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
               </div>
             )}
           </div>
+
+          {error && (
+            <p className="text-xs text-rose-400 flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">
+              <AlertCircle size={13} className="shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary">

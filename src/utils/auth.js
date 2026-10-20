@@ -57,6 +57,9 @@ export const devLogin = async () => {
 export const logout = () => {
   localStorage.removeItem("user_token");
   localStorage.removeItem(LAST_ACTIVE_KEY);
+  localStorage.removeItem("fintrack_advice");
+  localStorage.removeItem("fintrack_structured_advice");
+  localStorage.removeItem("fintrack_budgets");
   try {
     queryClient.clear();
   } catch (err) {

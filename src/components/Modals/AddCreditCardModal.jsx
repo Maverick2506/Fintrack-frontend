@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, CreditCard, Calendar } from "lucide-react";
+import { X, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 
 const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
@@ -8,8 +8,10 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
   const [currentBalance, setCurrentBalance] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   const clearForm = () => {
+    setError(null);
     setName("");
     setCreditLimit("");
     setCurrentBalance("");
@@ -41,6 +43,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
     };
 
     setIsSubmitting(true);
+    setError(null);
     try {
       await dashboardService.addCreditCard(payload);
       clearForm();
@@ -164,6 +167,13 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
               />
             </div>
           </div>
+
+          {error && (
+            <p className="text-xs text-rose-400 flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">
+              <AlertCircle size={13} className="shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <button

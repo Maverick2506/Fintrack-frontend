@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Calendar, Repeat, Landmark } from "lucide-react";
+import { X, Calendar, Repeat, Landmark, AlertCircle } from "lucide-react";
+import { getLocalTodayStr } from "../../utils/dateUtils";
 import dashboardService from "../../services/dashboardService";
 
 const FREQUENCIES = [
@@ -16,10 +17,12 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   const [interestRate, setInterestRate] = useState("");
   const [autoPay, setAutoPay] = useState(false);
   const [nextDueDate, setNextDueDate] = useState(
-    new Date().toISOString().slice(0, 10)
+    getLocalTodayStr()
   );
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
+  const [totalRemaining, setTotalRemaining] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (debt) {
@@ -33,16 +36,18 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
       setNextDueDate(
         debt.next_due_date ||
           debt.dueDate ||
-          new Date().toISOString().slice(0, 10)
+          getLocalTodayStr()
       );
       setPaymentFrequency(
         debt.payment_frequency || debt.paymentFrequency || "monthly"
       );
+      setTotalRemaining(debt.total_remaining ?? debt.initialBalance ?? "");
     }
   }, [debt]);
 
   useEffect(() => {
     if (!isOpen) return;
+    setError(null);
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
     };
@@ -70,10 +75,12 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
     if (!name || !totalAmount || !monthlyPayment) return;
 
     setIsSubmitting(true);
+    setError(null);
     try {
       await dashboardService.updateDebt(debt.id, {
         name,
         total_amount: totalAmount,
+        total_remaining: totalRemaining !== "" ? parseFloat(totalRemaining) : undefined,
         monthly_payment: monthlyPayment,
         interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
         auto_pay: autoPay,
@@ -84,6 +91,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
       refreshData();
     } catch (err) {
       console.error("Failed to update debt:", err);
+      setError(err?.response?.data?.error || err?.message || "Failed to update debt.");
     } finally {
       setIsSubmitting(false);
     }
@@ -154,7 +162,27 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
+              <label
+                htmlFor="totalRemainingEdit"
+                className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+              >
+                Remaining Balance
+              </label>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs font-medium text-zinc-500">$</span>
+                <input
+                  type="number"
+                  id="totalRemainingEdit"
+                  step="0.01"
+                  value={totalRemaining}
+                  onChange={(e) => setTotalRemaining(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-transparent text-sm font-medium text-zinc-100 placeholder-zinc-600 focus:outline-none tabular-nums"
+                />
+              </div>
+            </div>
             <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
               <label
                 htmlFor="monthlyPaymentEdit"
@@ -257,6 +285,13 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
               </div>
             )}
           </div>
+
+          {error && (
+            <p className="text-xs text-rose-400 flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">
+              <AlertCircle size={13} className="shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary">

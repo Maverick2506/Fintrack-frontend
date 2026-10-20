@@ -1,25 +1,29 @@
 import { useState, useEffect } from "react";
-import { X, CreditCard, Calendar } from "lucide-react";
+import { X, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 
 const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
   const [name, setName] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [currentBalance, setCurrentBalance] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (card) {
-      setName(card.name);
-      setCreditLimit(card.creditLimit);
+      setName(card.name || "");
+      setCreditLimit(card.creditLimit ?? "");
       setDueDate(
-        card.dueDate ? new Date(card.dueDate).toISOString().slice(0, 10) : ""
+        card.dueDate ? String(card.dueDate).slice(0, 10) : ""
       );
+      setCurrentBalance(card.currentBalance ?? card.initialBalance ?? "");
     }
   }, [card]);
 
   useEffect(() => {
     if (!isOpen) return;
+    setError(null);
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
     };
@@ -33,16 +37,24 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
     if (!name || !creditLimit) return;
 
     setIsSubmitting(true);
+    setError(null);
     try {
       await dashboardService.updateCreditCard(card.id, {
         name,
-        creditLimit,
+        creditLimit: parseFloat(creditLimit),
+        currentBalance:
+          currentBalance !== "" ? parseFloat(currentBalance) : undefined,
         dueDate: dueDate || null,
       });
       onClose();
       refreshData();
     } catch (err) {
       console.error("Failed to update card:", err);
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Failed to update credit card."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -113,21 +125,51 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
             </div>
           </div>
 
-          <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
-            <label
-              htmlFor="dueDateEdit"
-              className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-1 mb-1"
-            >
-              <Calendar size={11} /> Statement Due Date (Optional)
-            </label>
-            <input
-              type="date"
-              id="dueDateEdit"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full bg-transparent text-xs font-medium text-zinc-200 focus:outline-none tabular-nums"
-            />
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
+              <label
+                htmlFor="currentBalanceEdit"
+                className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+              >
+                Current Balance
+              </label>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs font-medium text-zinc-500">$</span>
+                <input
+                  type="number"
+                  id="currentBalanceEdit"
+                  step="0.01"
+                  value={currentBalance}
+                  onChange={(e) => setCurrentBalance(e.target.value)}
+                  className="w-full bg-transparent text-xs font-medium text-zinc-200 placeholder-zinc-600 focus:outline-none tabular-nums"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
+              <label
+                htmlFor="dueDateEdit"
+                className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-1 mb-1"
+              >
+                <Calendar size={11} /> Statement Due
+              </label>
+              <input
+                type="date"
+                id="dueDateEdit"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full bg-transparent text-xs font-medium text-zinc-200 focus:outline-none tabular-nums"
+              />
+            </div>
           </div>
+
+          {error && (
+            <p className="text-xs text-rose-400 flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">
+              <AlertCircle size={13} className="shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn-secondary">

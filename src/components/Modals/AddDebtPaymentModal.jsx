@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Landmark, CheckCircle2, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import { getLocalTodayStr } from "../../utils/dateUtils";
 
 const AddDebtPaymentModal = ({
   isOpen,
@@ -62,7 +63,7 @@ const AddDebtPaymentModal = ({
     try {
       await dashboardService.payDebt(effectiveDebtId, {
         amount: numAmount,
-        payment_date: new Date().toISOString().slice(0, 10),
+        payment_date: getLocalTodayStr(),
       });
       setAmount("");
       onClose();

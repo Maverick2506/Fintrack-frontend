@@ -10,9 +10,11 @@ const AddSavingsContributionModal = ({
 }) => {
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
+    setError(null);
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
     };
@@ -26,6 +28,7 @@ const AddSavingsContributionModal = ({
     if (!goalId || !amount) return;
 
     setIsSubmitting(true);
+    setError(null);
     try {
       await dashboardService.contributeToSavingsGoal(goalId, {
         amount: amount,
@@ -95,6 +98,13 @@ const AddSavingsContributionModal = ({
               />
             </div>
           </div>
+
+          {error && (
+            <p className="text-xs text-rose-400 flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">
+              <AlertCircle size={13} className="shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn-secondary">

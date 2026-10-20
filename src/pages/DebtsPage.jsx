@@ -92,8 +92,6 @@ const DebtsPage = () => {
         ? 26 / 12
         : freq === "weekly"
         ? 52 / 12
-        : freq === "bi-monthly"
-        ? 2
         : freq === "yearly"
         ? 1 / 12
         : 1;
@@ -215,8 +213,8 @@ const DebtsPage = () => {
                     ? 26 / 12
                     : freq === "weekly"
                     ? 52 / 12
-                    : freq === "bi-monthly"
-                    ? 2
+                    : freq === "yearly"
+                    ? 1 / 12
                     : 1;
                 const effectiveMonthlyPayment = paymentPerPeriod * paymentsPerMonth;
                 const payoffMonths =
