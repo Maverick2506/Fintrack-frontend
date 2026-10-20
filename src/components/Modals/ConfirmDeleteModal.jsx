@@ -7,6 +7,9 @@ const ConfirmDeleteModal = ({
   onConfirm,
   itemType = "item",
   itemName = "",
+  title,
+  description,
+  confirmLabel = "Delete",
 }) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -38,7 +41,7 @@ const ConfirmDeleteModal = ({
             </div>
             <div>
               <h2 id="delete-dialog-title" className="text-sm font-semibold text-zinc-100">
-                Delete {itemType}?
+                {title || `Delete ${itemType}?`}
               </h2>
               {itemName && (
                 <p className="text-xs text-zinc-400 truncate max-w-[200px]">
@@ -58,7 +61,7 @@ const ConfirmDeleteModal = ({
         </div>
 
         <p className="text-xs text-zinc-400 leading-relaxed mb-5">
-          This action is permanent and will remove this {itemType} from your records.
+          {description || `This action is permanent and will remove this ${itemType} from your records.`}
         </p>
 
         <div className="flex justify-end gap-2">
@@ -70,7 +73,7 @@ const ConfirmDeleteModal = ({
             onClick={onConfirm}
             className="px-3.5 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/25 text-xs font-medium rounded-lg transition-colors cursor-pointer"
           >
-            Delete
+            {confirmLabel}
           </button>
         </div>
       </div>

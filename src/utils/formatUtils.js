@@ -41,3 +41,19 @@ export const formatShortDate = (dateStr) => {
     timeZone: "UTC",
   });
 };
+
+/**
+ * Formats an ISO YYYY-MM-DD date string into a friendly "MMM YYYY" string (e.g. "Jan 2030", "Mar 2029").
+ */
+export const formatMonthYear = (dateStr) => {
+  if (!dateStr) return "";
+  const parts = String(dateStr).split("T")[0].split("-").map(Number);
+  if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return dateStr;
+  const [y, m, d = 1] = parts;
+  const date = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+};

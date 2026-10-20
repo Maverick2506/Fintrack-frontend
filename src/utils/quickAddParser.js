@@ -45,7 +45,7 @@ const CATEGORY_KEYWORDS = {
     "phone",
     "mobile",
   ],
-  Subscriptions: [
+  Subscription: [
     "netflix",
     "spotify",
     "apple",
@@ -58,7 +58,7 @@ const CATEGORY_KEYWORDS = {
     "sub",
     "patreon",
   ],
-  Transport: [
+  Transportation: [
     "uber",
     "lyft",
     "gas",
@@ -162,9 +162,17 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
     dateMatched = true;
     text = text.replace(dueFullMatch[0], " ").trim();
   } else if (dueShortMatch) {
-    const year = baseDate.getFullYear();
-    const month = String(parseInt(dueShortMatch[1], 10)).padStart(2, "0");
-    const day = String(parseInt(dueShortMatch[2], 10)).padStart(2, "0");
+    let year = baseDate.getFullYear();
+    const monthNum = parseInt(dueShortMatch[1], 10);
+    const dayNum = parseInt(dueShortMatch[2], 10);
+    // If the candidate date is more than 60 days in the past (e.g. due 1/05 in December), use next year
+    const candidateDate = new Date(year, monthNum - 1, dayNum);
+    const diffMs = baseDate.getTime() - candidateDate.getTime();
+    if (diffMs > 60 * 24 * 60 * 60 * 1000) {
+      year += 1;
+    }
+    const month = String(monthNum).padStart(2, "0");
+    const day = String(dayNum).padStart(2, "0");
     date = `${year}-${month}-${day}`;
     is_paid = date <= formatDateStr(baseDate);
     dateMatched = true;
@@ -251,6 +259,15 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
 
   const isValid = amount !== null && amount > 0 && cleanName.length > 0;
 
+  // Default applyToBalance: true for card charges dated today or 1-2 days ago (Phase D default)
+  let applyToBalance = false;
+  if (creditCardId && type === "expense") {
+    const candidate = new Date(date + "T12:00:00Z");
+    const todayZoned = new Date(formatDateStr(baseDate) + "T12:00:00Z");
+    const diffDays = Math.round((todayZoned - candidate) / (1000 * 60 * 60 * 24));
+    applyToBalance = diffDays >= 0 && diffDays <= 2;
+  }
+
   return {
     type,
     name: cleanName,
@@ -260,6 +277,7 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
     accountName,
     date,
     is_paid,
+    applyToBalance,
     recurrence: "none",
     rawInput: input,
     isValid,

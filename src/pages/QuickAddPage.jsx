@@ -94,6 +94,7 @@ const QuickAddPage = () => {
           category: parsed.category,
           creditCardId: parsed.creditCardId,
           is_paid: parsed.is_paid,
+          applyToBalance: parsed.applyToBalance,
           recurrence: "none",
           clientRef,
         });

@@ -105,7 +105,7 @@ const SubscriptionsPage = () => {
     if (!cancelTarget) return;
     try {
       await dashboardService.cancelSubscription(
-        cancelTarget.latestTransactionId
+        cancelTarget.recurringGroupId || cancelTarget.id || cancelTarget.latestTransactionId
       );
       setCancelTarget(null);
       await loadSubscriptions();
@@ -404,6 +404,13 @@ const SubscriptionsPage = () => {
         onConfirm={handleConfirmCancel}
         itemType="subscription"
         itemName={cancelTarget?.name}
+        title={cancelTarget ? `Cancel ${cancelTarget.name}?` : "Cancel subscription?"}
+        description={
+          cancelTarget?.unpaidUpcomingCount > 0
+            ? `This stops future recurring occurrences and removes ${cancelTarget.unpaidUpcomingCount} upcoming unpaid charge${cancelTarget.unpaidUpcomingCount > 1 ? "s" : ""} (${formatCurrency(cancelTarget.unpaidUpcomingTotal)}).`
+            : "This stops future recurring occurrences."
+        }
+        confirmLabel="Cancel Subscription"
       />
     </div>
   );

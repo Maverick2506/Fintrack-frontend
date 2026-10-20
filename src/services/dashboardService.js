@@ -43,6 +43,11 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * CRITICAL ARCHITECTURAL RULE: handleRequest is ONLY for state-mutating write operations (POST, PUT, DELETE).
+ * NEVER wrap GET read requests in handleRequest, as handleRequest calls queryClient.invalidateQueries(),
+ * which triggers an endless request loop when integrated with React Query.
+ */
 const handleRequest = async (
   requestPromise,
   successMessage,
@@ -196,14 +201,14 @@ const dashboardService = {
   addExpense: async (expenseData) => {
     return handleRequest(
       api.post("/expenses", expenseData),
-      "Expense saved!"
+      null
     );
   },
 
   addPaycheque: async (paychequeData) => {
     return handleRequest(
       api.post("/paycheques", paychequeData),
-      "Income recorded!"
+      null
     );
   },
 
@@ -273,9 +278,9 @@ const dashboardService = {
     return api.get("/subscriptions").then((res) => res.data);
   },
 
-  cancelSubscription: async (transactionId) => {
+  cancelSubscription: async (id) => {
     return handleRequest(
-      api.put(`/expenses/${transactionId}`, { recurrence: "none" }),
+      api.post(`/subscriptions/${id}/cancel`),
       "Subscription cancelled (future recurring occurrences stopped)."
     );
   },
@@ -359,11 +364,11 @@ const dashboardService = {
   },
 
   fetchForecast: async (days = 60) => {
-    return handleRequest(api.get(`/forecast?days=${days}`));
+    return api.get(`/forecast?days=${days}`).then((res) => res.data);
   },
 
   fetchForecastBuffer: async () => {
-    return handleRequest(api.get("/settings/forecast-buffer"));
+    return api.get("/settings/forecast-buffer").then((res) => res.data);
   },
 
   updateForecastBuffer: async (buffer) => {
@@ -373,7 +378,7 @@ const dashboardService = {
     );
   },
   fetchNetWorthHistory: async (months = 12) => {
-    return handleRequest(api.get(`/net-worth-history?months=${months}`));
+    return api.get(`/net-worth-history?months=${months}`).then((res) => res.data);
   },
 };
 

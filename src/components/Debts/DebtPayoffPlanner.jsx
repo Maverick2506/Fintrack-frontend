@@ -19,7 +19,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { comparePlans } from "../../utils/debtMath";
-import { formatCurrency, formatShortDate } from "../../utils/formatUtils";
+import { formatCurrency, formatShortDate, formatMonthYear } from "../../utils/formatUtils";
 
 const CustomPlannerTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
@@ -216,7 +216,7 @@ const DebtPayoffPlanner = ({ debts = [], onEditDebt }) => {
         <div className="glass-card p-3.5">
           <p className="text-[11px] text-zinc-500 mb-0.5">Target Debt-Free Date</p>
           <p className="text-lg font-semibold text-zinc-100 tabular-nums">
-            {planned?.debtFreeDate ? formatShortDate(planned.debtFreeDate) : "—"}
+            {planned?.debtFreeDate ? formatMonthYear(planned.debtFreeDate) : "—"}
           </p>
           <p className="text-[11px] text-zinc-500">
             {planned?.debtFreeMonth ? `In ~${planned.debtFreeMonth} months` : "Not reachable"}
@@ -355,7 +355,7 @@ const DebtPayoffPlanner = ({ debts = [], onEditDebt }) => {
                     </span>
                   </span>
                   <span className="text-emerald-400 font-medium">
-                    {d.payoffDate ? `Paid off ${formatShortDate(d.payoffDate)}` : "—"}
+                    {d.payoffDate ? `Paid off ${formatMonthYear(d.payoffDate)}` : "—"}
                   </span>
                 </div>
               </div>

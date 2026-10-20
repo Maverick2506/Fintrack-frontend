@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { formatCurrency, formatShortDate } from "../utils/formatUtils";
+import { formatCurrency, formatMonthYear } from "../utils/formatUtils";
 import { simulate } from "../utils/debtMath";
 import DebtPayoffPlanner from "../components/Debts/DebtPayoffPlanner";
 import {
@@ -321,7 +321,7 @@ const DebtsPage = () => {
                             Est. payoff in ~{payoffMonths}{" "}
                             {payoffMonths === 1 ? "month" : "months"}
                             {debtDetail?.payoffDate && (
-                              <span> ({formatShortDate(debtDetail.payoffDate)})</span>
+                              <span> ({formatMonthYear(debtDetail.payoffDate)})</span>
                             )}
                             {debtDetail?.totalInterest > 0 && (
                               <span className="text-zinc-500">

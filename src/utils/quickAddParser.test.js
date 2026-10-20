@@ -22,6 +22,7 @@ assert.strictEqual(t1.name, "Lunch", "[PASS] Clean name is 'Lunch'");
 assert.strictEqual(t1.creditCardId, "card-1", "[PASS] Matches Visa Infinite");
 assert.strictEqual(t1.category, "Food & Drink", "[PASS] Categorized as 'Food & Drink'");
 assert.strictEqual(t1.is_paid, true, "[PASS] Defaults to is_paid: true");
+assert.strictEqual(t1.applyToBalance, true, "[PASS] Today card charge has applyToBalance: true");
 assert.strictEqual(t1.date, "2026-04-15", "[PASS] Date is today");
 assert.strictEqual(t1.isValid, true, "[PASS] isValid is true");
 
@@ -67,6 +68,21 @@ console.log("\n--- Test 6: Incomplete Input ---");
 const t6 = parseQuickAdd("just some text", mockCards, fixedToday);
 assert.strictEqual(t6.amount, null, "[PASS] Amount is null");
 assert.strictEqual(t6.isValid, false, "[PASS] isValid is false");
+
+// --- Test 7: Exact Category Names Matching CATEGORY_CONFIG (Phase L Polish) ---
+console.log("\n--- Test 7: Category Names match CATEGORY_CONFIG (Transportation & Subscription) ---");
+const t7a = parseQuickAdd("18.99 netflix", mockCards, fixedToday);
+assert.strictEqual(t7a.category, "Subscription", "[PASS] Categorized as 'Subscription' (singular)");
+const t7b = parseQuickAdd("35 uber visa", mockCards, fixedToday);
+assert.strictEqual(t7b.category, "Transportation", "[PASS] Categorized as 'Transportation'");
+assert.strictEqual(t7b.applyToBalance, true, "[PASS] Card charge has applyToBalance: true");
+
+// --- Test 8: Year Boundary Wrap (due in early next year) ---
+console.log("\n--- Test 8: Year Boundary Wrap (due 1/15 entered in late December) ---");
+const decToday = new Date("2026-12-20T12:00:00Z");
+const t8 = parseQuickAdd("90 hydro due 1/15", mockCards, decToday);
+assert.strictEqual(t8.date, "2027-01-15", "[PASS] Advances year to 2027 instead of past 2026-01-15");
+assert.strictEqual(t8.is_paid, false, "[PASS] Flagged as unpaid future bill");
 
 console.log("\n==================================================");
 console.log("   ALL QUICK-ADD PARSER TESTS PASSED              ");
