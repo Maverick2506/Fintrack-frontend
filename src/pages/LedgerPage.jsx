@@ -554,18 +554,16 @@ const LedgerPage = () => {
                       </td>
                       <td className="py-3 pr-3 sm:px-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity whitespace-nowrap">
                         <div className="inline-flex items-center gap-0.5">
-                          {row.type !== "transfer" && (
-                            <button
-                              onClick={() => {
-                                setEditingTx(row);
-                                setIsTxModalOpen(true);
-                              }}
-                              title="Edit transaction"
-                              className="btn-ghost-icon"
-                            >
-                              <Pencil size={13} />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => {
+                              setEditingTx(row);
+                              setIsTxModalOpen(true);
+                            }}
+                            title="Edit transaction"
+                            className="btn-ghost-icon"
+                          >
+                            <Pencil size={13} />
+                          </button>
                           <button
                             onClick={() => setDeleteTarget(row)}
                             title="Delete transaction"
