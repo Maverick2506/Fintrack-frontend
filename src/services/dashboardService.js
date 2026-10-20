@@ -347,6 +347,9 @@ const dashboardService = {
       "Forecast buffer updated!"
     );
   },
+  fetchNetWorthHistory: async (months = 12) => {
+    return handleRequest(api.get(`/net-worth-history?months=${months}`));
+  },
 };
 
 export default dashboardService;

@@ -86,6 +86,11 @@ const DashboardPage = () => {
     queryFn: () => dashboardService.fetchBudgets(selectedMonthStr),
   });
 
+  const { data: netWorthHistory } = useQuery({
+    queryKey: ["netWorthHistory", 12],
+    queryFn: () => dashboardService.fetchNetWorthHistory(12),
+  });
+
   const { data: forecast } = useQuery({
     queryKey: ["forecast"],
     queryFn: () => dashboardService.fetchForecast(60),
@@ -186,6 +191,7 @@ const DashboardPage = () => {
     queryClient.invalidateQueries({ queryKey: ["spendingData"] });
     queryClient.invalidateQueries({ queryKey: ["budgets"] });
     queryClient.invalidateQueries({ queryKey: ["forecast"] });
+    queryClient.invalidateQueries({ queryKey: ["netWorthHistory"] });
   };
 
   const markAsPaidMutation = useMutation({
@@ -407,6 +413,27 @@ const DashboardPage = () => {
               >
                 {formatCurrency(netWorth)}
               </p>
+              <div className="mt-1 text-[11px] tabular-nums">
+                {netWorthHistory?.change30Days ? (
+                  <span
+                    className={
+                      netWorthHistory.change30Days.absolute >= 0
+                        ? "text-emerald-400 font-medium"
+                        : "text-rose-400 font-medium"
+                    }
+                  >
+                    {netWorthHistory.change30Days.absolute >= 0 ? "+" : ""}
+                    {formatCurrency(netWorthHistory.change30Days.absolute)}
+                    {netWorthHistory.change30Days.percentage !== null &&
+                      ` (${netWorthHistory.change30Days.percentage >= 0 ? "+" : ""}${netWorthHistory.change30Days.percentage.toFixed(1)}%)`}
+                    <span className="text-zinc-500 font-normal"> vs 30d ago</span>
+                  </span>
+                ) : (
+                  <span className="text-zinc-500 font-normal">
+                    Tracking since Oct 2026
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-2.5 pt-2 border-t border-white/[0.06]">

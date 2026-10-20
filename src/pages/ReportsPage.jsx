@@ -6,6 +6,7 @@ import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
 import TransactionList from "../components/Dashboard/TransactionList";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import SpendingTrendsChart from "../components/Dashboard/SpendingTrendsChart";
+import NetWorthHistoryChart from "../components/Dashboard/NetWorthHistoryChart";
 import CategoryDetailModal from "../components/Modals/CategoryDetailModal";
 import { formatCurrency } from "../utils/formatUtils";
 
@@ -32,6 +33,11 @@ const ReportsPage = () => {
   const [budgetInput, setBudgetInput] = useState("");
 
   const selectedMonthStr = `${selectedDate.year}-${String(selectedDate.month).padStart(2, "0")}`;
+
+  const { data: netWorthHistoryData } = useQuery({
+    queryKey: ["netWorthHistory", 12],
+    queryFn: () => dashboardService.fetchNetWorthHistory(12),
+  });
 
   const { data: serverBudgets = [] } = useQuery({
     queryKey: ["budgets", selectedMonthStr],
@@ -242,6 +248,7 @@ const ReportsPage = () => {
       ) : reportData ? (
         <div className="space-y-6">
           <SpendingTrendsChart data={trendsData} />
+          <NetWorthHistoryChart snapshots={netWorthHistoryData?.snapshots} change30Days={netWorthHistoryData?.change30Days} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Month-over-month comparison */}
