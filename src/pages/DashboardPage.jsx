@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Check, X } from "lucide-react";
 import { logout } from "../utils/auth";
@@ -63,7 +64,7 @@ const DashboardPage = () => {
       dashboardService.fetchDashboard(selectedYear, selectedMonth),
   });
 
-  const spendingData = dashboardData?.spendingSummary || [];
+  const spendingData = useMemo(() => dashboardData?.spendingSummary || [], [dashboardData?.spendingSummary]);
   const loading = dashboardLoading;
 
   const upcomingBills = useMemo(() => {
@@ -77,6 +78,35 @@ const DashboardPage = () => {
       return d && d >= startStr && d <= endStr;
     });
   }, [dashboardData?.upcomingBills, selectedYear, selectedMonth]);
+
+  const selectedMonthStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
+  const { data: serverBudgets = [] } = useQuery({
+    queryKey: ["budgets", selectedMonthStr],
+    queryFn: () => dashboardService.fetchBudgets(selectedMonthStr),
+  });
+
+  const topBudgets = useMemo(() => {
+    if (!serverBudgets.length || !spendingData.length) return [];
+    const budgetMap = new Map(serverBudgets.map((b) => [b.category, b.monthlyLimit]));
+
+    const items = [];
+    for (const item of spendingData) {
+      const limit = budgetMap.get(item.name);
+      if (limit && limit > 0) {
+        const spent = Number(item.value) || 0;
+        const pct = (spent / limit) * 100;
+        items.push({
+          category: item.name,
+          spent,
+          limit,
+          pct,
+        });
+      }
+    }
+
+    items.sort((a, b) => b.pct - a.pct);
+    return items.slice(0, 3);
+  }, [serverBudgets, spendingData]);
   const [modals, setModals] = useState({
     transaction: false,
     debt: false,
@@ -141,6 +171,7 @@ const DashboardPage = () => {
   const invalidateDashboard = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboardData"] });
     queryClient.invalidateQueries({ queryKey: ["spendingData"] });
+    queryClient.invalidateQueries({ queryKey: ["budgets"] });
   };
 
   const markAsPaidMutation = useMutation({
@@ -437,6 +468,66 @@ const DashboardPage = () => {
                 openModal("delete", { toDeleteIds: ids })
               }
             />
+            {topBudgets.length > 0 && (
+              <div className="glass-panel p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Category Budgets
+                  </p>
+                  <Link
+                    to="/reports"
+                    className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    View all in Reports →
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {topBudgets.map((b) => {
+                    const isOver = b.pct >= 100;
+                    const isWarning = b.pct >= 80 && !isOver;
+                    const statusColor = isOver
+                      ? "text-rose-400"
+                      : isWarning
+                      ? "text-amber-400"
+                      : "text-emerald-400";
+                    const barColor = isOver
+                      ? "bg-rose-500"
+                      : isWarning
+                      ? "bg-amber-400"
+                      : "bg-emerald-400";
+
+                    return (
+                      <div key={b.category} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs tabular-nums">
+                          <span className="text-zinc-300 font-medium truncate max-w-[140px]">
+                            {b.category}
+                          </span>
+                          <span className="text-zinc-400">
+                            <span className={statusColor}>
+                              {formatCurrency(b.spent)}
+                            </span>
+                            <span className="text-zinc-500"> / {formatCurrency(b.limit)}</span>
+                            <span
+                              className={`ml-1.5 text-[11px] font-medium ${statusColor}`}
+                            >
+                              ({b.pct.toFixed(0)}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                            style={{
+                              width: `${Math.min(b.pct, 100).toFixed(1)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {spendingData && spendingData.length > 0 && (
               <SpendingChartCard data={spendingData} />
             )}

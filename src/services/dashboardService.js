@@ -279,6 +279,59 @@ const dashboardService = {
       "New secret feed key generated!"
     );
   },
+
+  fetchBudgets: async (month) => {
+    const url = month ? `/budgets?month=${encodeURIComponent(month)}` : "/budgets";
+    const data = await api.get(url).then((res) => res.data);
+
+    // One-time automatic migration from localStorage if server has no budgets
+    if (
+      Array.isArray(data) &&
+      data.length === 0 &&
+      localStorage.getItem("fintrack_budgets_migrated") !== "1"
+    ) {
+      try {
+        const raw = localStorage.getItem("fintrack_budgets");
+        if (raw) {
+          const localBudgets = JSON.parse(raw);
+          const entries = Object.entries(localBudgets);
+          if (entries.length > 0) {
+            for (const [cat, limit] of entries) {
+              const val = parseFloat(limit);
+              if (!isNaN(val) && val > 0) {
+                await api.put(`/budgets/${encodeURIComponent(cat)}`, {
+                  monthlyLimit: val,
+                });
+              }
+            }
+            localStorage.setItem("fintrack_budgets_migrated", "1");
+            return api.get(url).then((res) => res.data);
+          }
+        }
+        localStorage.setItem("fintrack_budgets_migrated", "1");
+      } catch (err) {
+        console.error("Budget migration error:", err);
+      }
+    }
+    return data;
+  },
+
+  saveBudget: async (category, monthlyLimit, rollover = false) => {
+    return handleRequest(
+      api.put(`/budgets/${encodeURIComponent(category)}`, {
+        monthlyLimit,
+        rollover,
+      }),
+      "Budget limit updated!"
+    );
+  },
+
+  deleteBudget: async (category) => {
+    return handleRequest(
+      api.delete(`/budgets/${encodeURIComponent(category)}`),
+      "Budget limit removed!"
+    );
+  },
 };
 
 export default dashboardService;

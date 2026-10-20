@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Pencil, X, Check } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import SpendingChartCard from "../components/Dashboard/SpendingChartCard";
@@ -27,12 +28,23 @@ const ReportsPage = () => {
   const [categoryTransactions, setCategoryTransactions] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: "due_date", direction: "ASC" });
 
-  const [budgets, setBudgets] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("fintrack_budgets") || "{}"); }
-    catch { return {}; }
-  });
   const [editingBudget, setEditingBudget] = useState(null);
   const [budgetInput, setBudgetInput] = useState("");
+
+  const selectedMonthStr = `${selectedDate.year}-${String(selectedDate.month).padStart(2, "0")}`;
+
+  const { data: serverBudgets = [] } = useQuery({
+    queryKey: ["budgets", selectedMonthStr],
+    queryFn: () => dashboardService.fetchBudgets(selectedMonthStr),
+  });
+
+  const budgets = useMemo(() => {
+    const map = {};
+    for (const b of serverBudgets) {
+      map[b.category] = b.monthlyLimit;
+    }
+    return map;
+  }, [serverBudgets]);
 
   const currentYear = new Date().getFullYear();
   const availableYears = useMemo(() => {
@@ -45,22 +57,17 @@ const ReportsPage = () => {
     return years;
   }, [currentYear]);
 
-  const saveBudget = (category) => {
+  const saveBudget = async (category) => {
     const val = parseFloat(budgetInput);
     if (!isNaN(val) && val > 0) {
-      const updated = { ...budgets, [category]: val };
-      setBudgets(updated);
-      localStorage.setItem("fintrack_budgets", JSON.stringify(updated));
+      await dashboardService.saveBudget(category, val);
     }
     setEditingBudget(null);
     setBudgetInput("");
   };
 
-  const removeBudget = (category) => {
-    const updated = { ...budgets };
-    delete updated[category];
-    setBudgets(updated);
-    localStorage.setItem("fintrack_budgets", JSON.stringify(updated));
+  const removeBudget = async (category) => {
+    await dashboardService.deleteBudget(category);
   };
 
   const fetchReportData = useCallback(async () => {
