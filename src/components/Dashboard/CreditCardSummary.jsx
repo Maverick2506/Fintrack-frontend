@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { formatCurrency } from "../../utils/formatUtils";
 
 const CreditCardSummary = ({ creditCards }) => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ const CreditCardSummary = ({ creditCards }) => {
                   </span>
                   <div className="flex items-baseline gap-2 tabular-nums">
                     <span className="text-sm font-semibold text-zinc-100">
-                      ${parseFloat(card.initialBalance).toFixed(2)}
+                      {formatCurrency(card.initialBalance)}
                     </span>
                     <span className="text-xs text-zinc-500">
                       ({utilization.toFixed(0)}%)

@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency } from "../../utils/formatUtils";
 
 const CategoryDetailModal = ({ isOpen, onClose, category, transactions }) => {
   if (!isOpen) return null;
@@ -32,7 +33,7 @@ const CategoryDetailModal = ({ isOpen, onClose, category, transactions }) => {
                   </p>
                 </div>
                 <span className="text-sm font-semibold tabular-nums text-rose-400">
-                  -${parseFloat(t.amount).toFixed(2)}
+                  -{formatCurrency(Math.abs(parseFloat(t.amount) || 0))}
                 </span>
               </li>
             ))}

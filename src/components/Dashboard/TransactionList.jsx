@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency } from "../../utils/formatUtils";
 import { Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
@@ -92,7 +93,7 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
               </div>
               <div className="w-24 text-right tabular-nums shrink-0">
                 <span className="text-sm font-medium text-zinc-200">
-                  -${parseFloat(transaction.amount).toFixed(2)}
+                  -{formatCurrency(Math.abs(parseFloat(transaction.amount) || 0))}
                 </span>
               </div>
               <div className="w-8 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">

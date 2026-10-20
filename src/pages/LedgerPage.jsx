@@ -15,6 +15,7 @@ import {
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
+import { formatCurrency, formatNumber } from "../utils/formatUtils";
 
 const CATEGORY_COLORS = {
   Income:                "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -223,6 +224,22 @@ const LedgerPage = () => {
     .filter((r) => r.type === "expense")
     .reduce((s, r) => s + r.amount, 0);
 
+  const clearedIncome = filtered
+    .filter((r) => r.type === "income" && r.is_paid)
+    .reduce((s, r) => s + r.amount, 0);
+  const pendingIncome = filtered
+    .filter((r) => r.type === "income" && !r.is_paid)
+    .reduce((s, r) => s + r.amount, 0);
+
+  const clearedExpense = filtered
+    .filter((r) => r.type === "expense" && r.is_paid)
+    .reduce((s, r) => s + r.amount, 0);
+  const pendingExpense = filtered
+    .filter((r) => r.type === "expense" && !r.is_paid)
+    .reduce((s, r) => s + r.amount, 0);
+
+  const clearedNet = clearedIncome - clearedExpense;
+
   const SortIcon = ({ k }) => {
     if (sortKey !== k)
       return <ArrowUpDown size={12} className="text-zinc-600 inline ml-1" />;
@@ -283,41 +300,57 @@ const LedgerPage = () => {
       {/* Summary bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="glass-panel p-5">
-          <p className="text-xs font-medium text-zinc-500 mb-1">Total Income</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-zinc-500">Total Income</p>
+            {pendingIncome > 0 && (
+              <span className="text-[10px] text-zinc-500 font-medium" title="Unreceived future paycheques">
+                +{formatCurrency(pendingIncome)} upcoming
+              </span>
+            )}
+          </div>
           <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
-            +$
-            {totalIncome.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            +{formatCurrency(clearedIncome)}
+          </p>
+          <p className="text-[11px] text-zinc-500 mt-1">
+            Cleared ({filtered.filter((r) => r.type === "income" && r.is_paid).length} received)
           </p>
         </div>
         <div className="glass-panel p-5">
-          <p className="text-xs font-medium text-zinc-500 mb-1">
-            Total Expenses
-          </p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-zinc-500">Total Expenses</p>
+            {pendingExpense > 0 && (
+              <span className="text-[10px] text-zinc-500 font-medium" title="Unpaid upcoming bills">
+                {formatCurrency(pendingExpense)} upcoming
+              </span>
+            )}
+          </div>
           <p className="text-2xl font-semibold text-rose-400 tabular-nums">
-            -$
-            {totalExpense.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            -{formatCurrency(clearedExpense)}
+          </p>
+          <p className="text-[11px] text-zinc-500 mt-1">
+            Cleared ({filtered.filter((r) => r.type === "expense" && r.is_paid).length} paid)
           </p>
         </div>
         <div className="glass-panel p-5">
-          <p className="text-xs font-medium text-zinc-500 mb-1">Net Balance</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-zinc-500">Net Cleared</p>
+            {(pendingIncome > 0 || pendingExpense > 0) && (
+              <span className="text-[10px] text-zinc-500 font-medium" title="Projected net if all upcoming items clear">
+                Proj: {formatCurrency(totalIncome - totalExpense)}
+              </span>
+            )}
+          </div>
           <p
             className={`text-2xl font-semibold tabular-nums ${
-              totalIncome - totalExpense >= 0
+              clearedNet >= 0
                 ? "text-zinc-100"
                 : "text-rose-400"
             }`}
           >
-            $
-            {(totalIncome - totalExpense).toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {formatCurrency(clearedNet)}
+          </p>
+          <p className="text-[11px] text-zinc-500 mt-1">
+            Cleared income minus paid expenses
           </p>
         </div>
       </div>
@@ -547,9 +580,19 @@ const LedgerPage = () => {
                         </button>
                       </td>
                       <td className="py-3 px-3 sm:px-4">
-                        <span className="text-zinc-200 font-medium text-sm block">
-                          {row.name}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-medium ${row.is_paid ? "text-zinc-200" : "text-zinc-400"}`}>
+                            {row.name}
+                          </span>
+                          {!row.is_paid && (
+                            <span
+                              className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap"
+                              title="Upcoming / not yet cleared"
+                            >
+                              Upcoming
+                            </span>
+                          )}
+                        </div>
                         {/* Mobile inline Category + Date subtitle */}
                         <div className="flex flex-wrap items-center gap-1.5 mt-1 sm:hidden">
                           <span
@@ -582,10 +625,14 @@ const LedgerPage = () => {
                         <span
                           className={
                             row.type === "income"
-                              ? "text-emerald-400"
+                              ? row.is_paid
+                                ? "text-emerald-400"
+                                : "text-emerald-400/70"
                               : row.type === "transfer"
                               ? "text-zinc-400"
-                              : "text-zinc-200"
+                              : row.is_paid
+                              ? "text-zinc-200"
+                              : "text-zinc-400"
                           }
                         >
                           {row.type === "income"
@@ -593,7 +640,7 @@ const LedgerPage = () => {
                             : row.type === "transfer"
                             ? "⇄ "
                             : "-"}
-                          ${row.amount.toFixed(2)}
+                          ${formatNumber(row.amount)}
                         </span>
                       </td>
                       <td className="py-3 pr-3 sm:px-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity whitespace-nowrap">

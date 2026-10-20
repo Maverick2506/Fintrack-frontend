@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency } from "../../utils/formatUtils";
 import {
   PieChart,
   Pie,
@@ -31,7 +32,7 @@ const CustomTooltip = ({ active, payload }) => {
           <p className="text-zinc-400 text-xs font-medium">{payload[0].name}</p>
         </div>
         <p className="text-zinc-100 text-sm font-semibold pl-4 tabular-nums">
-          ${parseFloat(payload[0].value).toFixed(2)}
+          {formatCurrency(payload[0].value)}
         </p>
       </div>
     );

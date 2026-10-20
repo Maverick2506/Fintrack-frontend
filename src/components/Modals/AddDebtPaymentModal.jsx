@@ -1,3 +1,4 @@
+import { formatCurrency } from "../../utils/formatUtils";
 import { useState, useEffect } from "react";
 import { X, Landmark, CheckCircle2, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
@@ -143,7 +144,7 @@ const AddDebtPaymentModal = ({
                   }}
                   className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/10 transition-colors font-medium cursor-pointer"
                 >
-                  Pay Full (${currentRemaining.toFixed(2)})
+                  Pay Full ({formatCurrency(currentRemaining)})
                 </button>
               )}
               {monthlyPayment > 0 && monthlyPayment < currentRemaining && (
@@ -155,7 +156,7 @@ const AddDebtPaymentModal = ({
                   }}
                   className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/10 transition-colors font-medium cursor-pointer"
                 >
-                  Pay Monthly Due (${monthlyPayment.toFixed(2)})
+                  Pay Monthly Due ({formatCurrency(monthlyPayment)})
                 </button>
               )}
             </div>
@@ -230,7 +231,7 @@ const AddDebtPaymentModal = ({
 
               {isOverpaying ? (
                 <p className="text-[11px] text-rose-400/90 mt-1">
-                  Maximum payment allowed is ${currentRemaining.toFixed(2)}.
+                  Maximum payment allowed is {formatCurrency(currentRemaining)}.
                 </p>
               ) : totalOriginal > 0 ? (
                 <div className="mt-2 space-y-1">
@@ -251,7 +252,7 @@ const AddDebtPaymentModal = ({
                   </div>
                   <div className="flex justify-between text-[10px] text-zinc-400 tabular-nums">
                     <span>
-                      ${(totalOriginal - newRemaining).toFixed(2)} paid total
+                      {formatCurrency(totalOriginal - newRemaining)} paid total
                     </span>
                     <span>
                       {Math.min(
@@ -290,9 +291,9 @@ const AddDebtPaymentModal = ({
               {isSubmitting
                 ? "Saving..."
                 : isFullyPaid
-                ? `Pay Off Debt ($${numAmount.toFixed(2)})`
+                ? `Pay Off Debt (${formatCurrency(numAmount)})`
                 : numAmount > 0
-                ? `Save Payment ($${numAmount.toFixed(2)})`
+                ? `Save Payment (${formatCurrency(numAmount)})`
                 : "Save Payment"}
             </button>
           </div>

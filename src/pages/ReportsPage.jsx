@@ -6,6 +6,7 @@ import TransactionList from "../components/Dashboard/TransactionList";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import SpendingTrendsChart from "../components/Dashboard/SpendingTrendsChart";
 import CategoryDetailModal from "../components/Modals/CategoryDetailModal";
+import { formatCurrency } from "../utils/formatUtils";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -183,13 +184,13 @@ const ReportsPage = () => {
           <div className="glass-panel p-4">
             <p className="text-xs font-medium text-zinc-500 mb-1">Income</p>
             <p className="text-xl font-semibold text-emerald-400 tabular-nums">
-              ${income.toFixed(2)}
+              {formatCurrency(income)}
             </p>
           </div>
           <div className="glass-panel p-4">
             <p className="text-xs font-medium text-zinc-500 mb-1">Spent</p>
             <p className="text-xl font-semibold text-rose-400 tabular-nums">
-              ${spending.toFixed(2)}
+              {formatCurrency(spending)}
             </p>
           </div>
           <div className="glass-panel p-4">
@@ -262,7 +263,7 @@ const ReportsPage = () => {
                             curr >= 0 ? "text-zinc-100" : "text-rose-400"
                           }`}
                         >
-                          ${curr.toFixed(2)}
+                          {formatCurrency(curr)}
                         </p>
                       </div>
                       <div className="glass-card p-3.5">
@@ -272,7 +273,7 @@ const ReportsPage = () => {
                             prev >= 0 ? "text-zinc-300" : "text-rose-400"
                           }`}
                         >
-                          ${prev.toFixed(2)}
+                          {formatCurrency(prev)}
                         </p>
                       </div>
                     </div>
@@ -337,7 +338,7 @@ const ReportsPage = () => {
                                   <div className="flex justify-between text-xs mb-1 tabular-nums">
                                     <span className="text-zinc-300">{cat.name}</span>
                                     <span className={isOver ? "text-rose-400 font-medium" : "text-zinc-400"}>
-                                      ${cat.value.toFixed(2)} / ${limit.toFixed(2)}
+                                      {formatCurrency(cat.value)} / {formatCurrency(limit)}
                                     </span>
                                   </div>
                                   <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
@@ -360,7 +361,7 @@ const ReportsPage = () => {
                   <div className="border-t border-white/[0.06] pt-4 flex items-center justify-between">
                     <span className="text-xs text-zinc-500">Net Delta vs. Prior Month</span>
                     <span className={`text-sm font-semibold tabular-nums ${changeColor}`}>
-                      {arrow} ${Math.abs(netChange).toFixed(2)}
+                      {arrow} {formatCurrency(Math.abs(netChange))}
                     </span>
                   </div>
                 </div>
@@ -384,8 +385,8 @@ const ReportsPage = () => {
                         <div key={cat.name} className="flex items-center justify-between text-xs py-1">
                           <span className="text-zinc-300 font-medium w-32 truncate">{cat.name}</span>
                           <span className={`tabular-nums ${over ? "text-rose-400 font-medium" : "text-zinc-400"}`}>
-                            ${cat.value.toFixed(2)}
-                            {limit && <span className="text-zinc-500"> / ${limit.toFixed(2)}</span>}
+                            {formatCurrency(cat.value)}
+                            {limit && <span className="text-zinc-500"> / {formatCurrency(limit)}</span>}
                           </span>
                           {editingBudget === cat.name ? (
                             <div className="flex items-center gap-1">
