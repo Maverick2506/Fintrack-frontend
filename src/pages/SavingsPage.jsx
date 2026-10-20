@@ -8,6 +8,31 @@ import EditSavingsGoalModal from "../components/Modals/EditSavingsGoalModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import dashboardService from "../services/dashboardService";
 
+const getRegBadge = (type) => {
+  switch (type) {
+    case "TFSA":
+      return {
+        label: "TFSA",
+        className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        full: "Tax-Free Savings Account",
+      };
+    case "RRSP":
+      return {
+        label: "RRSP",
+        className: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+        full: "Registered Retirement Savings Plan",
+      };
+    case "FHSA":
+      return {
+        label: "FHSA",
+        className: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+        full: "First Home Savings Account",
+      };
+    default:
+      return null;
+  }
+};
+
 const SavingsPage = () => {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,6 +179,7 @@ const SavingsPage = () => {
             const target = parseFloat(goal.goal_amount) || 0;
             const progress = target > 0 ? (current / target) * 100 : 0;
             const remaining = Math.max(0, target - current);
+            const regBadge = getRegBadge(goal.registeredType);
 
             return (
               <div
@@ -163,9 +189,19 @@ const SavingsPage = () => {
                 <div>
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h2 className="text-base font-semibold text-zinc-100">
-                        {goal.name}
-                      </h2>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-base font-semibold text-zinc-100">
+                          {goal.name}
+                        </h2>
+                        {regBadge && (
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${regBadge.className}`}
+                            title={regBadge.full}
+                          >
+                            {regBadge.label}
+                          </span>
+                        )}
+                      </div>
                       {goal.target_date && (
                         <p className="text-[11px] text-zinc-500 flex items-center gap-1 mt-0.5">
                           <Calendar size={11} />
@@ -231,6 +267,54 @@ const SavingsPage = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Registered Account Contribution Room Tracker (Phase J) */}
+                  {goal.registeredType && (
+                    <div className="mb-4 p-3 rounded-xl bg-zinc-950/70 border border-white/[0.06] text-xs space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-medium text-zinc-400">
+                          {goal.registeredType} Room ({goal.roomYear || new Date().getFullYear()})
+                        </span>
+                        {goal.contributionRoom !== null && goal.contributionRoom !== undefined ? (
+                          <span className="text-zinc-200 tabular-nums">
+                            Room left:{" "}
+                            <strong
+                              className={
+                                goal.isOverContributed
+                                  ? "text-rose-400 font-semibold"
+                                  : "text-emerald-400 font-semibold"
+                              }
+                            >
+                              {formatCurrency(goal.roomLeft)}
+                            </strong>
+                            <span className="text-zinc-500">
+                              {" "}of {formatCurrency(goal.contributionRoom)}
+                            </span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(goal)}
+                            className="text-amber-400 hover:text-amber-300 underline text-[10px]"
+                          >
+                            Set contribution room
+                          </button>
+                        )}
+                      </div>
+
+                      {goal.isOverContributed && (
+                        <div className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2 font-medium">
+                          ⚠️ Over-contributed by {formatCurrency(Math.abs(goal.roomLeft))} — CRA penalties may apply
+                        </div>
+                      )}
+
+                      {goal.registeredType === "TFSA" && goal.roomReturnsNextYear > 0 && (
+                        <p className="text-[11px] text-cyan-400/90 font-medium">
+                          +{formatCurrency(goal.roomReturnsNextYear)} withdrawn room returns Jan 1
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>

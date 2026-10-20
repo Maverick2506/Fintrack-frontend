@@ -52,6 +52,15 @@ const ReportsPage = () => {
     return map;
   }, [serverBudgets]);
 
+  const { data: savingsGoals = [] } = useQuery({
+    queryKey: ["savingsGoals"],
+    queryFn: () => dashboardService.fetchSavingsGoals(),
+  });
+
+  const registeredAccounts = useMemo(() => {
+    return savingsGoals.filter((g) => Boolean(g.registeredType));
+  }, [savingsGoals]);
+
   const currentYear = new Date().getFullYear();
   const availableYears = useMemo(() => {
     const start = 2023;
@@ -444,6 +453,130 @@ const ReportsPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Phase J: Tax Season Summary Card (RRSP / FHSA / TFSA) */}
+            {registeredAccounts.length > 0 && (
+              <div className="md:col-span-2 glass-panel p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                  <div>
+                    <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                      Tax Season Summary (RRSP / FHSA / TFSA)
+                    </h2>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Estimated registered account contributions and deduction room for {currentYear}.
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-zinc-500 bg-zinc-950/60 border border-white/[0.06] rounded-full px-2.5 py-1 self-start sm:self-auto">
+                    Estimates only • Verify with CRA Notice of Assessment
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <div className="glass-card p-3.5">
+                    <p className="text-xs text-zinc-500 mb-1">RRSP Contributions ({currentYear})</p>
+                    <p className="text-xl font-semibold text-sky-400 tabular-nums">
+                      {formatCurrency(
+                        registeredAccounts
+                          .filter((g) => g.registeredType === "RRSP")
+                          .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
+                      )}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-1">Tax-deductible against net income</p>
+                  </div>
+
+                  <div className="glass-card p-3.5">
+                    <p className="text-xs text-zinc-500 mb-1">FHSA Contributions ({currentYear})</p>
+                    <p className="text-xl font-semibold text-purple-400 tabular-nums">
+                      {formatCurrency(
+                        registeredAccounts
+                          .filter((g) => g.registeredType === "FHSA")
+                          .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
+                      )}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-1">First-home tax deduction</p>
+                  </div>
+
+                  <div className="glass-card p-3.5">
+                    <p className="text-xs text-zinc-500 mb-1">TFSA Contributions ({currentYear})</p>
+                    <p className="text-xl font-semibold text-emerald-400 tabular-nums">
+                      {formatCurrency(
+                        registeredAccounts
+                          .filter((g) => g.registeredType === "TFSA")
+                          .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
+                      )}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 mt-1">Tax-free growth (non-deductible)</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-white/[0.06] text-zinc-500 font-medium">
+                        <th className="py-2">Account</th>
+                        <th className="py-2">Type</th>
+                        <th className="py-2 text-right">Tax Year</th>
+                        <th className="py-2 text-right">Contributed</th>
+                        <th className="py-2 text-right">Room Left</th>
+                        <th className="py-2 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.04]">
+                      {registeredAccounts.map((account) => {
+                        const isOver = account.isOverContributed;
+                        return (
+                          <tr key={account.id} className="text-zinc-300">
+                            <td className="py-2.5 font-medium text-zinc-100">{account.name}</td>
+                            <td className="py-2.5">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                account.registeredType === "RRSP"
+                                  ? "bg-sky-500/10 text-sky-400 border-sky-500/20"
+                                  : account.registeredType === "FHSA"
+                                  ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              }`}>
+                                {account.registeredType}
+                              </span>
+                            </td>
+                            <td className="py-2.5 text-right tabular-nums text-zinc-400">
+                              {account.roomYear || currentYear}
+                            </td>
+                            <td className="py-2.5 text-right tabular-nums font-medium text-zinc-100">
+                              {formatCurrency(account.contributedThisYear || 0)}
+                            </td>
+                            <td className="py-2.5 text-right tabular-nums">
+                              {account.contributionRoom !== null && account.contributionRoom !== undefined ? (
+                                <span className={isOver ? "text-rose-400 font-semibold" : "text-zinc-200"}>
+                                  {formatCurrency(account.roomLeft)}
+                                  <span className="text-zinc-500"> / {formatCurrency(account.contributionRoom)}</span>
+                                </span>
+                              ) : (
+                                <span className="text-zinc-500 italic">No limit set</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 text-right">
+                              {isOver ? (
+                                <span className="text-[10px] text-rose-400 font-semibold bg-rose-500/10 border border-rose-500/20 rounded px-1.5 py-0.5">
+                                  Over limit
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-emerald-400 font-medium bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5">
+                                  OK
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <p className="text-[11px] text-zinc-500 mt-4 border-t border-white/[0.06] pt-3">
+                  💡 <strong>Tax Tip:</strong> RRSP contributions made in the first 60 days of the calendar year may be claimed on either the previous year&apos;s or current year&apos;s tax return. TFSA withdrawals replenish your contribution room on January 1 of the following year.
+                </p>
+              </div>
+            )}
 
             <div className="md:col-span-2">
               <TransactionList

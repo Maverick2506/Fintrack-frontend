@@ -7,6 +7,9 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   const [goalAmount, setGoalAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("");
   const [targetDate, setTargetDate] = useState("");
+  const [registeredType, setRegisteredType] = useState("");
+  const [contributionRoom, setContributionRoom] = useState("");
+  const [roomYear, setRoomYear] = useState(new Date().getFullYear().toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -19,6 +22,17 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
         goal.target_date
           ? new Date(goal.target_date).toISOString().slice(0, 10)
           : ""
+      );
+      setRegisteredType(goal.registeredType || "");
+      setContributionRoom(
+        goal.contributionRoom !== null && goal.contributionRoom !== undefined
+          ? goal.contributionRoom
+          : ""
+      );
+      setRoomYear(
+        goal.roomYear
+          ? goal.roomYear.toString()
+          : new Date().getFullYear().toString()
       );
     }
   }, [goal]);
@@ -46,11 +60,19 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
         goal_amount: goalAmount,
         current_amount: currentAmount,
         target_date: targetDate || null,
+        registeredType: registeredType || null,
+        contributionRoom:
+          registeredType && contributionRoom !== ""
+            ? parseFloat(contributionRoom)
+            : null,
+        roomYear:
+          registeredType && roomYear ? parseInt(roomYear, 10) : null,
       });
       onClose();
       refreshData();
     } catch (err) {
       console.error("Failed to update savings goal:", err);
+      setError(err?.response?.data?.error || "Failed to update savings goal");
     } finally {
       setIsSubmitting(false);
     }
@@ -157,6 +179,91 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
                 className="w-full bg-transparent text-xs font-medium text-zinc-200 focus:outline-none tabular-nums"
               />
             </div>
+          </div>
+
+          {/* Phase J: Registered Account (TFSA / RRSP / FHSA) */}
+          <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] p-3 space-y-3">
+            <div>
+              <label
+                htmlFor="registeredTypeEdit"
+                className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+              >
+                Registered Account (Canada)
+              </label>
+              <select
+                id="registeredTypeEdit"
+                value={registeredType}
+                onChange={(e) => setRegisteredType(e.target.value)}
+                className="w-full bg-zinc-900 border border-white/[0.08] text-xs font-medium text-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-zinc-700"
+              >
+                <option value="">None (Standard Savings Goal)</option>
+                <option value="TFSA">TFSA — Tax-Free Savings Account</option>
+                <option value="RRSP">RRSP — Registered Retirement Savings Plan</option>
+                <option value="FHSA">FHSA — First Home Savings Account</option>
+              </select>
+            </div>
+
+            {registeredType && (
+              <>
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <div>
+                    <label
+                      htmlFor="contributionRoomEdit"
+                      className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+                    >
+                      Contribution Room ($)
+                    </label>
+                    <div className="flex items-baseline gap-1 bg-zinc-900 border border-white/[0.08] rounded-lg px-2.5 py-1">
+                      <span className="text-xs font-medium text-zinc-500">$</span>
+                      <input
+                        type="number"
+                        id="contributionRoomEdit"
+                        step="0.01"
+                        value={contributionRoom}
+                        onChange={(e) => setContributionRoom(e.target.value)}
+                        placeholder="e.g. 7000"
+                        className="w-full bg-transparent text-xs font-medium text-zinc-200 placeholder-zinc-600 focus:outline-none tabular-nums"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="roomYearEdit"
+                      className="block text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
+                    >
+                      Tax Year
+                    </label>
+                    <input
+                      type="number"
+                      id="roomYearEdit"
+                      value={roomYear}
+                      onChange={(e) => setRoomYear(e.target.value)}
+                      placeholder="2026"
+                      className="w-full bg-zinc-900 border border-white/[0.08] text-xs font-medium text-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none tabular-nums"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-zinc-400 leading-relaxed bg-zinc-900/60 rounded-lg p-2 border border-white/[0.04]">
+                  {registeredType === "RRSP" && (
+                    <span>
+                      💡 <strong>RRSP 60-day rule:</strong> Contributions made in the first 60 days of the year can be deducted for the previous tax year. Enter the available room from your CRA Notice of Assessment.
+                    </span>
+                  )}
+                  {registeredType === "TFSA" && (
+                    <span>
+                      💡 <strong>TFSA withdrawals:</strong> Amounts withdrawn in the current calendar year will be re-added to your contribution room on January 1 of the following year.
+                    </span>
+                  )}
+                  {registeredType === "FHSA" && (
+                    <span>
+                      💡 <strong>FHSA annual room:</strong> Enter your available FHSA room from your CRA Notice of Assessment (annual new room is up to $8,000, lifetime $40,000).
+                    </span>
+                  )}
+                </p>
+              </>
+            )}
           </div>
 
           {error && (
