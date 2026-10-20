@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatCurrency } from "../utils/formatUtils";
 import {
   Plus,
   Pencil,
@@ -269,18 +270,14 @@ const DebtsPage = () => {
                       <div className="mb-4">
                         <p className="text-xs text-zinc-500 mb-0.5">Remaining</p>
                         <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-                          $
-                          {parseFloat(debt.total_remaining).toLocaleString(
-                            "en-US",
-                            { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                          )}
+                          {formatCurrency(debt.total_remaining)}
                         </p>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between text-xs text-zinc-500 mb-1.5 tabular-nums">
-                        <span>${paidAmount.toFixed(2)} paid</span>
+                        <span>{formatCurrency(paidAmount)} paid</span>
                         <span>{progress.toFixed(0)}%</span>
                       </div>
                       <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
@@ -387,7 +384,7 @@ const DebtsPage = () => {
 
                         <div>
                           <div className="flex justify-between text-xs text-zinc-500 mb-1.5 tabular-nums">
-                            <span>${totalAmount.toFixed(2)} total paid</span>
+                            <span>{formatCurrency(totalAmount)} total paid</span>
                             <span className="text-emerald-400 font-medium">
                               100%
                             </span>

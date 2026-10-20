@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { formatCurrency } from "../../utils/formatUtils";
 import {
   Pencil,
   Trash2,
@@ -228,18 +229,13 @@ const UpcomingBills = ({
                         isPaying ? "line-through text-zinc-500" : "text-zinc-200"
                       }`}
                     >
-                      ${parseFloat(bill.amount).toFixed(2)}
+                      {formatCurrency(bill.amount)}
                     </span>
                     {bill.isTaxExclusive &&
                       parseFloat(bill.taxRate) > 0 &&
                       !bill.taxApplied && (
                         <span className="text-[10px] text-amber-400/90 tabular-nums font-medium block">
-                          + {parseFloat(bill.taxRate)}% tax due (~$
-                          {(
-                            parseFloat(bill.amount) *
-                            (1 + parseFloat(bill.taxRate) / 100)
-                          ).toFixed(2)}
-                          )
+                          + {parseFloat(bill.taxRate)}% tax due (~{formatCurrency(parseFloat(bill.amount) * (1 + parseFloat(bill.taxRate) / 100))})
                         </span>
                       )}
                   </div>

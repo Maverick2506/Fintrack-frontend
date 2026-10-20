@@ -1,4 +1,5 @@
 import React from "react";
+import { formatCurrency } from "../../utils/formatUtils";
 import {
   Sparkles,
   CheckCircle2,
@@ -104,7 +105,7 @@ const FinancialAdviceCard = ({
                       data.floatAmount >= 0 ? "text-emerald-400" : "text-rose-400"
                     }`}
                   >
-                    ${parseFloat(data.floatAmount).toFixed(2)}
+                    {formatCurrency(data.floatAmount)}
                   </span>
                 </div>
               )}

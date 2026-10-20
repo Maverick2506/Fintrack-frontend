@@ -23,6 +23,7 @@ import {
   Percent,
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import { formatCurrency } from "../../utils/formatUtils";
 
 const CATEGORY_CONFIG = [
   { name: "Essentials", icon: Home },
@@ -88,6 +89,12 @@ const AddTransactionModal = ({
   const { data: debts = [] } = useQuery({
     queryKey: ["debts"],
     queryFn: () => dashboardService.fetchDebts(),
+    enabled: isOpen,
+  });
+
+  const { data: savingsGoals = [] } = useQuery({
+    queryKey: ["savingsGoals"],
+    queryFn: () => dashboardService.fetchSavingsGoals(),
     enabled: isOpen,
   });
 
@@ -265,6 +272,16 @@ const AddTransactionModal = ({
     (p) => String(p.id) === String(selectedTargetAccount)
   );
 
+  const activeSavingsGoal = savingsGoals.find(
+    (g) =>
+      String(g.id) ===
+      String(
+        selectedTargetAccount ||
+          existingTransaction?.targetAccountId ||
+          existingTransaction?.toAccountId
+      )
+  );
+
   const handleSelectTargetAccount = (opt) => {
     if (!opt) {
       setSelectedTargetAccount("");
@@ -305,7 +322,7 @@ const AddTransactionModal = ({
         null;
 
       const finalTargetAccountId =
-        category === "Debt"
+        category === "Debt" || category === "Credit Card Payment"
           ? selectedTargetAccount || null
           : isEditing && category === existingTransaction?.category
           ? existingTargetId
@@ -449,7 +466,7 @@ const AddTransactionModal = ({
                   onClick={() => setAmount(activeTargetObj.balance.toFixed(2))}
                   className="text-[10px] text-rose-300 hover:text-rose-200 underline font-medium cursor-pointer"
                 >
-                  Pay Full (${activeTargetObj.balance.toFixed(2)})
+                  Pay Full ({formatCurrency(activeTargetObj.balance)})
                 </button>
               )}
             </div>
@@ -538,11 +555,11 @@ const AddTransactionModal = ({
                   {CATEGORY_CONFIG.map((catItem) => {
                     const CatIcon = catItem.icon;
                     const catName = catItem.name;
+                    const targetIsDebtOrCard = Boolean(activeTargetObj);
                     const active =
                       category === catName ||
                       (catName === "Debt" &&
-                        (category === "Credit Card Payment" ||
-                          Boolean(selectedTargetAccount)));
+                        (category === "Credit Card Payment" || targetIsDebtOrCard));
                     return (
                       <button
                         key={catName}
@@ -579,10 +596,36 @@ const AddTransactionModal = ({
                 </div>
               </div>
 
-              {/* Pay Down Target Picker when Category === "Debt" or "Credit Card Payment" or has target account */}
+              {/* Read-only target banner when editing a Savings Goal transfer */}
+              {activeSavingsGoal && (
+                <div className="bg-emerald-500/[0.06] border border-emerald-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-300 shrink-0">
+                      <Wallet size={14} />
+                    </div>
+                    <div className="text-left truncate">
+                      <p className="text-[10px] font-medium text-emerald-300/80 uppercase tracking-wider leading-none mb-1">
+                        Contributes to Savings Goal
+                      </p>
+                      <p className="text-xs font-medium text-zinc-100 leading-none truncate">
+                        {activeSavingsGoal.name}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 tabular-nums">
+                    {formatCurrency(
+                      activeSavingsGoal.current_amount ??
+                        activeSavingsGoal.initialBalance ??
+                        0
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* Pay Down Target Picker when Category === "Debt" or "Credit Card Payment" or target is debt/card */}
               {(category === "Debt" ||
                 category === "Credit Card Payment" ||
-                Boolean(selectedTargetAccount)) && (
+                Boolean(activeTargetObj)) && (
                 <div
                   className="relative"
                   onClick={(e) => e.stopPropagation()}
@@ -623,19 +666,13 @@ const AddTransactionModal = ({
                         <div className="text-right">
                           {parseFloat(amount) > 0 ? (
                             <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 tabular-nums inline-block">
-                              $
-                              {Math.max(
-                                0,
-                                activeTargetObj.balance -
-                                  (parseFloat(amount) || 0)
-                              ).toFixed(2)}{" "}
-                              left
+                              {formatCurrency(Math.max(0, activeTargetObj.balance - (parseFloat(amount) || 0)))} left
                               {parseFloat(amount) >= activeTargetObj.balance &&
                                 " 🎉"}
                             </span>
                           ) : (
                             <span className="text-[11px] font-medium text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-md border border-white/[0.07] tabular-nums inline-block">
-                              ${activeTargetObj.balance.toFixed(2)} left
+                              {formatCurrency(activeTargetObj.balance)} left
                             </span>
                           )}
                         </div>
@@ -700,8 +737,7 @@ const AddTransactionModal = ({
                                   {opt.name}
                                 </p>
                                 <p className="text-[10px] text-zinc-500 tabular-nums">
-                                  {opt.kind} · ${opt.balance.toFixed(2)}{" "}
-                                  remaining
+                                  {opt.kind} · {formatCurrency(opt.balance)} remaining
                                 </p>
                               </div>
                             </div>
@@ -911,8 +947,7 @@ const AddTransactionModal = ({
                                     {card.name}
                                   </p>
                                   <p className="text-[10px] text-zinc-500 tabular-nums">
-                                    ${bal.toFixed(2)} used of ${lim.toFixed(0)}{" "}
-                                    limit
+                                    {formatCurrency(bal)} used of {formatCurrency(lim, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} limit
                                   </p>
                                 </div>
                               </div>
@@ -1031,10 +1066,7 @@ const AddTransactionModal = ({
                           Total on due date:
                         </span>
                         <span className="text-xs font-semibold text-amber-300 tabular-nums">
-                          ${(
-                            parseFloat(amount) *
-                            (1 + (parseFloat(taxRate) || 0) / 100)
-                          ).toFixed(2)}
+                          {formatCurrency(parseFloat(amount) * (1 + (parseFloat(taxRate) || 0) / 100))}
                         </span>
                       </div>
                     )}
