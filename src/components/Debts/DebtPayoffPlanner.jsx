@@ -19,7 +19,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { comparePlans } from "../../utils/debtMath";
-import { formatCurrency, formatShortDate, formatMonthYear } from "../../utils/formatUtils";
+import { formatCurrency, formatMonthYear } from "../../utils/formatUtils";
 
 const CustomPlannerTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
@@ -28,7 +28,7 @@ const CustomPlannerTooltip = ({ active, payload, label }) => {
   return (
     <div className="bg-zinc-900/95 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-xl max-w-xs text-xs">
       <p className="font-semibold text-zinc-200 mb-1 border-b border-white/[0.08] pb-1">
-        Month {label} {dataPoint.date ? `(${formatShortDate(dataPoint.date)})` : ""}
+        Month {label} {dataPoint.date ? `(${formatMonthYear(dataPoint.date)})` : ""}
       </p>
       <div className="space-y-1 pt-1 text-[11px] tabular-nums">
         <div className="flex items-center justify-between text-zinc-400">

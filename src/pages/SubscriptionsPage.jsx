@@ -411,6 +411,7 @@ const SubscriptionsPage = () => {
             : "This stops future recurring occurrences."
         }
         confirmLabel="Cancel Subscription"
+        cancelLabel="Keep"
       />
     </div>
   );

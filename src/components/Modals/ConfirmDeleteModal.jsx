@@ -10,6 +10,7 @@ const ConfirmDeleteModal = ({
   title,
   description,
   confirmLabel = "Delete",
+  cancelLabel = "Cancel",
 }) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -66,7 +67,7 @@ const ConfirmDeleteModal = ({
 
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="btn-secondary">
-            Cancel
+            {cancelLabel}
           </button>
           <button
             type="button"
