@@ -25,3 +25,19 @@ export const formatNumber = (amount, options = {}) => {
     ...options,
   });
 };
+
+/**
+ * Formats an ISO YYYY-MM-DD date string into a friendly "MMM D" string (e.g. "Oct 22", "Nov 1").
+ */
+export const formatShortDate = (dateStr) => {
+  if (!dateStr) return "";
+  const parts = String(dateStr).split("T")[0].split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return dateStr;
+  const [y, m, d] = parts;
+  const date = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+};

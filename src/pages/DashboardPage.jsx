@@ -18,7 +18,8 @@ import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 import GeminiGemModal from "../components/Modals/GeminiGemModal";
-import { formatCurrency } from "../utils/formatUtils";
+import { formatCurrency, formatShortDate } from "../utils/formatUtils";
+import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
@@ -83,6 +84,18 @@ const DashboardPage = () => {
   const { data: serverBudgets = [] } = useQuery({
     queryKey: ["budgets", selectedMonthStr],
     queryFn: () => dashboardService.fetchBudgets(selectedMonthStr),
+  });
+
+  const { data: forecast } = useQuery({
+    queryKey: ["forecast"],
+    queryFn: () => dashboardService.fetchForecast(60),
+  });
+
+  const updateForecastBufferMutation = useMutation({
+    mutationFn: (newBuffer) => dashboardService.updateForecastBuffer(newBuffer),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forecast"] });
+    },
   });
 
   const topBudgets = useMemo(() => {
@@ -172,6 +185,7 @@ const DashboardPage = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboardData"] });
     queryClient.invalidateQueries({ queryKey: ["spendingData"] });
     queryClient.invalidateQueries({ queryKey: ["budgets"] });
+    queryClient.invalidateQueries({ queryKey: ["forecast"] });
   };
 
   const markAsPaidMutation = useMutation({
@@ -318,6 +332,9 @@ const DashboardPage = () => {
   const totalCC = balancesSummary.cards;
   const netWorth = balancesSummary.netWorth;
   const positiveNetWorth = netWorth >= 0;
+  const forecastBuffer = forecast?.buffer ?? 200;
+  const forecastLowestBalance = forecast?.lowestPoint?.balance ?? 0;
+  const forecastIsLow = forecastLowestBalance < forecastBuffer;
 
   return (
     <div className="min-h-screen text-zinc-100 pb-20">
@@ -332,7 +349,52 @@ const DashboardPage = () => {
         />
 
         {/* Top KPI Bento Strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+          {/* Safe to Spend Tile (Phase E) */}
+          <div className="glass-panel p-5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-medium text-zinc-500">
+                  Safe to Spend
+                </p>
+                {forecastIsLow && (
+                  <span className="text-[10px] font-medium text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+                    Below buffer
+                  </span>
+                )}
+              </div>
+              <p
+                className={`text-2xl font-semibold tracking-tight tabular-nums ${
+                  forecastIsLow ? "text-rose-400" : "text-emerald-400"
+                }`}
+              >
+                {formatCurrency(forecast?.safeToSpend ?? 0)}
+              </p>
+              <p className="text-[11px] text-zinc-400 mt-1 truncate">
+                {forecast?.nextPayday
+                  ? `until ${formatShortDate(forecast.nextPayday)} (payday)`
+                  : "for next 60 days"}
+              </p>
+            </div>
+
+            <div className="mt-2.5 pt-2 border-t border-white/[0.06] text-[11px] text-zinc-500 truncate">
+              <span>
+                Lowest:{" "}
+                <span
+                  className={
+                    forecastIsLow
+                      ? "text-rose-400 font-medium"
+                      : "text-zinc-300 font-medium"
+                  }
+                >
+                  {formatCurrency(forecastLowestBalance)}
+                </span>
+                {forecast?.lowestPoint?.date && (
+                  <span> on {formatShortDate(forecast.lowestPoint.date)}</span>
+                )}
+              </span>
+            </div>
+          </div>
           <div className="glass-panel p-5 flex flex-col justify-between">
             <div>
               <p className="text-xs font-medium text-zinc-500 mb-1">
@@ -528,6 +590,11 @@ const DashboardPage = () => {
                 </div>
               </div>
             )}
+            <ForecastChartCard
+              forecast={forecast}
+              onUpdateBuffer={(b) => updateForecastBufferMutation.mutateAsync(b)}
+              isUpdatingBuffer={updateForecastBufferMutation.isPending}
+            />
             {spendingData && spendingData.length > 0 && (
               <SpendingChartCard data={spendingData} />
             )}

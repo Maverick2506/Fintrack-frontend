@@ -332,6 +332,21 @@ const dashboardService = {
       "Budget limit removed!"
     );
   },
+
+  fetchForecast: async (days = 60) => {
+    return handleRequest(api.get(`/forecast?days=${days}`));
+  },
+
+  fetchForecastBuffer: async () => {
+    return handleRequest(api.get("/settings/forecast-buffer"));
+  },
+
+  updateForecastBuffer: async (buffer) => {
+    return handleRequest(
+      api.put("/settings/forecast-buffer", { buffer }),
+      "Forecast buffer updated!"
+    );
+  },
 };
 
 export default dashboardService;

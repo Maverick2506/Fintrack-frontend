@@ -1,0 +1,264 @@
+import { useState } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+} from "recharts";
+import { TrendingUp, AlertTriangle, Shield, Check, Pencil, X } from "lucide-react";
+import { formatCurrency, formatShortDate } from "../../utils/formatUtils";
+
+const CustomForecastTooltip = ({ active, payload, label, buffer }) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const dataPoint = payload[0].payload;
+  const balance = dataPoint.balance;
+  const isBelowBuffer = balance < buffer;
+  const items = dataPoint.items || [];
+
+  return (
+    <div className="bg-zinc-900/95 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-xl max-w-xs text-xs">
+      <p className="font-semibold text-zinc-200 mb-1 border-b border-white/[0.08] pb-1">
+        {formatShortDate(label)} ({label})
+      </p>
+      <div className="flex items-center justify-between gap-4 mb-2">
+        <span className="text-zinc-400">Projected Balance:</span>
+        <span
+          className={`font-semibold tabular-nums ${
+            isBelowBuffer ? "text-rose-400" : "text-emerald-400"
+          }`}
+        >
+          {formatCurrency(balance)}
+        </span>
+      </div>
+
+      {items.length > 0 ? (
+        <div className="space-y-1 pt-1.5 border-t border-white/[0.06]">
+          <p className="text-[10px] uppercase font-medium text-zinc-500 tracking-wider">
+            Scheduled on this day:
+          </p>
+          <div className="max-h-36 overflow-y-auto space-y-1">
+            {items.map((it, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between gap-2 text-[11px]"
+              >
+                <span className="text-zinc-300 truncate max-w-[170px]" title={it.title}>
+                  {it.title}
+                </span>
+                <span
+                  className={`tabular-nums font-medium ${
+                    it.amount >= 0 ? "text-emerald-400" : "text-rose-400"
+                  }`}
+                >
+                  {it.amount >= 0 ? "+" : ""}
+                  {formatCurrency(it.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-[10px] text-zinc-500 italic pt-1">
+          No scheduled transactions
+        </p>
+      )}
+    </div>
+  );
+};
+
+const ForecastChartCard = ({
+  forecast,
+  onUpdateBuffer,
+  isUpdatingBuffer,
+}) => {
+  const [editingBuffer, setEditingBuffer] = useState(false);
+  const [bufferInput, setBufferInput] = useState("");
+
+  if (!forecast || !forecast.days || forecast.days.length === 0) {
+    return null;
+  }
+
+  const buffer = forecast.buffer || 200;
+  const lowestPoint = forecast.lowestPoint || { date: forecast.today, balance: 0 };
+  const isBelowBuffer = lowestPoint.balance < buffer;
+  const nextPayday = forecast.nextPayday;
+
+  const handleStartEdit = () => {
+    setBufferInput(String(buffer));
+    setEditingBuffer(true);
+  };
+
+  const handleSaveBuffer = async () => {
+    const parsed = parseFloat(bufferInput);
+    if (!isNaN(parsed) && parsed >= 0) {
+      await onUpdateBuffer(parsed);
+    }
+    setEditingBuffer(false);
+  };
+
+  return (
+    <div className="glass-panel p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-emerald-400">
+            <TrendingUp size={16} />
+          </div>
+          <div>
+            <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+              60-Day Cashflow Forecast
+            </h2>
+            <p className="text-xs text-zinc-500">
+              Safe to spend:{" "}
+              <span className="font-semibold text-zinc-200">
+                {formatCurrency(forecast.safeToSpend)}
+              </span>{" "}
+              {nextPayday
+                ? `until ${formatShortDate(nextPayday)} (payday)`
+                : "for the next 60 days"}
+            </p>
+          </div>
+        </div>
+
+        {/* Buffer Badge & Editor */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {editingBuffer ? (
+            <div className="flex items-center gap-1.5 bg-zinc-950 border border-white/10 rounded-lg px-2 py-1">
+              <span className="text-xs text-zinc-500">$</span>
+              <input
+                type="number"
+                min="0"
+                step="10"
+                value={bufferInput}
+                onChange={(e) => setBufferInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveBuffer();
+                  if (e.key === "Escape") setEditingBuffer(false);
+                }}
+                className="w-16 bg-transparent text-xs text-zinc-100 focus:outline-none tabular-nums"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleSaveBuffer}
+                disabled={isUpdatingBuffer}
+                className="text-emerald-400 hover:text-emerald-300 p-0.5 cursor-pointer"
+                title="Save buffer"
+              >
+                <Check size={12} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingBuffer(false)}
+                className="text-zinc-500 hover:text-zinc-300 p-0.5 cursor-pointer"
+                title="Cancel"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900/80 border border-white/[0.08] text-[11px] text-zinc-400">
+              <Shield size={12} className="text-amber-400" />
+              <span>Buffer: {formatCurrency(buffer, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+              <button
+                type="button"
+                onClick={handleStartEdit}
+                className="text-zinc-500 hover:text-zinc-300 p-0.5 ml-0.5 cursor-pointer"
+                title="Edit buffer"
+              >
+                <Pencil size={10} />
+              </button>
+            </div>
+          )}
+
+          {isBelowBuffer && (
+            <div className="flex items-center gap-1 text-[11px] font-medium text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-lg">
+              <AlertTriangle size={12} />
+              <span>Below buffer</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="w-full h-64 pt-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={forecast.days}
+            margin={{ top: 10, right: 15, left: -10, bottom: 0 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="rgba(255,255,255,0.06)"
+            />
+            <XAxis
+              dataKey="date"
+              stroke="#71717a"
+              fontSize={11}
+              tickLine={false}
+              axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+              tickFormatter={(val) => formatShortDate(val)}
+              interval={7}
+            />
+            <YAxis
+              stroke="#71717a"
+              fontSize={11}
+              tickLine={false}
+              axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+              tickFormatter={(v) => `$${Math.round(v)}`}
+            />
+            <Tooltip
+              content={<CustomForecastTooltip buffer={buffer} />}
+            />
+            {buffer > 0 && (
+              <ReferenceLine
+                y={buffer}
+                stroke="#f59e0b"
+                strokeDasharray="4 4"
+                strokeWidth={1.5}
+                label={{
+                  value: `Buffer ($${Math.round(buffer)})`,
+                  position: "insideTopRight",
+                  fill: "#f59e0b",
+                  fontSize: 10,
+                }}
+              />
+            )}
+            <Line
+              type="monotone"
+              dataKey="balance"
+              stroke={isBelowBuffer ? "#f43f5e" : "#10b981"}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, fill: "#ffffff", stroke: isBelowBuffer ? "#f43f5e" : "#10b981" }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1 border-t border-white/[0.06]">
+        <span>
+          Starting checking balance:{" "}
+          <strong className="text-zinc-300 font-medium">
+            {formatCurrency(forecast.startBalance)}
+          </strong>
+        </span>
+        <span
+          className={
+            isBelowBuffer ? "text-rose-400 font-medium" : "text-zinc-400"
+          }
+        >
+          Lowest: {formatCurrency(lowestPoint.balance)} on{" "}
+          {formatShortDate(lowestPoint.date)}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+export default ForecastChartCard;
