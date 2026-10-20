@@ -52,6 +52,15 @@ const getLocalTodayStr = () => {
   return `${y}-${m}-${d}`;
 };
 
+const getPastDateStr = (daysAgo) => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 const AddTransactionModal = ({
   isOpen,
   onClose,
@@ -76,6 +85,8 @@ const AddTransactionModal = ({
   const [isTaxExclusive, setIsTaxExclusive] = useState(false);
   const [taxRate, setTaxRate] = useState("13");
   const [openDropdown, setOpenDropdown] = useState(null); // "payment" | "schedule" | "paydown" | null
+  const [alreadyInCardBalance, setAlreadyInCardBalance] = useState(false);
+  const [manualAlreadyInBalanceOverride, setManualAlreadyInBalanceOverride] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const isEditing = !!existingTransaction;
@@ -102,6 +113,8 @@ const AddTransactionModal = ({
     if (isOpen) {
       setOpenDropdown(null);
       setManualPaidOverride(false);
+      setManualAlreadyInBalanceOverride(false);
+      setAlreadyInCardBalance(false);
       setError(null);
       if (isEditing) {
         setName(existingTransaction.name || existingTransaction.title || "");
@@ -189,6 +202,15 @@ const AddTransactionModal = ({
     setDueDate(newDate);
     if (!manualPaidOverride) {
       setIsPaid(newDate <= todayStr);
+    }
+    if (!manualAlreadyInBalanceOverride) {
+      if (newDate < todayStr) {
+        const isRecentPast =
+          newDate === getPastDateStr(1) || newDate === getPastDateStr(2);
+        setAlreadyInCardBalance(!isRecentPast);
+      } else {
+        setAlreadyInCardBalance(false);
+      }
     }
   };
 
@@ -331,6 +353,12 @@ const AddTransactionModal = ({
           : null;
 
       const hasTarget = Boolean(finalTargetAccountId);
+      const showCardBalanceToggle =
+        !isEditing &&
+        isExpense &&
+        Boolean(selectedCard) &&
+        !hasTarget &&
+        dueDate < todayStr;
 
       const payload = isExpense
         ? {
@@ -347,6 +375,9 @@ const AddTransactionModal = ({
             creditCardId: hasTarget ? null : selectedCard || null,
             targetAccountId: finalTargetAccountId,
             paid_with_credit_card: hasTarget ? false : !!selectedCard,
+            ...(showCardBalanceToggle && !alreadyInCardBalance
+              ? { applyToBalance: true }
+              : {}),
           }
         : {
             id: existingTransaction?.id,
@@ -933,6 +964,11 @@ const AddTransactionModal = ({
                               onClick={() => {
                                 setSelectedCard(card.id);
                                 setOpenDropdown(null);
+                                if (!manualAlreadyInBalanceOverride && dueDate < todayStr) {
+                                  const isRecentPast =
+                                    dueDate === getPastDateStr(1) || dueDate === getPastDateStr(2);
+                                  setAlreadyInCardBalance(!isRecentPast);
+                                }
                               }}
                               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all cursor-pointer ${
                                 isSelected
@@ -968,6 +1004,47 @@ const AddTransactionModal = ({
                   )}
                 </div>
               )}
+
+              {/* Past-Dated Credit Card Balance Toggle (Phase D) */}
+              {!isEditing &&
+                type === "expense" &&
+                Boolean(selectedCard) &&
+                !selectedTargetAccount &&
+                dueDate < todayStr && (
+                  <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-zinc-950/60 border border-white/[0.07]">
+                    <div className="flex items-center gap-2">
+                      <CreditCard size={13} className="text-amber-400" />
+                      <div>
+                        <span className="text-xs font-medium text-zinc-200 block">
+                          Already included in this card's balance
+                        </span>
+                        <span className="text-[10px] text-zinc-500 block">
+                          {alreadyInCardBalance
+                            ? "Card balance will remain unchanged"
+                            : "Card balance will increase with this charge"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualAlreadyInBalanceOverride(true);
+                        setAlreadyInCardBalance((v) => !v);
+                      }}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        alreadyInCardBalance ? "bg-amber-500" : "bg-zinc-800"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                          alreadyInCardBalance
+                            ? "translate-x-4"
+                            : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                )}
 
               {/* Cleared / Pending Status Toggle */}
               <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-zinc-950/60 border border-white/[0.07]">
