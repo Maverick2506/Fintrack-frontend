@@ -184,7 +184,7 @@ const DashboardPage = () => {
   };
 
   const handleMarkAsPaid = (billId) => {
-    markAsPaidMutation.mutate(billId);
+    return markAsPaidMutation.mutateAsync(billId);
   };
 
   const handleDeleteConfirm = () => {

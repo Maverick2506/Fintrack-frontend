@@ -7,6 +7,7 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
   const [creditLimit, setCreditLimit] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [currentBalance, setCurrentBalance] = useState("");
+  const [initialCurrentBalance, setInitialCurrentBalance] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -17,7 +18,9 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
       setDueDate(
         card.dueDate ? String(card.dueDate).slice(0, 10) : ""
       );
-      setCurrentBalance(card.currentBalance ?? card.initialBalance ?? "");
+      const initBal = card.currentBalance ?? card.initialBalance ?? "";
+      setCurrentBalance(initBal);
+      setInitialCurrentBalance(initBal);
     }
   }, [card]);
 
@@ -39,13 +42,19 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await dashboardService.updateCreditCard(card.id, {
+      const payload = {
         name,
         creditLimit: parseFloat(creditLimit),
-        currentBalance:
-          currentBalance !== "" ? parseFloat(currentBalance) : undefined,
         dueDate: dueDate || null,
-      });
+      };
+
+      // Only include currentBalance if user explicitly edited it
+      if (String(currentBalance).trim() !== String(initialCurrentBalance).trim()) {
+        payload.currentBalance =
+          currentBalance !== "" ? parseFloat(currentBalance) : undefined;
+      }
+
+      await dashboardService.updateCreditCard(card.id, payload);
       onClose();
       refreshData();
     } catch (err) {

@@ -21,6 +21,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   );
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
   const [totalRemaining, setTotalRemaining] = useState("");
+  const [initialTotalRemaining, setInitialTotalRemaining] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -41,7 +42,9 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
       setPaymentFrequency(
         debt.payment_frequency || debt.paymentFrequency || "monthly"
       );
-      setTotalRemaining(debt.total_remaining ?? debt.initialBalance ?? "");
+      const initRemaining = debt.total_remaining ?? debt.initialBalance ?? "";
+      setTotalRemaining(initRemaining);
+      setInitialTotalRemaining(initRemaining);
     }
   }, [debt]);
 
@@ -77,16 +80,23 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await dashboardService.updateDebt(debt.id, {
+      const payload = {
         name,
         total_amount: totalAmount,
-        total_remaining: totalRemaining !== "" ? parseFloat(totalRemaining) : undefined,
         monthly_payment: monthlyPayment,
         interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
         auto_pay: autoPay,
         next_due_date: autoPay ? nextDueDate : null,
         payment_frequency: autoPay ? paymentFrequency : "monthly",
-      });
+      };
+
+      // Only send total_remaining if user explicitly changed it
+      if (String(totalRemaining).trim() !== String(initialTotalRemaining).trim()) {
+        payload.total_remaining =
+          totalRemaining !== "" ? parseFloat(totalRemaining) : undefined;
+      }
+
+      await dashboardService.updateDebt(debt.id, payload);
       onClose();
       refreshData();
     } catch (err) {
@@ -111,7 +121,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div>
             <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-              Liability
+              Liabilities
             </p>
             <h2 className="text-sm font-semibold text-zinc-100 mt-0.5">
               Edit Debt
@@ -183,6 +193,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
                 />
               </div>
             </div>
+
             <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3.5 py-2.5">
               <label
                 htmlFor="monthlyPaymentEdit"
