@@ -193,6 +193,20 @@ const dashboardService = {
     return handleRequest(request, "Transaction saved!");
   },
 
+  addExpense: async (expenseData) => {
+    return handleRequest(
+      api.post("/expenses", expenseData),
+      "Expense saved!"
+    );
+  },
+
+  addPaycheque: async (paychequeData) => {
+    return handleRequest(
+      api.post("/paycheques", paychequeData),
+      "Income recorded!"
+    );
+  },
+
   getFinancialAdvice: async (dashboardData) => {
     return handleRequest(
       api.post(`/financial-advice`, dashboardData),

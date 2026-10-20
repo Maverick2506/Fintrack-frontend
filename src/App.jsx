@@ -14,6 +14,7 @@ const SavingsPage = lazy(() => import("./pages/SavingsPage"));
 const CreditCardPage = lazy(() => import("./pages/CreditCardPage"));
 const LedgerPage = lazy(() => import("./pages/LedgerPage"));
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
+const QuickAddPage = lazy(() => import("./pages/QuickAddPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 
 const PageFallback = () => (
@@ -90,6 +91,14 @@ function AppLayout() {
               element={
                 <ProtectedRoute>
                   <LedgerPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quick"
+              element={
+                <ProtectedRoute>
+                  <QuickAddPage />
                 </ProtectedRoute>
               }
             />

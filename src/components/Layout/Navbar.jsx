@@ -8,6 +8,7 @@ import {
   CreditCard,
   ReceiptText,
   Repeat,
+  Zap,
   LogOut,
 } from "lucide-react";
 import { logout } from "../../utils/auth";
@@ -68,15 +69,26 @@ const Navbar = () => {
             })}
           </nav>
 
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            title="Sign out"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-colors cursor-pointer shrink-0"
-          >
-            <LogOut size={14} strokeWidth={1.75} />
-            <span className="hidden lg:inline">Sign out</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <NavLink
+              to="/quick"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+              title="Quick Add (Natural Language Entry)"
+            >
+              <Zap size={13} />
+              <span>Quick</span>
+            </NavLink>
+
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              title="Sign out"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-colors cursor-pointer shrink-0"
+            >
+              <LogOut size={14} strokeWidth={1.75} />
+              <span className="hidden lg:inline">Sign out</span>
+            </button>
+          </div>
         </div>
       </header>
 
