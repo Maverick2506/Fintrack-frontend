@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus } from "lucide-react";
 import { formatCurrency } from "../../utils/formatUtils";
+import { calculatePacing } from "../../utils/savingsPacing";
 
 const ProgressSection = ({
   debtSummary,
@@ -91,6 +92,7 @@ const ProgressSection = ({
         {savingsSummary &&
           savingsSummary.length > 0 &&
           savingsSummary.map((goal) => {
+            const pacing = calculatePacing(goal, "bi-weekly");
             const target = parseFloat(goal.targetAmount) || 1;
             const current = parseFloat(goal.initialBalance) || 0;
             const progress = (current / target) * 100;
@@ -99,9 +101,18 @@ const ProgressSection = ({
               <div key={goal.id}>
                 <div className="flex justify-between items-center mb-1.5">
                   <div>
-                    <span className="text-sm font-medium text-zinc-200">
-                      {goal.name}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-zinc-200">
+                        {goal.name}
+                      </span>
+                      {pacing && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium border ${pacing.badgeClass}`}
+                        >
+                          {pacing.label}
+                        </span>
+                      )}
+                    </div>
                     <span className="ml-2 text-xs text-zinc-500 tabular-nums">
                       {formatCurrency(current)} / {formatCurrency(target)}
                     </span>
@@ -122,9 +133,14 @@ const ProgressSection = ({
                     }}
                   />
                 </div>
-                <p className="text-[11px] text-zinc-500 text-right mt-1 tabular-nums">
-                  {Math.min(100, Math.max(0, progress)).toFixed(1)}% complete
-                </p>
+                <div className="flex justify-between items-center text-[11px] text-zinc-500 mt-1 tabular-nums">
+                  <span className="truncate max-w-[170px]">
+                    {pacing && (pacing.status === "ON_TRACK" || pacing.status === "SLIGHTLY_BEHIND" || pacing.status === "BEHIND")
+                      ? `${formatCurrency(pacing.requiredPerMonth)}/mo pace`
+                      : ""}
+                  </span>
+                  <span>{Math.min(100, Math.max(0, progress)).toFixed(1)}% complete</span>
+                </div>
               </div>
             );
           })}

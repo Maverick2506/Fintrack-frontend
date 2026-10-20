@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, PiggyBank, Calendar } from "lucide-react";
+import { calculatePacing } from "../utils/savingsPacing";
+import { formatCurrency } from "../utils/formatUtils";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import EditSavingsGoalModal from "../components/Modals/EditSavingsGoalModal";
@@ -147,6 +149,7 @@ const SavingsPage = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {goals.map((goal) => {
+            const pacing = calculatePacing(goal, "bi-weekly");
             const current = parseFloat(goal.current_amount) || 0;
             const target = parseFloat(goal.goal_amount) || 0;
             const progress = target > 0 ? (current / target) * 100 : 0;
@@ -251,6 +254,34 @@ const SavingsPage = () => {
                         maximumFractionDigits: 2,
                       })}{" "}
                       left
+                    </span>
+                  </div>
+
+                  {/* Pacing line and badge (Phase I) */}
+                  <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] gap-2">
+                    <span className="text-zinc-400 truncate" title={pacing.copy}>
+                      {pacing.status === "NO_TARGET_DATE" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(goal)}
+                          className="text-amber-400 hover:text-amber-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Pencil size={10} />
+                          <span>Add target date for monthly pace</span>
+                        </button>
+                      ) : pacing.status === "REACHED" ? (
+                        <span className="text-emerald-400 font-medium">Goal reached! 🎉</span>
+                      ) : (
+                        <span>
+                          Save <strong className="text-zinc-200 font-semibold">{formatCurrency(pacing.requiredPerMonth)}/mo</strong>
+                          <span className="text-zinc-500"> (~{formatCurrency(pacing.perPaycheque)}/paycheque)</span>
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${pacing.badgeClass}`}
+                    >
+                      {pacing.label}
                     </span>
                   </div>
                 </div>
