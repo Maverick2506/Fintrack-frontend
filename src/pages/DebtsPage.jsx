@@ -10,6 +10,7 @@ import {
   Landmark,
   CheckCircle2,
   ChevronDown,
+  Calculator,
   ChevronRight,
 } from "lucide-react";
 import AddDebtModal from "../components/Modals/AddDebtModal";
@@ -30,6 +31,7 @@ const DebtsPage = () => {
     delete: false,
   });
   const [activeDebt, setActiveDebt] = useState(null);
+  const [showPlannerMobile, setShowPlannerMobile] = useState(false);
 
   const fetchDebts = async () => {
     setLoading(true);
@@ -191,13 +193,7 @@ const DebtsPage = () => {
             </div>
           ) : (
             <>
-              {activeDebts.length > 0 && (
-                <DebtPayoffPlanner
-                  debts={activeDebts}
-                  onEditDebt={(debt) => openModal("edit", debt)}
-                />
-              )}
-
+{/* Active Debts Grid (rendered first per M7) */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {activeDebts.map((debt) => {
                   const progress =
@@ -331,6 +327,40 @@ const DebtsPage = () => {
                   );
                 })}
               </div>
+
+              {/* Collapsible Payoff Planner on Mobile (M7) */}
+              {activeDebts.length > 0 && (
+                <div className="mt-8 mb-8">
+                  <button
+                    type="button"
+                    onClick={() => setShowPlannerMobile(!showPlannerMobile)}
+                    className="md:hidden w-full glass-panel p-4 flex items-center justify-between text-left mb-3 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                        <Calculator size={15} />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-zinc-100 uppercase tracking-wider block">
+                          Payoff Planner
+                        </span>
+                        <span className="text-[11px] text-zinc-400">
+                          Simulate extra payments & payoff strategies
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-emerald-400 flex items-center gap-1">
+                      {showPlannerMobile ? "Collapse ▴" : "Open ▸"}
+                    </span>
+                  </button>
+                  <div className={showPlannerMobile ? "block" : "hidden md:block"}>
+                    <DebtPayoffPlanner
+                      debts={activeDebts}
+                      onEditDebt={(debt) => openModal("edit", debt)}
+                    />
+                  </div>
+                </div>
+              )}
             </>
           )}
 

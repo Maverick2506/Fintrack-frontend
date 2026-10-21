@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { formatCurrency } from "../../utils/formatUtils";
 import {
   Sparkles,
@@ -25,6 +25,7 @@ const renderMarkdown = (text) => {
 };
 
 const FinancialAdviceCard = ({
+  isMobileExpandedInitial = false,
   advice,
   structured,
   onGetAdvice,
@@ -33,6 +34,7 @@ const FinancialAdviceCard = ({
 }) => {
   const data = structured || (typeof advice === "object" ? advice : null);
   const rawAdviceText = typeof advice === "string" ? advice : data?.summary || "";
+  const [isMobileExpanded, setIsMobileExpanded] = useState(isMobileExpandedInitial);
 
   const healthStatus = data?.healthStatus || "healthy";
   const badgeStyles = {
@@ -48,7 +50,37 @@ const FinancialAdviceCard = ({
   }[healthStatus] || CheckCircle2;
 
   return (
-    <div className="glass-panel p-6">
+    <>
+      {/* Mobile Collapsed Single Button / Bar (M5) */}
+      <div className="sm:hidden glass-panel p-3.5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+            <Sparkles size={14} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-xs font-semibold text-zinc-200 truncate">AI Financial Advisor</h3>
+            <p className="text-[10px] text-zinc-500 truncate">
+              {data?.headline || "Personalized cash-flow & savings insights"}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (!rawAdviceText && !data) {
+              onGetAdvice();
+            }
+            setIsMobileExpanded(!isMobileExpanded);
+          }}
+          disabled={isLoading}
+          className="btn-primary !py-1.5 !px-2.5 !text-[11px] shrink-0 flex items-center gap-1 cursor-pointer"
+        >
+          <Sparkles size={11} />
+          <span>{isLoading ? "Analyzing..." : isMobileExpanded ? "Close" : "✨ Get AI insight"}</span>
+        </button>
+      </div>
+
+      <div className={`glass-panel p-6 ${isMobileExpanded ? "block" : "hidden sm:block"}`}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
           <Sparkles size={13} className="text-emerald-400" />
@@ -168,6 +200,7 @@ const FinancialAdviceCard = ({
         </div>
       )}
     </div>
+    </>
   );
 };
 

@@ -135,14 +135,18 @@ const UpcomingBills = ({
               <li
                 key={bill.id}
                 onClick={() => {
-                  if (isSelecting) toggleSelectRow(bill.id);
+                  if (isSelecting) {
+                    toggleSelectRow(bill.id);
+                  } else if (onEdit) {
+                    onEdit(bill);
+                  }
                 }}
-                className={`py-3 flex items-center justify-between group transition-all duration-200 ${
+                className={`py-3 flex items-center justify-between group transition-all duration-200 cursor-pointer ${
                   isPaying ? "opacity-40" : "opacity-100"
                 } ${
                   isSelecting
-                    ? "cursor-pointer rounded-lg px-2 -mx-2 hover:bg-white/[0.03]"
-                    : ""
+                    ? "rounded-lg px-2 -mx-2 hover:bg-white/[0.03]"
+                    : "hover:bg-white/[0.02] sm:hover:bg-transparent"
                 } ${isSelecting && isSelected ? "bg-white/[0.04]" : ""}`}
               >
                 <div className="flex items-center gap-3">
@@ -153,13 +157,17 @@ const UpcomingBills = ({
                         e.stopPropagation();
                         toggleSelectRow(bill.id);
                       }}
-                      className={`w-4 h-4 rounded flex items-center justify-center border transition-colors cursor-pointer ${
-                        isSelected
-                          ? "bg-zinc-100 border-zinc-100 text-zinc-950"
-                          : "border-white/20 bg-zinc-900/80 hover:border-zinc-400"
-                      }`}
+                      className="w-10 h-10 -ml-2.5 -my-2 flex items-center justify-center cursor-pointer"
                     >
-                      {isSelected && <Check size={11} strokeWidth={3} />}
+                      <div
+                        className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                          isSelected
+                            ? "bg-zinc-100 border-zinc-100 text-zinc-950"
+                            : "border-white/20 bg-zinc-900/80 hover:border-zinc-400"
+                        }`}
+                      >
+                        {isSelected && <Check size={11} strokeWidth={3} />}
+                      </div>
                     </button>
                   ) : (
                     <button
@@ -170,13 +178,17 @@ const UpcomingBills = ({
                       }}
                       title="Mark bill as paid"
                       aria-label={`Mark ${bill.title} as paid`}
-                      className={`w-4 h-4 rounded flex items-center justify-center border transition-all cursor-pointer ${
-                        isPaying
-                          ? "bg-emerald-500 border-emerald-400 text-zinc-950 shadow-sm"
-                          : "border-white/20 bg-zinc-900/80 hover:border-emerald-500/60 hover:bg-emerald-500/10"
-                      }`}
+                      className="w-10 h-10 -ml-2.5 -my-2 flex items-center justify-center cursor-pointer"
                     >
-                      {isPaying && <Check size={11} strokeWidth={3} />}
+                      <div
+                        className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                          isPaying
+                            ? "bg-emerald-500 border-emerald-400 text-zinc-950 shadow-sm"
+                            : "border-white/20 bg-zinc-900/80 hover:border-emerald-500/60 hover:bg-emerald-500/10"
+                        }`}
+                      >
+                        {isPaying && <Check size={11} strokeWidth={3} />}
+                      </div>
                     </button>
                   )}
                   <div>
@@ -235,21 +247,28 @@ const UpcomingBills = ({
                       parseFloat(bill.taxRate) > 0 &&
                       !bill.taxApplied && (
                         <span className="text-[10px] text-amber-400/90 tabular-nums font-medium block">
-                          + {parseFloat(bill.taxRate)}% tax due (~{formatCurrency(parseFloat(bill.amount) * (1 + parseFloat(bill.taxRate) / 100))})
+                          <span className="sm:hidden">incl. tax {formatCurrency(parseFloat(bill.amount) * (1 + parseFloat(bill.taxRate) / 100))}</span>
+                          <span className="hidden sm:inline">+ {parseFloat(bill.taxRate)}% tax due (~{formatCurrency(parseFloat(bill.amount) * (1 + parseFloat(bill.taxRate) / 100))})</span>
                         </span>
                       )}
                   </div>
                   {!isSelecting && (
-                    <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => onEdit(bill)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(bill);
+                        }}
                         title="Edit"
                         className="btn-ghost-icon"
                       >
                         <Pencil size={13} />
                       </button>
                       <button
-                        onClick={() => onDelete(bill.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(bill.id);
+                        }}
                         title="Delete"
                         className="btn-ghost-icon hover:text-rose-400"
                       >

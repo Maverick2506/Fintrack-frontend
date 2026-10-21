@@ -32,7 +32,7 @@ const CompactSummaryBar = ({ items = [], className = "mb-6" }) => {
                   {item.value}
                 </p>
                 {item.unit && (
-                  <span className="text-[10px] sm:text-xs font-normal text-zinc-500 shrink-0">
+                  <span className="hidden sm:inline text-xs font-normal text-zinc-500 shrink-0">
                     {item.unit}
                   </span>
                 )}

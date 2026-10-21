@@ -18,6 +18,8 @@ import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 import GeminiGemModal from "../components/Modals/GeminiGemModal";
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
 
@@ -371,7 +373,88 @@ const DashboardPage = () => {
         />
 
         {/* Top KPI Bento Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        {/* Mobile KPI Layout (M4) */}
+        <div className="sm:hidden space-y-2.5 mb-5">
+          {/* Big Safe to Spend Tile */}
+          <div className="glass-panel p-4">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium text-zinc-400">Safe to Spend</p>
+              {forecastIsLow ? (
+                <span className="text-[10px] font-medium text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+                  Below buffer
+                </span>
+              ) : (
+                <span className="text-[11px] text-zinc-400">
+                  {forecast?.nextPayday
+                    ? `until ${formatShortDate(forecast.nextPayday)} (${isNextPaydayEstimated ? "est." : "payday"})`
+                    : "next 60 days"}
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline justify-between gap-2">
+              <p
+                className={`text-2xl font-bold tracking-tight tabular-nums ${
+                  forecastIsLow ? "text-rose-400" : "text-emerald-400"
+                }`}
+              >
+                {formatCurrency(forecast?.safeToSpend ?? 0)}
+              </p>
+              <div className="text-[11px] text-zinc-500 tabular-nums">
+                Low {formatCurrency(forecastLowestBalance, { maximumFractionDigits: 0 })} · {formatShortDate(forecast?.lowestPoint?.date)}
+              </div>
+            </div>
+          </div>
+
+          {/* 2x2 Compact Metric Grid (~70px cards) */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* 1. Net Worth */}
+            <div className="glass-panel p-3">
+              <p className="text-[11px] font-medium text-zinc-500 mb-0.5">Net Worth</p>
+              <p className={`text-base font-semibold tabular-nums truncate ${positiveNetWorth ? "text-zinc-100" : "text-rose-400"}`}>
+                {formatCurrency(netWorth, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                Checking: {formatCurrency(checkingBalance, { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+
+            {/* 2. Total Savings */}
+            <div className="glass-panel p-3">
+              <p className="text-[11px] font-medium text-zinc-500 mb-0.5">Total Savings</p>
+              <p className="text-base font-semibold text-emerald-400 tabular-nums truncate">
+                {formatCurrency(totalSavings, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                {(savingsSummary || []).length} active goals
+              </p>
+            </div>
+
+            {/* 3. Active Debt */}
+            <div className="glass-panel p-3">
+              <p className="text-[11px] font-medium text-zinc-500 mb-0.5">Active Debt</p>
+              <p className="text-base font-semibold text-zinc-200 tabular-nums truncate">
+                {formatCurrency(totalDebt, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                {(debtSummary || []).filter((d) => (parseFloat(d.initialBalance) || 0) > 0).length} accounts
+              </p>
+            </div>
+
+            {/* 4. Card Balances */}
+            <div className="glass-panel p-3">
+              <p className="text-[11px] font-medium text-zinc-500 mb-0.5">Card Balances</p>
+              <p className="text-base font-semibold text-zinc-200 tabular-nums truncate">
+                {formatCurrency(totalCC, { maximumFractionDigits: 0 })}
+              </p>
+              <p className="text-[10px] text-zinc-500 truncate mt-0.5">
+                {(creditCardSummary || []).length} cards
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Bento Strip */}
+        <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
           {/* Safe to Spend Tile (Phase E) */}
           <div className="glass-panel p-5 flex flex-col justify-between">
             <div>
@@ -563,7 +646,7 @@ const DashboardPage = () => {
 
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 space-y-6">
-            <MonthlySummary summary={monthlySummary} />
+            <MonthlySummary summary={monthlySummary} monthLabel={MONTH_NAMES[selectedMonth - 1]} />
             <UpcomingBills
               bills={upcomingBills}
               onMarkAsPaid={handleMarkAsPaid}
@@ -642,7 +725,9 @@ const DashboardPage = () => {
               isUpdatingEstimateIncome={updateEstimateIncomeMutation.isPending}
             />
             {spendingData && spendingData.length > 0 && (
-              <SpendingChartCard data={spendingData} />
+              <div className="hidden md:block">
+                <SpendingChartCard data={spendingData} />
+              </div>
             )}
           </div>
 

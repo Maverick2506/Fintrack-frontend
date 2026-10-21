@@ -557,49 +557,63 @@ const LedgerPage = () => {
                           : "hover:bg-white/[0.02]"
                       }`}
                     >
-                      <td className="py-3 pl-4 pr-1">
+                      <td
+                        className="py-2 sm:py-3 pl-3 sm:pl-4 pr-1 w-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleRow(row.id, i, e.shiftKey);
+                        }}
+                      >
                         <button
                           type="button"
-                          onClick={(e) =>
-                            handleToggleRow(row.id, i, e.shiftKey)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleRow(row.id, i, e.shiftKey);
+                          }}
                           aria-label={`Select ${row.name}`}
-                          className={`w-4 h-4 rounded flex items-center justify-center border transition-colors cursor-pointer ${
-                            isSelected
-                              ? "bg-zinc-100 border-zinc-100 text-zinc-950"
-                              : "border-white/20 bg-zinc-900/80 hover:border-zinc-400"
-                          }`}
+                          className="w-10 h-10 -ml-2 flex items-center justify-center cursor-pointer"
                         >
-                          {isSelected && <Check size={11} strokeWidth={3} />}
+                          <span
+                            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                              isSelected
+                                ? "bg-zinc-100 border-zinc-100 text-zinc-950"
+                                : "border-white/20 bg-zinc-900/80 hover:border-zinc-400"
+                            }`}
+                          >
+                            {isSelected && <Check size={11} strokeWidth={3} />}
+                          </span>
                         </button>
                       </td>
-                      <td className="py-3 px-3 sm:px-4">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-sm font-medium ${row.is_paid ? "text-zinc-200" : "text-zinc-400"}`}>
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={`text-sm font-medium truncate max-w-[170px] sm:max-w-none ${
+                              row.is_paid ? "text-zinc-200" : "text-zinc-400"
+                            }`}
+                            title={row.name}
+                          >
                             {row.name}
                           </span>
                           {!row.is_paid && (
                             <span
-                              className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap"
+                              className="hidden sm:inline text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap"
                               title="Upcoming / not yet cleared"
                             >
                               Upcoming
                             </span>
                           )}
                         </div>
-                        {/* Mobile inline Category + Date subtitle */}
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1 sm:hidden">
-                          <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
-                              CATEGORY_COLORS[row.category] ||
-                              CATEGORY_COLORS.Other
-                            }`}
-                          >
-                            {row.category}
-                          </span>
-                          <span className="text-[11px] text-zinc-500 tabular-nums">
-                            · {formattedDate}
-                          </span>
+                        {/* Mobile single meta line: Food · Oct 17 · Upcoming (M6) */}
+                        <div className="flex items-center gap-1 mt-0.5 sm:hidden text-[11px] text-zinc-500 truncate">
+                          <span className="text-zinc-400 truncate">{row.category}</span>
+                          <span>·</span>
+                          <span className="tabular-nums shrink-0">{formattedDate}</span>
+                          {!row.is_paid && (
+                            <>
+                              <span>·</span>
+                              <span className="text-amber-400 font-medium shrink-0">Upcoming</span>
+                            </>
+                          )}
                         </div>
                       </td>
                       <td className="hidden sm:table-cell py-3 px-4">
@@ -615,7 +629,7 @@ const LedgerPage = () => {
                       <td className="hidden sm:table-cell py-3 px-4 text-xs text-zinc-400 tabular-nums whitespace-nowrap">
                         {formattedDate}
                       </td>
-                      <td className="py-3 px-3 sm:px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap">
+                      <td className="py-2 sm:py-3 px-3 sm:px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap">
                         <span
                           className={
                             row.type === "income"
@@ -667,9 +681,10 @@ const LedgerPage = () => {
         </div>
         <div className="border-t border-white/[0.05] px-4 py-2.5 flex items-center justify-between">
           <p className="text-[11px] text-zinc-500">
-            {selectedIds.size > 0
+            <span className="hidden sm:inline">{selectedIds.size > 0
               ? `${selectedIds.size} of ${filtered.length} selected (Tip: Hold Shift to select a range)`
-              : "Tip: Use checkboxes or Shift+Click to select multiple transactions"}
+              : "Tip: Use checkboxes or Shift+Click to select multiple transactions"}</span>
+            <span className="sm:hidden">{selectedIds.size > 0 ? `${selectedIds.size} selected` : ""}</span>
           </p>
           <p className="text-[11px] text-zinc-500 tabular-nums">
             {filtered.length} transactions

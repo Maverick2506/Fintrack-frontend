@@ -123,6 +123,18 @@ const NetWorthHistoryChart = ({ snapshots = [], change30Days = null }) => {
             As days pass, your wealth trend will plot here automatically.
           </p>
         </div>
+      ) : chartData.length < 7 ? (
+        <div className="h-[200px] flex flex-col items-center justify-center text-center px-4 border border-dashed border-white/[0.06] rounded-xl">
+          <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/[0.07] flex items-center justify-center text-zinc-400 mb-2.5">
+            <History size={18} />
+          </div>
+          <p className="text-xs font-semibold text-zinc-200 mb-1">
+            Tracking since {latestSnapshot ? formatShortDate(latestSnapshot.date) : "Oct 20"} · {latestSnapshot ? formatCurrency(latestSnapshot.netWorth) : "$0.00"}
+          </p>
+          <p className="text-[11px] text-zinc-500 max-w-sm">
+            {chartData.length} of 7 daily snapshots recorded. Trend chart unlocks once a full week of history is recorded.
+          </p>
+        </div>
       ) : (
         <div style={{ width: "100%", height: 260 }}>
           <ResponsiveContainer>

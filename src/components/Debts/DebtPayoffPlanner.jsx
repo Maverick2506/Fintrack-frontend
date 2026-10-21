@@ -138,24 +138,23 @@ const DebtPayoffPlanner = ({ debts = [], onEditDebt }) => {
       )}
 
       {missingAprDebts.length > 0 && (
-        <div className="mb-5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={15} className="text-amber-400 shrink-0" />
-            <span>
+        <div className="mb-5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+            <span className="truncate">
               {missingAprDebts.length === 1
-                ? `"${missingAprDebts[0].name}" has no interest rate set.`
-                : `${missingAprDebts.length} debts have no interest rate set.`}{" "}
-              Add the interest rate for an accurate estimate.
+                ? `"${missingAprDebts[0].name}" has no interest rate set`
+                : `${missingAprDebts.length} debts have no interest rate set`}
             </span>
           </div>
           {onEditDebt && (
             <button
               type="button"
               onClick={() => onEditDebt(missingAprDebts[0])}
-              className="text-xs font-medium text-amber-400 hover:text-amber-300 underline underline-offset-2 shrink-0 flex items-center gap-1"
+              className="text-xs font-medium text-amber-400 hover:text-amber-300 underline underline-offset-2 shrink-0 flex items-center gap-1 cursor-pointer py-1"
             >
               <Pencil size={11} />
-              <span>Edit {missingAprDebts[0].name}</span>
+              <span>Edit</span>
             </button>
           )}
         </div>
@@ -323,7 +322,7 @@ const DebtPayoffPlanner = ({ debts = [], onEditDebt }) => {
         </div>
       )}
 
-      {/* Per-Debt Payoff Schedule */}
+      {/* Per-Debt Payoff Schedule (M8) */}
       {planned?.perDebt && planned.perDebt.length > 0 && (
         <div>
           <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2.5">
@@ -333,30 +332,53 @@ const DebtPayoffPlanner = ({ debts = [], onEditDebt }) => {
             {planned.perDebt.map((d) => (
               <div
                 key={d.id}
-                className="flex items-center justify-between text-xs py-2 px-3 rounded-lg bg-zinc-900/60 border border-white/[0.04]"
+                className="py-2.5 px-3 rounded-lg bg-zinc-900/60 border border-white/[0.04]"
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-zinc-200 font-medium">{d.name}</span>
-                  <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
-                    {d.apr > 0 ? `${d.apr}% APR` : "0% / unset"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 tabular-nums text-[11px]">
-                  <span className="text-zinc-400">
-                    Remaining:{" "}
-                    <span className="text-zinc-200 font-medium">
+                {/* Mobile: 2 clean lines (M8) */}
+                <div className="sm:hidden space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-200 font-medium truncate max-w-[200px]">
+                      {d.name} · {d.apr > 0 ? `${d.apr}%` : "0%"}
+                    </span>
+                    <span className="text-zinc-400 tabular-nums text-[11px]">
                       {formatCurrency(d.originalBalance)}
                     </span>
-                  </span>
-                  <span className="text-zinc-400">
-                    Interest:{" "}
-                    <span className="text-zinc-300">
-                      {formatCurrency(d.totalInterest)}
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] tabular-nums">
+                    <span className="text-emerald-400 font-medium">
+                      {d.payoffDate ? `Paid off ${formatMonthYear(d.payoffDate)}` : "—"}
                     </span>
-                  </span>
-                  <span className="text-emerald-400 font-medium">
-                    {d.payoffDate ? `Paid off ${formatMonthYear(d.payoffDate)}` : "—"}
-                  </span>
+                    <span className="text-zinc-400">
+                      {formatCurrency(d.totalInterest)} interest
+                    </span>
+                  </div>
+                </div>
+
+                {/* Desktop: single horizontal row */}
+                <div className="hidden sm:flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-200 font-medium">{d.name}</span>
+                    <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
+                      {d.apr > 0 ? `${d.apr}% APR` : "0% / unset"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 tabular-nums text-[11px]">
+                    <span className="text-zinc-400">
+                      Remaining:{" "}
+                      <span className="text-zinc-200 font-medium">
+                        {formatCurrency(d.originalBalance)}
+                      </span>
+                    </span>
+                    <span className="text-zinc-400">
+                      Interest:{" "}
+                      <span className="text-zinc-300">
+                        {formatCurrency(d.totalInterest)}
+                      </span>
+                    </span>
+                    <span className="text-emerald-400 font-medium">
+                      {d.payoffDate ? `Paid off ${formatMonthYear(d.payoffDate)}` : "—"}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Plus } from "lucide-react";
 import { formatCurrency } from "../../utils/formatUtils";
 import { calculatePacing } from "../../utils/savingsPacing";
@@ -11,6 +11,7 @@ const ProgressSection = ({
   onAddDebt,
   onAddSavingsGoal,
 }) => {
+  const [showAllMobile, setShowAllMobile] = useState(false);
   const activeDebts = (debtSummary || []).filter(
     (d) => (parseFloat(d.initialBalance) || 0) > 0 && d.isActive !== false
   );
@@ -45,7 +46,7 @@ const ProgressSection = ({
       <div className="space-y-5">
         {/* --- Active Debts --- */}
         {activeDebts.length > 0 &&
-          activeDebts.map((debt) => {
+          activeDebts.map((debt, dIdx) => {
             const originalAmount =
               parseFloat(debt.targetAmount) ||
               parseFloat(debt.initialBalance) ||
@@ -55,7 +56,7 @@ const ProgressSection = ({
               ((originalAmount - currentAmount) / originalAmount) * 100;
 
             return (
-              <div key={debt.id}>
+              <div key={debt.id} className={!showAllMobile && dIdx >= 3 ? "hidden sm:block" : ""}>
                 <div className="flex justify-between items-center mb-1.5">
                   <div>
                     <span className="text-sm font-medium text-zinc-200">
@@ -91,14 +92,14 @@ const ProgressSection = ({
         {/* --- All Savings Goals --- */}
         {savingsSummary &&
           savingsSummary.length > 0 &&
-          savingsSummary.map((goal) => {
+          savingsSummary.map((goal, gIdx) => {
             const pacing = calculatePacing(goal, "bi-weekly");
             const target = parseFloat(goal.targetAmount) || 1;
             const current = parseFloat(goal.initialBalance) || 0;
             const progress = (current / target) * 100;
 
             return (
-              <div key={goal.id}>
+              <div key={goal.id} className={!showAllMobile && (activeDebts.length + gIdx) >= 3 ? "hidden sm:block" : ""}>
                 <div className="flex justify-between items-center mb-1.5">
                   <div>
                     <div className="flex items-center gap-1.5">
@@ -144,6 +145,17 @@ const ProgressSection = ({
               </div>
             );
           })}
+
+        {/* Mobile Show All Toggle (M5) */}
+        {(activeDebts.length + (savingsSummary || []).length > 3) && (
+          <button
+            type="button"
+            onClick={() => setShowAllMobile(!showAllMobile)}
+            className="sm:hidden w-full py-2 px-3 rounded-lg bg-zinc-900 border border-white/10 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+          >
+            <span>{showAllMobile ? "Show less" : `Show all (${activeDebts.length + (savingsSummary || []).length})`}</span>
+          </button>
+        )}
 
         {activeDebts.length === 0 &&
           (!savingsSummary || savingsSummary.length === 0) && (

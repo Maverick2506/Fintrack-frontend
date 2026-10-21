@@ -9,6 +9,7 @@ import SpendingTrendsChart from "../components/Dashboard/SpendingTrendsChart";
 import NetWorthHistoryChart from "../components/Dashboard/NetWorthHistoryChart";
 import CategoryDetailModal from "../components/Modals/CategoryDetailModal";
 import { formatCurrency } from "../utils/formatUtils";
+import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -31,6 +32,7 @@ const ReportsPage = () => {
 
   const [editingBudget, setEditingBudget] = useState(null);
   const [budgetInput, setBudgetInput] = useState("");
+  const [activeTab, setActiveTab] = useState("spending");
 
   const selectedMonthStr = `${selectedDate.year}-${String(selectedDate.month).padStart(2, "0")}`;
 
@@ -200,9 +202,34 @@ const ReportsPage = () => {
         </div>
       </div>
 
+      {/* Mobile Top Tabs (M9) */}
+      {!loading && reportData && (
+        <div className="md:hidden flex items-center gap-1 p-1 bg-zinc-900/80 rounded-xl border border-white/[0.08] mb-5 overflow-x-auto">
+          {[
+            { id: "spending", label: "Spending" },
+            { id: "trends", label: "Trends" },
+            { id: "networth", label: "Net worth" },
+            ...(registeredAccounts.length > 0 ? [{ id: "tax", label: "Tax" }] : []),
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all text-center whitespace-nowrap cursor-pointer ${
+                activeTab === tab.id
+                  ? "bg-zinc-800 text-emerald-400 shadow-sm border border-white/[0.08]"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Stats bar */}
       {!loading && reportData && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className={`grid-cols-2 md:grid-cols-4 gap-4 mb-6 ${activeTab === "spending" ? "grid" : "hidden md:grid"}`}>
           <div className="glass-panel p-4">
             <p className="text-xs font-medium text-zinc-500 mb-1">Income</p>
             <p className="text-xl font-semibold text-emerald-400 tabular-nums">
@@ -256,8 +283,12 @@ const ReportsPage = () => {
         </div>
       ) : reportData ? (
         <div className="space-y-6">
-          <SpendingTrendsChart data={trendsData} />
-          <NetWorthHistoryChart snapshots={netWorthHistoryData?.snapshots} change30Days={netWorthHistoryData?.change30Days} />
+          <div className={activeTab === "trends" ? "block" : "hidden md:block"}>
+            <SpendingTrendsChart data={trendsData} />
+          </div>
+          <div className={activeTab === "networth" ? "block" : "hidden md:block"}>
+            <NetWorthHistoryChart snapshots={netWorthHistoryData?.snapshots} change30Days={netWorthHistoryData?.change30Days} />
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Month-over-month comparison */}
@@ -272,7 +303,7 @@ const ReportsPage = () => {
               const srNum = parseFloat(savingsRate) || 0;
               const srColor = srNum >= 20 ? "#34d399" : srNum >= 10 ? "#fbbf24" : "#fb7185";
               return (
-                <div className="glass-panel p-6 flex flex-col justify-between gap-5">
+                <div className={`glass-panel p-6 flex-col justify-between gap-5 ${activeTab === "trends" ? "flex" : "hidden md:flex"}`}>
                   <div>
                     <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-5">
                       Month-over-Month Comparison
@@ -392,7 +423,7 @@ const ReportsPage = () => {
             })()}
 
             {/* Spending summary with optional budget limits */}
-            <div className="space-y-4">
+            <div className={`space-y-4 ${activeTab === "spending" ? "block" : "hidden md:block"}`}>
               <SpendingChartCard data={spendingData} onCategoryClick={handleCategoryClick} />
 
               {spendingData.length > 0 && (
@@ -456,7 +487,7 @@ const ReportsPage = () => {
 
             {/* Phase J: Tax Season Summary Card (RRSP / FHSA / TFSA) */}
             {registeredAccounts.length > 0 && (
-              <div className="md:col-span-2 glass-panel p-6">
+              <div className={`md:col-span-2 glass-panel p-6 ${activeTab === "tax" ? "block" : "hidden md:block"}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                   <div>
                     <h2 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
@@ -471,46 +502,85 @@ const ReportsPage = () => {
                   </span>
                 </div>
 
-                <CompactSummaryBar
-                  className="mb-4"
-                  items={[
-                    {
+                {(() => {
+                  const taxItems = [];
+                  const rrspAccs = registeredAccounts.filter((g) => g.registeredType === "RRSP");
+                  const fhsaAccs = registeredAccounts.filter((g) => g.registeredType === "FHSA");
+                  const tfsaAccs = registeredAccounts.filter((g) => g.registeredType === "TFSA");
+
+                  if (rrspAccs.length > 0) {
+                    taxItems.push({
                       label: `RRSP Contributions (${currentYear})`,
                       shortLabel: "RRSP",
-                      value: formatCurrency(
-                        registeredAccounts
-                          .filter((g) => g.registeredType === "RRSP")
-                          .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
-                      ),
+                      value: formatCurrency(rrspAccs.reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)),
                       colorClass: "text-sky-400",
                       subtitle: "Tax-deductible against net income",
-                    },
-                    {
+                    });
+                  }
+                  if (fhsaAccs.length > 0) {
+                    taxItems.push({
                       label: `FHSA Contributions (${currentYear})`,
                       shortLabel: "FHSA",
-                      value: formatCurrency(
-                        registeredAccounts
-                          .filter((g) => g.registeredType === "FHSA")
-                          .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
-                      ),
+                      value: formatCurrency(fhsaAccs.reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)),
                       colorClass: "text-purple-400",
                       subtitle: "First-home tax deduction",
-                    },
-                    {
+                    });
+                  }
+                  if (tfsaAccs.length > 0) {
+                    taxItems.push({
                       label: `TFSA Contributions (${currentYear})`,
                       shortLabel: "TFSA",
-                      value: formatCurrency(
-                        registeredAccounts
-                          .filter((g) => g.registeredType === "TFSA")
-                          .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
-                      ),
+                      value: formatCurrency(tfsaAccs.reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)),
                       colorClass: "text-emerald-400",
                       subtitle: "Tax-free growth (non-deductible)",
-                    },
-                  ]}
-                />
+                    });
+                  }
 
-                <div className="overflow-x-auto">
+                  return taxItems.length > 0 ? (
+                    <CompactSummaryBar className="mb-4" items={taxItems} />
+                  ) : null;
+                })()}
+
+                {/* Mobile: card list (M10) */}
+                <div className="sm:hidden space-y-2 mb-3">
+                  {registeredAccounts.map((account) => {
+                    const isOver = account.isOverContributed;
+                    return (
+                      <div key={account.id} className="p-3 rounded-lg bg-zinc-900/60 border border-white/[0.04] space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-zinc-100">{account.name}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                            account.registeredType === "RRSP"
+                              ? "bg-sky-500/10 text-sky-400 border-sky-500/20"
+                              : account.registeredType === "FHSA"
+                              ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                              : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          }`}>
+                            {account.registeredType}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] tabular-nums text-zinc-400">
+                          <span>
+                            {formatCurrency(account.contributedThisYear || 0)}
+                            {account.contributionRoom ? ` · ${formatCurrency(account.roomLeft)} room left` : ""}
+                          </span>
+                          {isOver ? (
+                            <span className="text-[10px] text-rose-400 font-semibold bg-rose-500/10 border border-rose-500/20 rounded px-1.5 py-0.5">
+                              Over limit
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-emerald-400 font-medium bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5">
+                              OK
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop: full table */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-xs text-left">
                     <thead>
                       <tr className="border-b border-white/[0.06] text-zinc-500 font-medium">
@@ -579,7 +649,7 @@ const ReportsPage = () => {
               </div>
             )}
 
-            <div className="md:col-span-2">
+            <div className={`md:col-span-2 ${activeTab === "spending" ? "block" : "hidden md:block"}`}>
               <TransactionList
                 transactions={sortedMonthlyExpenses}
                 sortConfig={sortConfig}

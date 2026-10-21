@@ -5,6 +5,7 @@ import AddCreditCardPaymentModal from "../components/Modals/AddCreditCardPayment
 import EditCreditCardModal from "../components/Modals/EditCreditCardModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import dashboardService from "../services/dashboardService";
+import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 
 const CreditCardPage = () => {
   const [cards, setCards] = useState([]);
