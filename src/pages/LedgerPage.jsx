@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
+import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import { formatCurrency, formatNumber } from "../utils/formatUtils";
 
@@ -297,63 +298,49 @@ const LedgerPage = () => {
         </button>
       </div>
 
-      {/* Summary bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="glass-panel p-5">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-zinc-500">Total Income</p>
-            {pendingIncome > 0 && (
+      {/* Summary Bar (M3) */}
+      <CompactSummaryBar
+        items={[
+          {
+            label: "Total Income",
+            shortLabel: "Income",
+            value: `+${formatCurrency(clearedIncome)}`,
+            colorClass: "text-emerald-400",
+            subtitle: `Cleared (${filtered.filter((r) => r.type === "income" && r.is_paid).length} received)`,
+            headerBadge: pendingIncome > 0 ? (
               <span className="text-[10px] text-zinc-500 font-medium" title="Unreceived future paycheques">
                 +{formatCurrency(pendingIncome)} upcoming
               </span>
-            )}
-          </div>
-          <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
-            +{formatCurrency(clearedIncome)}
-          </p>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            Cleared ({filtered.filter((r) => r.type === "income" && r.is_paid).length} received)
-          </p>
-        </div>
-        <div className="glass-panel p-5">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-zinc-500">Total Expenses</p>
-            {pendingExpense > 0 && (
+            ) : null,
+          },
+          {
+            label: "Total Expenses",
+            shortLabel: "Expenses",
+            value: `-${formatCurrency(clearedExpense)}`,
+            colorClass: "text-rose-400",
+            subtitle: `Cleared (${filtered.filter((r) => r.type === "expense" && r.is_paid).length} paid)`,
+            headerBadge: pendingExpense > 0 ? (
               <span className="text-[10px] text-zinc-500 font-medium" title="Unpaid upcoming bills">
                 {formatCurrency(pendingExpense)} upcoming
               </span>
-            )}
-          </div>
-          <p className="text-2xl font-semibold text-rose-400 tabular-nums">
-            -{formatCurrency(clearedExpense)}
-          </p>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            Cleared ({filtered.filter((r) => r.type === "expense" && r.is_paid).length} paid)
-          </p>
-        </div>
-        <div className="glass-panel p-5">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-zinc-500">Net Cleared</p>
-            {(pendingIncome > 0 || pendingExpense > 0) && (
+            ) : null,
+          },
+          {
+            label: "Net Cleared",
+            shortLabel: "Net",
+            value: formatCurrency(clearedNet),
+            colorClass: clearedNet >= 0 ? "text-zinc-100" : "text-rose-400",
+            subtitle: (pendingIncome > 0 || pendingExpense > 0)
+              ? `Proj: ${formatCurrency(totalIncome - totalExpense)}`
+              : "Cleared income minus paid expenses",
+            headerBadge: (pendingIncome > 0 || pendingExpense > 0) ? (
               <span className="text-[10px] text-zinc-500 font-medium" title="Projected net if all upcoming items clear">
                 Proj: {formatCurrency(totalIncome - totalExpense)}
               </span>
-            )}
-          </div>
-          <p
-            className={`text-2xl font-semibold tabular-nums ${
-              clearedNet >= 0
-                ? "text-zinc-100"
-                : "text-rose-400"
-            }`}
-          >
-            {formatCurrency(clearedNet)}
-          </p>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            Cleared income minus paid expenses
-          </p>
-        </div>
-      </div>
+            ) : null,
+          },
+        ]}
+      />
 
       {/* Controls */}
       <div className="flex flex-col lg:flex-row gap-3 mb-4">
@@ -508,7 +495,7 @@ const LedgerPage = () => {
                 >
                   Amount <SortIcon k="amount" />
                 </th>
-                <th className="w-16 sm:w-20 py-3.5 pr-3 sm:px-4"></th>
+                <th className="hidden sm:table-cell w-20 py-3.5 pr-3 sm:px-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
@@ -557,7 +544,14 @@ const LedgerPage = () => {
                   return (
                     <tr
                       key={`${row.type}-${row.id}-${i}`}
-                      className={`transition-colors group ${
+                      onClick={(e) => {
+                        if (e.target.closest("button") || e.target.closest("input")) return;
+                        if (window.innerWidth < 640) {
+                          setEditingTx(row);
+                          setIsTxModalOpen(true);
+                        }
+                      }}
+                      className={`transition-colors group cursor-pointer sm:cursor-default ${
                         isSelected
                           ? "bg-white/[0.04] hover:bg-white/[0.06]"
                           : "hover:bg-white/[0.02]"
@@ -643,7 +637,7 @@ const LedgerPage = () => {
                           ${formatNumber(row.amount)}
                         </span>
                       </td>
-                      <td className="py-3 pr-3 sm:px-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      <td className="hidden sm:table-cell py-3 pr-3 sm:px-4 text-right opacity-0 sm:group-hover:opacity-100 transition-opacity whitespace-nowrap">
                         <div className="inline-flex items-center gap-0.5">
                           <button
                             onClick={() => {
@@ -691,6 +685,7 @@ const LedgerPage = () => {
         }}
         refreshData={loadLedger}
         existingTransaction={editingTx}
+        onDelete={(tx) => setDeleteTarget(tx)}
       />
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}

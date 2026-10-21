@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Clock,
   Percent,
+  Trash2,
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { formatCurrency } from "../../utils/formatUtils";
@@ -65,6 +66,7 @@ const AddTransactionModal = ({
   isOpen,
   onClose,
   refreshData,
+  onDelete,
   existingTransaction,
 }) => {
   const todayStr = getLocalTodayStr();
@@ -1241,6 +1243,24 @@ const AddTransactionModal = ({
           )}
 
           {/* Action Footer */}
+          {isEditing && onDelete && (
+            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDelete(existingTransaction);
+                }}
+                className="py-2 px-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 size={13} />
+                <span>Delete Transaction</span>
+              </button>
+              <div className="text-[11px] text-zinc-500 hidden sm:block">
+                Permanently removes this record
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"

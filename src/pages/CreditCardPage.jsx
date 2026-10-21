@@ -93,48 +93,38 @@ const CreditCardPage = () => {
       </div>
 
       {cards.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Total Card Balance
-            </p>
-            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-              $
-              {totalBalance.toLocaleString("en-US", {
+        <CompactSummaryBar
+          items={[
+            {
+              label: "Total Card Balance",
+              shortLabel: "Balance",
+              value: `$${totalBalance.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-              })}
-            </p>
-          </div>
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Available Credit
-            </p>
-            <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
-              $
-              {totalAvailable.toLocaleString("en-US", {
+              })}`,
+            },
+            {
+              label: "Available Credit",
+              shortLabel: "Available",
+              value: `$${totalAvailable.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-              })}
-            </p>
-          </div>
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Overall Utilization
-            </p>
-            <p
-              className={`text-2xl font-semibold tabular-nums ${
+              })}`,
+              colorClass: "text-emerald-400",
+            },
+            {
+              label: "Overall Utilization",
+              shortLabel: "Utilization",
+              value: `${overallUtilization.toFixed(1)}%`,
+              colorClass:
                 overallUtilization > 70
                   ? "text-rose-400"
                   : overallUtilization > 30
                   ? "text-amber-400"
-                  : "text-zinc-100"
-              }`}
-            >
-              {overallUtilization.toFixed(1)}%
-            </p>
-          </div>
-        </div>
+                  : "text-emerald-400",
+            },
+          ]}
+        />
       )}
 
       {cards.length === 0 ? (

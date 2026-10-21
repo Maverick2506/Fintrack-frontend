@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import AddDebtModal from "../components/Modals/AddDebtModal";
+import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import AddDebtPaymentModal from "../components/Modals/AddDebtPaymentModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import EditDebtModal from "../components/Modals/EditDebtModal";
@@ -119,44 +120,36 @@ const DebtsPage = () => {
       </div>
 
       {debts.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Total Remaining Debt
-            </p>
-            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-              $
-              {totalRemaining.toLocaleString("en-US", {
+        <CompactSummaryBar
+          items={[
+            {
+              label: "Total Remaining Debt",
+              shortLabel: "Remaining",
+              value: `$${totalRemaining.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-              })}
-            </p>
-          </div>
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Total Paid Off
-            </p>
-            <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
-              $
-              {totalPaid.toLocaleString("en-US", {
+              })}`,
+            },
+            {
+              label: "Total Paid Off",
+              shortLabel: "Paid Off",
+              value: `$${totalPaid.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-              })}
-            </p>
-          </div>
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Monthly Commitment
-            </p>
-            <p className="text-2xl font-semibold text-rose-400 tabular-nums">
-              $
-              {totalMonthlyCommitment.toLocaleString("en-US", {
+              })}`,
+              colorClass: "text-emerald-400",
+            },
+            {
+              label: "Monthly Commitment",
+              shortLabel: "Monthly",
+              value: `$${totalMonthlyCommitment.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-              })}
-            </p>
-          </div>
-        </div>
+              })}`,
+              colorClass: "text-rose-400",
+            },
+          ]}
+        />
       )}
 
       {debts.length === 0 ? (

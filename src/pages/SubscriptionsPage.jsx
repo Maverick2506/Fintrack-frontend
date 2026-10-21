@@ -13,6 +13,7 @@ import dashboardService from "../services/dashboardService";
 import { formatCurrency } from "../utils/formatUtils";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
+import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 
 const CADENCE_LABELS = {
   weekly: "Weekly",
@@ -146,46 +147,32 @@ const SubscriptionsPage = () => {
         </button>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="glass-panel p-5">
-          <p className="text-xs font-medium text-zinc-500 mb-1">
-            Normalized Monthly Spend
-          </p>
-          <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-            {formatCurrency(totalMonthly)}
-            <span className="text-xs font-normal text-zinc-500"> /mo</span>
-          </p>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            All cadences normalized to monthly equivalent
-          </p>
-        </div>
-
-        <div className="glass-panel p-5">
-          <p className="text-xs font-medium text-zinc-500 mb-1">
-            Projected Annual Cost
-          </p>
-          <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-            {formatCurrency(totalAnnual)}
-            <span className="text-xs font-normal text-zinc-500"> /yr</span>
-          </p>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            Expected 12-month recurring commitment
-          </p>
-        </div>
-
-        <div className="glass-panel p-5">
-          <p className="text-xs font-medium text-zinc-500 mb-1">
-            Active Subscriptions
-          </p>
-          <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
-            {count}
-          </p>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            Tracking recurring expenses with active schedules
-          </p>
-        </div>
-      </div>
+      {/* Summary KPI Panel (M3) */}
+      <CompactSummaryBar
+        items={[
+          {
+            label: "Normalized Monthly Spend",
+            shortLabel: "Monthly",
+            value: formatCurrency(totalMonthly),
+            unit: "/mo",
+            subtitle: "All cadences normalized to monthly equivalent",
+          },
+          {
+            label: "Projected Annual Cost",
+            shortLabel: "Annual",
+            value: formatCurrency(totalAnnual),
+            unit: "/yr",
+            subtitle: "Expected 12-month recurring commitment",
+          },
+          {
+            label: "Active Subscriptions",
+            shortLabel: "Active",
+            value: count,
+            colorClass: "text-emerald-400",
+            subtitle: "Tracking recurring expenses with active schedules",
+          },
+        ]}
+      />
 
       {/* Main Table / List */}
       {loading ? (
@@ -219,7 +206,113 @@ const SubscriptionsPage = () => {
           </button>
         </div>
       ) : (
-        <div className="glass-panel overflow-hidden">
+        <div className="space-y-4">
+          {/* Mobile Card List (< md screens - M1) */}
+          <div className="md:hidden space-y-3">
+            {subscriptions.map((sub) => {
+              const badgeClass =
+                CADENCE_BADGES[sub.cadence] ||
+                "bg-zinc-800 text-zinc-300 border-white/[0.08]";
+              const hasPriceChange = Boolean(sub.priceChange);
+              const isHike =
+                hasPriceChange && sub.priceChange.difference > 0;
+
+              return (
+                <div key={sub.id} className="glass-panel p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-zinc-100 text-sm truncate">
+                          {sub.name}
+                        </h3>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeClass} shrink-0`}
+                        >
+                          {CADENCE_LABELS[sub.cadence] || sub.cadence}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-400 truncate">
+                        <span>{sub.category}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1 text-zinc-400 truncate">
+                          {sub.isCreditCard ? (
+                            <CreditCard size={11} className="shrink-0" />
+                          ) : (
+                            <Building size={11} className="shrink-0" />
+                          )}
+                          <span className="truncate">{sub.payingAccount}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-semibold text-zinc-100 text-sm tabular-nums">
+                        {formatCurrency(sub.monthlyCost)}
+                        <span className="text-zinc-500 font-normal text-xs">/mo</span>
+                      </div>
+                      <div className="text-[11px] text-zinc-400 tabular-nums mt-0.5">
+                        {formatCurrency(sub.latestAmount)}
+                        {sub.isTaxExclusive ? " + tax" : ""}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-zinc-400 pt-1 border-t border-white/[0.04]">
+                    <div className="flex items-center gap-1.5 text-zinc-300">
+                      <Calendar size={12} className="text-zinc-500 shrink-0" />
+                      <span>{sub.nextDate ? `next ${sub.nextDate}` : "None scheduled"}</span>
+                    </div>
+                    {hasPriceChange && (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium border ${
+                          isHike
+                            ? "bg-amber-500/10 text-amber-300 border-amber-500/25"
+                            : "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                        }`}
+                      >
+                        <TrendingUp
+                          size={11}
+                          className={
+                            isHike
+                              ? "rotate-0 text-amber-300"
+                              : "rotate-180 text-emerald-400"
+                          }
+                        />
+                        <span>
+                          {formatCurrency(sub.priceChange.from)} → {formatCurrency(sub.priceChange.to)} (
+                          {sub.priceChange.percent > 0 ? "+" : ""}
+                          {sub.priceChange.percent}%)
+                        </span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Actions - min-h-[40px] tap targets for mobile */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/[0.04]">
+                    <button
+                      type="button"
+                      onClick={() => handleEditNextCharge(sub)}
+                      className="flex-1 min-h-[40px] px-3 rounded-lg bg-zinc-900 border border-white/10 text-xs font-medium text-zinc-200 hover:bg-zinc-800 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Pencil size={13} className="text-zinc-400" />
+                      <span>Edit next charge</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCancelTarget(sub)}
+                      className="min-h-[40px] px-3.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="Cancel subscription"
+                    >
+                      <Ban size={13} />
+                      <span>Cancel</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table (>= md screens) */}
+          <div className="hidden md:block glass-panel overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
@@ -382,6 +475,7 @@ const SubscriptionsPage = () => {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

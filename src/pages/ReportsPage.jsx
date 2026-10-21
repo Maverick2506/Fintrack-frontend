@@ -471,43 +471,44 @@ const ReportsPage = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                  <div className="glass-card p-3.5">
-                    <p className="text-xs text-zinc-500 mb-1">RRSP Contributions ({currentYear})</p>
-                    <p className="text-xl font-semibold text-sky-400 tabular-nums">
-                      {formatCurrency(
+                <CompactSummaryBar
+                  className="mb-4"
+                  items={[
+                    {
+                      label: `RRSP Contributions (${currentYear})`,
+                      shortLabel: "RRSP",
+                      value: formatCurrency(
                         registeredAccounts
                           .filter((g) => g.registeredType === "RRSP")
                           .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
-                      )}
-                    </p>
-                    <p className="text-[10px] text-zinc-500 mt-1">Tax-deductible against net income</p>
-                  </div>
-
-                  <div className="glass-card p-3.5">
-                    <p className="text-xs text-zinc-500 mb-1">FHSA Contributions ({currentYear})</p>
-                    <p className="text-xl font-semibold text-purple-400 tabular-nums">
-                      {formatCurrency(
+                      ),
+                      colorClass: "text-sky-400",
+                      subtitle: "Tax-deductible against net income",
+                    },
+                    {
+                      label: `FHSA Contributions (${currentYear})`,
+                      shortLabel: "FHSA",
+                      value: formatCurrency(
                         registeredAccounts
                           .filter((g) => g.registeredType === "FHSA")
                           .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
-                      )}
-                    </p>
-                    <p className="text-[10px] text-zinc-500 mt-1">First-home tax deduction</p>
-                  </div>
-
-                  <div className="glass-card p-3.5">
-                    <p className="text-xs text-zinc-500 mb-1">TFSA Contributions ({currentYear})</p>
-                    <p className="text-xl font-semibold text-emerald-400 tabular-nums">
-                      {formatCurrency(
+                      ),
+                      colorClass: "text-purple-400",
+                      subtitle: "First-home tax deduction",
+                    },
+                    {
+                      label: `TFSA Contributions (${currentYear})`,
+                      shortLabel: "TFSA",
+                      value: formatCurrency(
                         registeredAccounts
                           .filter((g) => g.registeredType === "TFSA")
                           .reduce((sum, g) => sum + (parseFloat(g.contributedThisYear) || 0), 0)
-                      )}
-                    </p>
-                    <p className="text-[10px] text-zinc-500 mt-1">Tax-free growth (non-deductible)</p>
-                  </div>
-                </div>
+                      ),
+                      colorClass: "text-emerald-400",
+                      subtitle: "Tax-free growth (non-deductible)",
+                    },
+                  ]}
+                />
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">

@@ -4,6 +4,7 @@ import { calculatePacing } from "../utils/savingsPacing";
 import { formatCurrency } from "../utils/formatUtils";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
+import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import EditSavingsGoalModal from "../components/Modals/EditSavingsGoalModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import dashboardService from "../services/dashboardService";
@@ -116,40 +117,32 @@ const SavingsPage = () => {
       </div>
 
       {goals.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Total Saved
-            </p>
-            <p className="text-2xl font-semibold text-emerald-400 tabular-nums">
-              $
-              {totalSaved.toLocaleString("en-US", {
+        <CompactSummaryBar
+          items={[
+            {
+              label: "Total Saved",
+              shortLabel: "Saved",
+              value: `$${totalSaved.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-              })}
-            </p>
-          </div>
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Combined Target
-            </p>
-            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-              $
-              {totalTarget.toLocaleString("en-US", {
+              })}`,
+              colorClass: "text-emerald-400",
+            },
+            {
+              label: "Combined Target",
+              shortLabel: "Target",
+              value: `$${totalTarget.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-              })}
-            </p>
-          </div>
-          <div className="glass-panel p-5">
-            <p className="text-xs font-medium text-zinc-500 mb-1">
-              Overall Progress
-            </p>
-            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-              {overallProgress.toFixed(1)}%
-            </p>
-          </div>
-        </div>
+              })}`,
+            },
+            {
+              label: "Overall Progress",
+              shortLabel: "Progress",
+              value: `${overallProgress.toFixed(1)}%`,
+            },
+          ]}
+        />
       )}
 
       {goals.length === 0 ? (
