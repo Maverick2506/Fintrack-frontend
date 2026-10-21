@@ -463,7 +463,7 @@ const ReportsPage = () => {
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={() => { setEditingBudget(cat.name); setBudgetInput(limit || ""); }}
-                                className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer"
+                                className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer py-2 px-1.5"
                               >
                                 {limit ? <Pencil size={12} /> : "+ Set limit"}
                               </button>

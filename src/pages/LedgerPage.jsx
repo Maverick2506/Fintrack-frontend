@@ -448,10 +448,10 @@ const LedgerPage = () => {
       {/* Table */}
       <div className="glass-panel overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed sm:table-auto">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-                <th className="w-10 py-3.5 pl-4 pr-1 text-left">
+                <th className="w-12 sm:w-10 py-3.5 pl-3 sm:pl-4 pr-1 text-left">
                   <button
                     type="button"
                     onClick={handleToggleSelectAll}
@@ -475,7 +475,7 @@ const LedgerPage = () => {
                   </button>
                 </th>
                 <th
-                  className="text-left py-3.5 px-3 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors"
+                  className="text-left py-3.5 px-2 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors"
                   onClick={() => handleSort("name")}
                 >
                   Description <SortIcon k="name" />
@@ -490,7 +490,7 @@ const LedgerPage = () => {
                   Date <SortIcon k="date" />
                 </th>
                 <th
-                  className="text-right py-3.5 px-3 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors whitespace-nowrap"
+                  className="w-24 sm:w-auto text-right py-3.5 px-3 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors whitespace-nowrap"
                   onClick={() => handleSort("amount")}
                 >
                   Amount <SortIcon k="amount" />
@@ -534,12 +534,17 @@ const LedgerPage = () => {
               ) : (
                 filtered.map((row, i) => {
                   const isSelected = selectedIds.has(row.id);
-                  const formattedDate = new Date(
-                    row.date + "T12:00:00"
-                  ).toLocaleDateString("en-US", {
+                  const rowDateObj = new Date(row.date + "T12:00:00");
+                  const currentYear = new Date().getFullYear();
+                  const formattedDate = rowDateObj.toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
+                  });
+                  const mobileDate = rowDateObj.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    ...(rowDateObj.getFullYear() === currentYear ? {} : { year: "numeric" }),
                   });
                   return (
                     <tr
@@ -558,7 +563,7 @@ const LedgerPage = () => {
                       }`}
                     >
                       <td
-                        className="py-2 sm:py-3 pl-3 sm:pl-4 pr-1 w-10"
+                        className="py-2 sm:py-3 pl-3 sm:pl-4 pr-1 w-12 sm:w-10"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToggleRow(row.id, i, e.shiftKey);
@@ -587,7 +592,7 @@ const LedgerPage = () => {
                       <td className="py-2 sm:py-3 px-2 sm:px-4 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
-                            className={`text-sm font-medium truncate max-w-[170px] sm:max-w-none ${
+                            className={`text-sm font-medium block truncate ${
                               row.is_paid ? "text-zinc-200" : "text-zinc-400"
                             }`}
                             title={row.name}
@@ -603,11 +608,11 @@ const LedgerPage = () => {
                             </span>
                           )}
                         </div>
-                        {/* Mobile single meta line: Food · Oct 17 · Upcoming (M6) */}
-                        <div className="flex items-center gap-1 mt-0.5 sm:hidden text-[11px] text-zinc-500 truncate">
+                        {/* Mobile single meta line: Food · Nov 19 · Upcoming (M6 / B2) */}
+                        <div className="flex items-center gap-1 mt-0.5 sm:hidden text-[11px] text-zinc-500 min-w-0 truncate">
                           <span className="text-zinc-400 truncate">{row.category}</span>
                           <span>·</span>
-                          <span className="tabular-nums shrink-0">{formattedDate}</span>
+                          <span className="tabular-nums shrink-0">{mobileDate}</span>
                           {!row.is_paid && (
                             <>
                               <span>·</span>
@@ -629,7 +634,7 @@ const LedgerPage = () => {
                       <td className="hidden sm:table-cell py-3 px-4 text-xs text-zinc-400 tabular-nums whitespace-nowrap">
                         {formattedDate}
                       </td>
-                      <td className="py-2 sm:py-3 px-3 sm:px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap">
+                      <td className="py-2 sm:py-3 px-3 sm:px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap w-24 sm:w-auto">
                         <span
                           className={
                             row.type === "income"

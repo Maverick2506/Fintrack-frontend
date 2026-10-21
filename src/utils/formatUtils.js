@@ -6,23 +6,33 @@ export const formatCurrency = (amount, options = {}) => {
   const num = typeof amount === "number" ? amount : parseFloat(amount) || 0;
   const isNegative = num < 0;
   const absVal = Math.abs(num);
+  const maximumFractionDigits = options.maximumFractionDigits ?? 2;
+  const minimumFractionDigits = Math.min(
+    options.minimumFractionDigits ?? 2,
+    maximumFractionDigits
+  );
   const formatted = absVal.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
     ...options,
+    minimumFractionDigits,
+    maximumFractionDigits,
   });
   return `${isNegative ? "-" : ""}$${formatted}`;
 };
 
 /**
- * Formats a numeric value with thousands separators and 2 decimal places (without $).
+ * Formats a numeric value with thousands separators and decimal places (without $).
  */
 export const formatNumber = (amount, options = {}) => {
   const num = typeof amount === "number" ? amount : parseFloat(amount) || 0;
+  const maximumFractionDigits = options.maximumFractionDigits ?? 2;
+  const minimumFractionDigits = Math.min(
+    options.minimumFractionDigits ?? 2,
+    maximumFractionDigits
+  );
   return num.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
     ...options,
+    minimumFractionDigits,
+    maximumFractionDigits,
   });
 };
 

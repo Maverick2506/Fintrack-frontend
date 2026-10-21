@@ -39,22 +39,22 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
         </span>
       </div>
 
-      <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider pb-2.5 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider pb-1 border-b border-white/[0.06]">
         <button
           onClick={() => onSort("name")}
-          className="flex-1 text-left hover:text-zinc-300 transition-colors cursor-pointer"
+          className="flex-1 text-left hover:text-zinc-300 transition-colors cursor-pointer py-2"
         >
           Name {getSortIcon("name")}
         </button>
         <button
           onClick={() => onSort("due_date")}
-          className="hidden sm:block w-28 text-left hover:text-zinc-300 transition-colors cursor-pointer"
+          className="hidden sm:block w-28 text-left hover:text-zinc-300 transition-colors cursor-pointer py-2"
         >
           Date {getSortIcon("due_date")}
         </button>
         <button
           onClick={() => onSort("amount")}
-          className="w-24 text-right hover:text-zinc-300 transition-colors cursor-pointer"
+          className="w-24 text-right hover:text-zinc-300 transition-colors cursor-pointer py-2"
         >
           Amount {getSortIcon("amount")}
         </button>

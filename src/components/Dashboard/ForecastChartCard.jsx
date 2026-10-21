@@ -111,8 +111,8 @@ const ForecastChartCard = ({
   };
 
   return (
-    <>
-      {/* Mobile Collapsible Header (M5) */}
+    <div>
+      {/* Mobile Collapsible Header (M5, n1, n2) */}
       <button
         type="button"
         onClick={() => setIsMobileExpanded(!isMobileExpanded)}
@@ -122,8 +122,10 @@ const ForecastChartCard = ({
           <TrendingUp size={15} className="text-emerald-400" />
           <span>60-Day Cashflow Forecast</span>
         </div>
-        <div className="flex items-center gap-1.5 text-zinc-500">
-          <span className="text-[11px]">{isMobileExpanded ? "Hide" : "Forecast ▸"}</span>
+        <div className="flex items-center gap-1 text-zinc-400">
+          <span className="text-[11px] font-medium text-emerald-400">
+            {isMobileExpanded ? "Hide" : "Open"}
+          </span>
           <ChevronDown
             size={14}
             className={`transition-transform duration-200 ${isMobileExpanded ? "rotate-180" : ""}`}
@@ -131,7 +133,7 @@ const ForecastChartCard = ({
         </div>
       </button>
 
-      <div className={`glass-panel p-4 sm:p-6 space-y-4 ${isMobileExpanded ? "block" : "hidden sm:block"}`}>
+      <div className={`glass-panel p-4 sm:p-6 space-y-4 ${isMobileExpanded ? "block mt-3" : "hidden sm:block"}`}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-emerald-400 shrink-0">
@@ -343,7 +345,7 @@ const ForecastChartCard = ({
         </span>
       </div>
     </div>
-    </>
+    </div>
   );
 };
 
