@@ -212,9 +212,9 @@ const dashboardService = {
     );
   },
 
-  getFinancialAdvice: async (dashboardData) => {
+  getFinancialAdvice: async (params = {}) => {
     return handleRequest(
-      api.post(`/financial-advice`, dashboardData),
+      api.post("/financial-advice", params),
       null,
       false
     );
@@ -222,10 +222,22 @@ const dashboardService = {
 
   categorizeExpense: async (name) => {
     return handleRequest(
-      api.post(`/categorize-expense`, { name }),
+      api.post("/categorize-expense", { name }),
       null,
       false
     );
+  },
+
+  chatAdvisor: async (message, history = []) => {
+    return handleRequest(
+      api.post("/chat-advisor", { message, history }),
+      null,
+      false
+    );
+  },
+
+  fetchHealth: async () => {
+    return api.get("/health").then((res) => res.data);
   },
 
   payDebt: async (debtId, paymentData) => {

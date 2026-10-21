@@ -18,6 +18,7 @@ import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 import GeminiGemModal from "../components/Modals/GeminiGemModal";
+import AskFinTrackModal from "../components/Modals/AskFinTrackModal";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
@@ -149,6 +150,7 @@ const DashboardPage = () => {
     addDebt: false,
     addSavingsGoal: false,
     geminiModal: false,
+    askFinTrack: false,
   });
   const [active, setActive] = useState({
     debtId: null,
@@ -264,23 +266,28 @@ const DashboardPage = () => {
     deleteBillMutation.mutate(active.toDelete);
   };
 
-  const handleGetAdvice = async () => {
+  const handleGetAdvice = async (options = {}) => {
     setAdviceLoading(true);
     try {
-      const adviceResponse = await dashboardService.getFinancialAdvice(
-        dashboardData
-      );
+      const adviceResponse = await dashboardService.getFinancialAdvice(options);
       setAdvice(adviceResponse.advice);
       localStorage.setItem("fintrack_advice", adviceResponse.advice);
       if (adviceResponse.structured) {
-        setStructuredAdvice(adviceResponse.structured);
+        const structuredWithDate = {
+          ...adviceResponse.structured,
+          updatedAt: adviceResponse.updatedAt || new Date().toISOString(),
+        };
+        setStructuredAdvice(structuredWithDate);
         localStorage.setItem(
           "fintrack_structured_advice",
-          JSON.stringify(adviceResponse.structured)
+          JSON.stringify(structuredWithDate)
         );
       }
-    } catch {
-      setAdvice("Sorry, I could not get any advice at the moment.");
+    } catch (err) {
+      const msg =
+        err.response?.data?.error ||
+        "Sorry, I could not get any advice at the moment.";
+      setAdvice(msg);
     } finally {
       setAdviceLoading(false);
     }
@@ -738,6 +745,7 @@ const DashboardPage = () => {
               onGetAdvice={handleGetAdvice}
               isLoading={adviceLoading}
               onOpenGemModal={() => openModal("geminiModal")}
+              onOpenChat={() => openModal("askFinTrack")}
             />
             <CreditCardSummary creditCards={creditCardSummary} />
             <ProgressSection
@@ -802,6 +810,10 @@ const DashboardPage = () => {
       <GeminiGemModal
         isOpen={modals.geminiModal}
         onClose={() => closeModal("geminiModal")}
+      />
+      <AskFinTrackModal
+        isOpen={modals.askFinTrack}
+        onClose={() => closeModal("askFinTrack")}
       />
     </div>
   );
