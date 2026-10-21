@@ -96,6 +96,19 @@ const DashboardPage = () => {
     queryFn: () => dashboardService.fetchForecast(60),
   });
 
+  const { data: estimateIncomeSetting } = useQuery({
+    queryKey: ["forecast-estimate-income-setting"],
+    queryFn: () => dashboardService.fetchForecastEstimateIncomeSetting(),
+  });
+
+  const updateEstimateIncomeMutation = useMutation({
+    mutationFn: (enabled) => dashboardService.updateForecastEstimateIncomeSetting(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forecast"] });
+      queryClient.invalidateQueries({ queryKey: ["forecast-estimate-income-setting"] });
+    },
+  });
+
   const updateForecastBufferMutation = useMutation({
     mutationFn: (newBuffer) => dashboardService.updateForecastBuffer(newBuffer),
     onSuccess: () => {
@@ -341,6 +354,9 @@ const DashboardPage = () => {
   const forecastBuffer = forecast?.buffer ?? 200;
   const forecastLowestBalance = forecast?.lowestPoint?.balance ?? 0;
   const forecastIsLow = forecastLowestBalance < forecastBuffer;
+  const isNextPaydayEstimated = Boolean(
+    forecast?.days?.find((d) => d.date === forecast?.nextPayday)?.items?.some((it) => it.estimated)
+  );
 
   return (
     <div className="min-h-screen text-zinc-100 pb-20">
@@ -378,7 +394,7 @@ const DashboardPage = () => {
               </p>
               <p className="text-[11px] text-zinc-400 mt-1 truncate">
                 {forecast?.nextPayday
-                  ? `until ${formatShortDate(forecast.nextPayday)} (payday)`
+                  ? `until ${formatShortDate(forecast.nextPayday)} (${isNextPaydayEstimated ? "est. payday" : "payday"})`
                   : "for next 60 days"}
               </p>
             </div>
@@ -621,6 +637,9 @@ const DashboardPage = () => {
               forecast={forecast}
               onUpdateBuffer={(b) => updateForecastBufferMutation.mutateAsync(b)}
               isUpdatingBuffer={updateForecastBufferMutation.isPending}
+              estimateIncomeEnabled={estimateIncomeSetting?.enabled ?? true}
+              onToggleEstimateIncome={(val) => updateEstimateIncomeMutation.mutateAsync(val)}
+              isUpdatingEstimateIncome={updateEstimateIncomeMutation.isPending}
             />
             {spendingData && spendingData.length > 0 && (
               <SpendingChartCard data={spendingData} />

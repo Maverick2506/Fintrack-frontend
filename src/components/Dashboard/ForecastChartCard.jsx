@@ -9,7 +9,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, AlertTriangle, Shield, Check, Pencil, X } from "lucide-react";
+import { TrendingUp, AlertTriangle, Shield, Check, Pencil, X, Sparkles } from "lucide-react";
 import { formatCurrency, formatShortDate } from "../../utils/formatUtils";
 
 const CustomForecastTooltip = ({ active, payload, label, buffer }) => {
@@ -49,6 +49,9 @@ const CustomForecastTooltip = ({ active, payload, label, buffer }) => {
               >
                 <span className="text-zinc-300 truncate max-w-[170px]" title={it.title}>
                   {it.title}
+                  {it.estimated && (
+                    <span className="text-zinc-500 font-normal ml-1">(est.)</span>
+                  )}
                 </span>
                 <span
                   className={`tabular-nums font-medium ${
@@ -75,6 +78,9 @@ const ForecastChartCard = ({
   forecast,
   onUpdateBuffer,
   isUpdatingBuffer,
+  estimateIncomeEnabled = true,
+  onToggleEstimateIncome,
+  isUpdatingEstimateIncome = false,
 }) => {
   const [editingBuffer, setEditingBuffer] = useState(false);
   const [bufferInput, setBufferInput] = useState("");
@@ -87,6 +93,8 @@ const ForecastChartCard = ({
   const lowestPoint = forecast.lowestPoint || { date: forecast.today, balance: 0 };
   const isBelowBuffer = lowestPoint.balance < buffer;
   const nextPayday = forecast.nextPayday;
+  const nextPaydayDay = forecast.days?.find((d) => d.date === nextPayday);
+  const isNextPaydayEstimated = Boolean(nextPaydayDay?.items?.some((it) => it.estimated));
 
   const handleStartEdit = () => {
     setBufferInput(String(buffer));
@@ -103,9 +111,9 @@ const ForecastChartCard = ({
 
   return (
     <div className="glass-panel p-6 space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-emerald-400">
+          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-emerald-400 shrink-0">
             <TrendingUp size={16} />
           </div>
           <div>
@@ -118,14 +126,35 @@ const ForecastChartCard = ({
                 {formatCurrency(forecast.safeToSpend)}
               </span>{" "}
               {nextPayday
-                ? `until ${formatShortDate(nextPayday)} (payday)`
+                ? `until ${formatShortDate(nextPayday)} (${isNextPaydayEstimated ? "est. payday" : "payday"})`
                 : "for the next 60 days"}
             </p>
           </div>
         </div>
 
-        {/* Buffer Badge & Editor */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        {/* Controls: Buffer & Estimated Paycheques Toggle */}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Include Estimated Paycheques Toggle */}
+          <button
+            type="button"
+            onClick={() => onToggleEstimateIncome && onToggleEstimateIncome(!estimateIncomeEnabled)}
+            disabled={isUpdatingEstimateIncome}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] transition-colors cursor-pointer select-none ${
+              estimateIncomeEnabled
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+                : "bg-zinc-900/80 border-white/[0.08] text-zinc-400 hover:text-zinc-300"
+            }`}
+            title="Toggle estimated paycheques in forecast"
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                estimateIncomeEnabled ? "bg-emerald-400" : "bg-zinc-600"
+              }`}
+            />
+            <span>Include estimated paycheques</span>
+          </button>
+
+          {/* Buffer Badge & Editor */}
           {editingBuffer ? (
             <div className="flex items-center gap-1.5 bg-zinc-950 border border-white/10 rounded-lg px-2 py-1">
               <span className="text-xs text-zinc-500">$</span>
@@ -234,13 +263,45 @@ const ForecastChartCard = ({
               dataKey="balance"
               stroke={isBelowBuffer ? "#f43f5e" : "#10b981"}
               strokeWidth={2}
-              dot={false}
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                const isEstimated = payload?.items?.some((it) => it.estimated);
+                if (isEstimated && cx !== undefined && cy !== undefined) {
+                  return (
+                    <circle
+                      key={`dot-${payload.date}`}
+                      cx={cx}
+                      cy={cy}
+                      r={3}
+                      fill="#18181b"
+                      stroke="#10b981"
+                      strokeWidth={1.5}
+                    />
+                  );
+                }
+                return null;
+              }}
               activeDot={{ r: 4, fill: "#ffffff", stroke: isBelowBuffer ? "#f43f5e" : "#10b981" }}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
+      {/* Estimated Income Explanation */}
+      {forecast.estimatedIncome && (
+        <div className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-900/50 rounded-lg px-3 py-2 border border-white/[0.06]">
+          <Sparkles size={13} className="text-emerald-400 shrink-0" />
+          <span>
+            Includes estimated paycheques:{" "}
+            <span className="text-zinc-200 font-medium">
+              {formatCurrency(forecast.estimatedIncome.amount)} {forecast.estimatedIncome.cadence}
+            </span>{" "}
+            (based on your last {forecast.estimatedIncome.basedOn}).
+          </span>
+        </div>
+      )}
+
+      {/* Footer Metrics */}
       <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1 border-t border-white/[0.06]">
         <span>
           Starting checking balance:{" "}

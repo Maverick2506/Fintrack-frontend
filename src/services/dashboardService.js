@@ -371,6 +371,17 @@ const dashboardService = {
     return api.get("/settings/forecast-buffer").then((res) => res.data);
   },
 
+  fetchForecastEstimateIncomeSetting: async () => {
+    return api.get("/settings/forecast-estimate-income").then((res) => res.data);
+  },
+
+  updateForecastEstimateIncomeSetting: async (enabled) => {
+    return handleRequest(
+      api.put("/settings/forecast-estimate-income", { enabled }),
+      "Forecast settings updated!"
+    );
+  },
+
   updateForecastBuffer: async (buffer) => {
     return handleRequest(
       api.put("/settings/forecast-buffer", { buffer }),
