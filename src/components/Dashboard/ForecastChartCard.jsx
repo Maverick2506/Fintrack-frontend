@@ -49,7 +49,7 @@ const CustomForecastTooltip = ({ active, payload, label, buffer }) => {
               >
                 <span className="text-zinc-300 truncate max-w-[170px]" title={it.title}>
                   {it.title}
-                  {it.estimated && (
+                  {it.estimated && !it.title?.toLowerCase().includes("estimated") && (
                     <span className="text-zinc-500 font-normal ml-1">(est.)</span>
                   )}
                 </span>
@@ -151,7 +151,9 @@ const ForecastChartCard = ({
                 estimateIncomeEnabled ? "bg-emerald-400" : "bg-zinc-600"
               }`}
             />
-            <span>Include estimated paycheques</span>
+            <span>
+              Est. paycheques: <strong className="font-semibold">{estimateIncomeEnabled ? "On" : "Off"}</strong>
+            </span>
           </button>
 
           {/* Buffer Badge & Editor */}
