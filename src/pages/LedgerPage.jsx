@@ -448,7 +448,7 @@ const LedgerPage = () => {
       {/* Table */}
       <div className="glass-panel overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed sm:table-auto">
+          <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
                 <th className="w-12 sm:w-10 py-3.5 pl-3 sm:pl-4 pr-1 text-left">
@@ -480,22 +480,22 @@ const LedgerPage = () => {
                 >
                   Description <SortIcon k="name" />
                 </th>
-                <th className="hidden sm:table-cell text-left py-3.5 px-4">
+                <th className="hidden sm:table-cell text-left py-3.5 px-4 w-28 md:w-32">
                   Category
                 </th>
                 <th
-                  className="hidden sm:table-cell text-left py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
+                  className="hidden sm:table-cell text-left py-3.5 px-4 w-24 md:w-28 cursor-pointer hover:text-zinc-300 transition-colors"
                   onClick={() => handleSort("date")}
                 >
                   Date <SortIcon k="date" />
                 </th>
                 <th
-                  className="w-24 sm:w-auto text-right py-3.5 px-3 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors whitespace-nowrap"
+                  className="w-24 sm:w-28 text-right py-3.5 px-3 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors whitespace-nowrap"
                   onClick={() => handleSort("amount")}
                 >
                   Amount <SortIcon k="amount" />
                 </th>
-                <th className="hidden sm:table-cell w-20 py-3.5 pr-3 sm:px-4"></th>
+                <th className="hidden sm:table-cell w-16 sm:w-20 py-3.5 pr-3 sm:px-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
@@ -621,9 +621,9 @@ const LedgerPage = () => {
                           )}
                         </div>
                       </td>
-                      <td className="hidden sm:table-cell py-3 px-4">
+                      <td className="hidden sm:table-cell py-3 px-4 w-28 md:w-32">
                         <span
-                          className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border whitespace-nowrap ${
+                          className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border whitespace-nowrap block truncate text-center ${
                             CATEGORY_COLORS[row.category] ||
                             CATEGORY_COLORS.Other
                           }`}
@@ -631,10 +631,10 @@ const LedgerPage = () => {
                           {row.category}
                         </span>
                       </td>
-                      <td className="hidden sm:table-cell py-3 px-4 text-xs text-zinc-400 tabular-nums whitespace-nowrap">
+                      <td className="hidden sm:table-cell py-3 px-4 w-24 md:w-28 text-xs text-zinc-400 tabular-nums whitespace-nowrap">
                         {formattedDate}
                       </td>
-                      <td className="py-2 sm:py-3 px-3 sm:px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap w-24 sm:w-auto">
+                      <td className="py-2 sm:py-3 px-3 sm:px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap w-24 sm:w-28">
                         <span
                           className={
                             row.type === "income"
@@ -656,7 +656,7 @@ const LedgerPage = () => {
                           ${formatNumber(row.amount)}
                         </span>
                       </td>
-                      <td className="hidden sm:table-cell py-3 pr-3 sm:px-4 text-right opacity-0 sm:group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      <td className="hidden sm:table-cell py-3 pr-3 sm:px-4 text-right opacity-0 sm:group-hover:opacity-100 transition-opacity whitespace-nowrap w-16 sm:w-20">
                         <div className="inline-flex items-center gap-0.5">
                           <button
                             onClick={() => {
