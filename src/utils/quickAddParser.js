@@ -8,6 +8,8 @@
  * - "$45 dinner checking" -> amount: 45, name: "Dinner", account: "Primary Checking"
  */
 
+import { ALL_CATEGORIES, EXPENSE_CATEGORIES } from "../constants/categories.js";
+
 const CATEGORY_KEYWORDS = {
   "Food & Drink": [
     "lunch",

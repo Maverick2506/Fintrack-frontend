@@ -102,11 +102,11 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      // Backend expects history in format: [{ role: "user"|"model", text: "..." }]
-      const apiHistory = messages.map((m) => ({
-        role: m.role,
-        text: m.text,
-      }));
+      // Resilient history slicing: drop error bubbles, take last 8, cap at 4000 chars (C1)
+      const apiHistory = messages
+        .filter((m) => !m.isError)
+        .slice(-8)
+        .map((m) => ({ role: m.role, text: m.text.slice(0, 4000) }));
 
       const res = await dashboardService.chatAdvisor(textToSend, apiHistory);
       const replyText = res?.reply || "I didn't receive a response. Please try again.";
@@ -124,6 +124,7 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
         {
           role: "model",
           text: `⚠️ **Error:** ${errMsg}`,
+          isError: true,
         },
       ]);
     } finally {

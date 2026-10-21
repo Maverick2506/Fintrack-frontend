@@ -141,6 +141,13 @@ const DashboardPage = () => {
     items.sort((a, b) => b.pct - a.pct);
     return items.slice(0, 3);
   }, [serverBudgets, spendingData]);
+  const { data: healthData } = useQuery({
+    queryKey: ["health"],
+    queryFn: () => dashboardService.fetchHealth(),
+    staleTime: 60000,
+  });
+  const isAiAvailable = healthData?.ai ?? true;
+
   const [modals, setModals] = useState({
     transaction: false,
     debt: false,
@@ -746,6 +753,7 @@ const DashboardPage = () => {
               isLoading={adviceLoading}
               onOpenGemModal={() => openModal("geminiModal")}
               onOpenChat={() => openModal("askFinTrack")}
+              isAiAvailable={isAiAvailable}
             />
             <CreditCardSummary creditCards={creditCardSummary} />
             <ProgressSection

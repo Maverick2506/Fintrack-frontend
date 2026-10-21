@@ -229,11 +229,7 @@ const dashboardService = {
   },
 
   chatAdvisor: async (message, history = []) => {
-    return handleRequest(
-      api.post("/chat-advisor", { message, history }),
-      null,
-      false
-    );
+    return api.post("/chat-advisor", { message, history }).then((res) => res.data);
   },
 
   fetchHealth: async () => {

@@ -44,6 +44,7 @@ const FinancialAdviceCard = ({
   isLoading,
   onOpenGemModal,
   onOpenChat,
+  isAiAvailable = true,
 }) => {
   const data = structured || (typeof advice === "object" ? advice : null);
   const rawAdviceText = typeof advice === "string" ? advice : data?.summary || "";
@@ -80,7 +81,12 @@ const FinancialAdviceCard = ({
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          {onOpenChat && (
+          {!isAiAvailable && (
+            <span className="text-[10px] text-zinc-500 bg-zinc-800/80 px-2 py-0.5 rounded border border-white/5">
+              AI off
+            </span>
+          )}
+          {onOpenChat && isAiAvailable && (
             <button
               type="button"
               onClick={onOpenChat}
@@ -99,7 +105,7 @@ const FinancialAdviceCard = ({
               }
               setIsMobileExpanded(!isMobileExpanded);
             }}
-            disabled={isLoading}
+            disabled={!isAiAvailable || isLoading}
             className="btn-primary !py-1.5 !px-2.5 !text-[11px] flex items-center gap-1 cursor-pointer"
           >
             <Sparkles size={11} />
@@ -115,14 +121,20 @@ const FinancialAdviceCard = ({
               <Sparkles size={13} className="text-emerald-400" />
               <span>AI Financial Advisor</span>
             </h2>
-            {timeAgoText && (
-              <span className="text-[10px] text-zinc-500">
-                · {timeAgoText}
+            {!isAiAvailable ? (
+              <span className="text-[10px] text-zinc-500 bg-zinc-800/80 px-2 py-0.5 rounded-full border border-white/5">
+                AI is off (no API key)
               </span>
+            ) : (
+              timeAgoText && (
+                <span className="text-[10px] text-zinc-500">
+                  · {timeAgoText}
+                </span>
+              )
             )}
           </div>
           <div className="flex items-center gap-2">
-            {onOpenChat && (
+            {onOpenChat && isAiAvailable && (
               <button
                 type="button"
                 onClick={onOpenChat}
@@ -147,7 +159,7 @@ const FinancialAdviceCard = ({
             <button
               type="button"
               onClick={() => onGetAdvice?.({ force: true })}
-              disabled={isLoading}
+              disabled={!isAiAvailable || isLoading}
               className="btn-secondary !py-1 !px-2.5 !text-[11px] flex items-center gap-1"
             >
               <RefreshCw
@@ -239,7 +251,7 @@ const FinancialAdviceCard = ({
             </p>
             <button
               onClick={() => onGetAdvice?.({ force: true })}
-              disabled={isLoading}
+              disabled={!isAiAvailable || isLoading}
               className="btn-primary !py-1.5 !px-3.5 !text-xs inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Sparkles size={13} />
