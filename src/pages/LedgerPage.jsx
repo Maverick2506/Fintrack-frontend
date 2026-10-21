@@ -480,7 +480,7 @@ const LedgerPage = () => {
                 >
                   Description <SortIcon k="name" />
                 </th>
-                <th className="hidden sm:table-cell text-left py-3.5 px-4 w-28 md:w-32">
+                <th className="hidden sm:table-cell text-left py-3.5 px-4 w-28 md:w-36">
                   Category
                 </th>
                 <th
@@ -621,8 +621,9 @@ const LedgerPage = () => {
                           )}
                         </div>
                       </td>
-                      <td className="hidden sm:table-cell py-3 px-4 w-28 md:w-32">
+                      <td className="hidden sm:table-cell py-3 px-4 w-28 md:w-36">
                         <span
+                          title={row.category}
                           className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border whitespace-nowrap block truncate text-center ${
                             CATEGORY_COLORS[row.category] ||
                             CATEGORY_COLORS.Other
