@@ -24,6 +24,9 @@ const QuickAddPage = () => {
   const [recentChips, setRecentChips] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef(null);
+  // Keeps the same clientRef when the same entry is retried (e.g. after a timeout during a cold start),
+  // so the server can recognise a save that already landed instead of storing it twice (N2)
+  const pendingRef = useRef(null);
 
   useEffect(() => {
     // Load credit cards for fuzzy matching
@@ -75,7 +78,11 @@ const QuickAddPage = () => {
     if (!parsed.isValid || isSubmitting) return;
 
     setIsSubmitting(true);
-    const clientRef = crypto.randomUUID();
+    const entry = input.trim();
+    if (!pendingRef.current || pendingRef.current.entry !== entry) {
+      pendingRef.current = { entry, clientRef: crypto.randomUUID() };
+    }
+    const { clientRef } = pendingRef.current;
 
     try {
       if (parsed.type === "income") {
@@ -106,7 +113,8 @@ const QuickAddPage = () => {
           : `Saved: ${parsed.name} (${formatCurrency(parsed.amount)})`
       );
 
-      saveRecentChip(input.trim());
+      pendingRef.current = null;
+      saveRecentChip(entry);
       setInput("");
       if (inputRef.current) inputRef.current.focus();
     } catch (err) {

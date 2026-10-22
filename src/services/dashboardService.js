@@ -5,9 +5,10 @@ import { queryClient } from "../utils/queryClient";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
+// Render's free instance takes 30-60s to wake from sleep, so allow a cold start to finish (N3)
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 60000,
 });
 
 api.interceptors.request.use(
