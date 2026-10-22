@@ -86,8 +86,13 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
         monthly_payment: monthlyPayment,
         interest_rate: interestRate !== "" ? parseFloat(interestRate) : null,
         auto_pay: autoPay,
-        next_due_date: autoPay ? nextDueDate : null,
-        payment_frequency: autoPay ? paymentFrequency : "monthly",
+        // Turning auto-pay off keeps the existing due date and frequency instead of erasing them (F4)
+        next_due_date: autoPay
+          ? nextDueDate
+          : debt.next_due_date || debt.dueDate || null,
+        payment_frequency: autoPay
+          ? paymentFrequency
+          : debt.payment_frequency || debt.paymentFrequency || "monthly",
       };
 
       // Only send total_remaining if user explicitly changed it
@@ -143,7 +148,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
               htmlFor="totalAmountEdit"
               className="block text-[11px] font-medium text-zinc-500 uppercase tracking-wider mb-1"
             >
-              Total Principal / Balance
+              Original Amount (does not change remaining balance)
             </label>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-medium text-rose-400 select-none">

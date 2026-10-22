@@ -25,8 +25,8 @@ const LoginPage = () => {
       toast.success("Dev bypass activated!");
       navigate("/");
       window.location.reload();
-    } catch {
-      toast.error("Dev bypass failed.");
+    } catch (err) {
+      toast.error(err?.message || "Dev bypass failed.");
     }
   };
 

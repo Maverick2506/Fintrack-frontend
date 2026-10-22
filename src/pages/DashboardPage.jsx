@@ -212,7 +212,6 @@ const DashboardPage = () => {
 
   const invalidateDashboard = () => {
     queryClient.invalidateQueries({ queryKey: ["dashboardData"] });
-    queryClient.invalidateQueries({ queryKey: ["spendingData"] });
     queryClient.invalidateQueries({ queryKey: ["budgets"] });
     queryClient.invalidateQueries({ queryKey: ["forecast"] });
     queryClient.invalidateQueries({ queryKey: ["netWorthHistory"] });

@@ -48,9 +48,12 @@ export const devLogin = async () => {
       touchLastActive();
       return response.data;
     }
-  } catch {
-    localStorage.setItem("user_token", "dev-local-bypass");
-    touchLastActive();
+  } catch (err) {
+    // Surface the server's rejection instead of storing a token the API will refuse (P2)
+    throw new Error(
+      err?.response?.data?.error ||
+        "Dev bypass was rejected. Start the backend with ALLOW_DEV_BYPASS=true."
+    );
   }
 };
 

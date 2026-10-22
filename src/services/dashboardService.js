@@ -82,15 +82,6 @@ const dashboardService = {
     return api.get(`/dashboard?${params.toString()}`).then((res) => res.data);
   },
 
-  fetchSpendingSummary: async (year, month) => {
-    const params = new URLSearchParams();
-    if (year) params.append("year", year);
-    if (month) params.append("month", month);
-    return api
-      .get(`/spending-summary?${params.toString()}`)
-      .then((res) => res.data);
-  },
-
   fetchTrends: async (year, month) => {
     const params = new URLSearchParams();
     if (year) params.append("year", year);
