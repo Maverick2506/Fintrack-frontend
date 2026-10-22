@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   X,
   Sparkles,
@@ -338,6 +339,28 @@ const AddTransactionModal = ({
       return;
     }
 
+    // Setting a recurring charge that has come due to One-time can end its series (B3):
+    // the backend then removes the series' upcoming unpaid charges, so confirm first.
+    const wasRecurring =
+      isEditing &&
+      existingTransaction?.recurrence &&
+      existingTransaction.recurrence !== "none";
+    const existingDate =
+      existingTransaction?.date ||
+      existingTransaction?.due_date ||
+      existingTransaction?.payment_date;
+    if (
+      wasRecurring &&
+      recurrence === "none" &&
+      existingDate &&
+      existingDate <= todayStr &&
+      !window.confirm(
+        "End this recurring series? If this is its current charge, the series stops here and its upcoming unpaid charges are removed."
+      )
+    ) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const isExpense = type === "expense";
@@ -391,7 +414,15 @@ const AddTransactionModal = ({
             recurrence,
           };
 
-      await dashboardService.saveTransaction(payload, isEditing);
+      const saved = await dashboardService.saveTransaction(payload, isEditing);
+      if (saved?.seriesEnded) {
+        const removed = saved.removedUpcomingCount || 0;
+        toast.success(
+          removed > 0
+            ? `Series ended. Removed ${removed} upcoming charge${removed === 1 ? "" : "s"}.`
+            : "Series ended."
+        );
+      }
 
       onClose();
       refreshData();

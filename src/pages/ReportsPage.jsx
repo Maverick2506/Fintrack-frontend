@@ -19,6 +19,7 @@ const ReportsPage = () => {
   const [monthlyExpenses, setMonthlyExpenses] = useState([]);
   const [trendsData, setTrendsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [activeExpenseId, setActiveExpenseId] = useState(null);
   const [selectedDate, setSelectedDate] = useState({
@@ -89,6 +90,7 @@ const ReportsPage = () => {
 
   const fetchReportData = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [dashboardRes, expensesRes, trendsRes] = await Promise.all([
         dashboardService.fetchDashboard(selectedDate.year, selectedDate.month),
@@ -101,6 +103,9 @@ const ReportsPage = () => {
       setTrendsData(trendsRes || []);
     } catch (err) {
       console.error("Error fetching report data:", err);
+      setLoadError(
+        err?.response?.data?.error || "Could not load your reports. Check your connection and try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -280,6 +285,16 @@ const ReportsPage = () => {
       {loading ? (
         <div className="text-center text-zinc-500 text-sm p-12">
           Loading analytics...
+        </div>
+      ) : loadError ? (
+        <div className="glass-panel p-8 max-w-md mx-auto text-center">
+          <p className="text-rose-400 text-sm mb-4">{loadError}</p>
+          <button
+            onClick={fetchReportData}
+            className="btn-primary justify-center mx-auto cursor-pointer"
+          >
+            Retry
+          </button>
         </div>
       ) : reportData ? (
         <div className="space-y-6">
