@@ -18,6 +18,7 @@ import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import { formatCurrency, formatNumber } from "../utils/formatUtils";
+import { getLedgerAccountLabel } from "../utils/accountRetire";
 
 const CATEGORY_COLORS = {
   Income:                "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -549,6 +550,7 @@ const LedgerPage = () => {
                     day: "numeric",
                     ...(rowDateObj.getFullYear() === currentYear ? {} : { year: "numeric" }),
                   });
+                  const accountLabel = getLedgerAccountLabel(row);
                   return (
                     <tr
                       key={`${row.type}-${row.id}-${i}`}
@@ -611,11 +613,26 @@ const LedgerPage = () => {
                             </span>
                           )}
                         </div>
+                        {/* Card, debt or goal the row belongs to; archived ones keep their name */}
+                        {accountLabel && (
+                          <span
+                            className="hidden sm:block text-[11px] text-zinc-500 truncate mt-0.5"
+                            title={accountLabel}
+                          >
+                            {accountLabel}
+                          </span>
+                        )}
                         {/* Mobile single meta line: Food · Nov 19 · Upcoming (M6 / B2) */}
                         <div className="flex items-center gap-1 mt-0.5 sm:hidden text-[11px] text-zinc-500 min-w-0 truncate">
                           <span className="text-zinc-400 truncate">{row.category}</span>
                           <span>·</span>
                           <span className="tabular-nums shrink-0">{mobileDate}</span>
+                          {accountLabel && (
+                            <>
+                              <span>·</span>
+                              <span className="truncate" title={accountLabel}>{accountLabel}</span>
+                            </>
+                          )}
                           {!row.is_paid && (
                             <>
                               <span>·</span>

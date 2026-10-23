@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, CreditCard, Wifi } from "lucide-react";
 import AddCreditCardModal from "../components/Modals/AddCreditCardModal";
 import AddCreditCardPaymentModal from "../components/Modals/AddCreditCardPaymentModal";
 import EditCreditCardModal from "../components/Modals/EditCreditCardModal";
-import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
+import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import dashboardService from "../services/dashboardService";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 
@@ -13,11 +13,11 @@ const CreditCardPage = () => {
   const [modals, setModals] = useState({
     addCard: false,
     addPayment: false,
-    deleteCard: false,
     editCard: false,
   });
   const [activeCardId, setActiveCardId] = useState(null);
   const [activeCard, setActiveCard] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fetchCreditCards = async () => {
     setLoading(true);
@@ -47,9 +47,9 @@ const CreditCardPage = () => {
     if (type === "editCard" || type === "addPayment") setActiveCard(null);
   };
 
-  const handleDelete = async () => {
-    await dashboardService.deleteCreditCard(activeCardId);
-    closeModal("deleteCard");
+  const handleDelete = async (options) => {
+    await dashboardService.deleteCreditCard(deleteTarget.id, options);
+    setDeleteTarget(null);
     fetchCreditCards();
   };
 
@@ -205,7 +205,7 @@ const CreditCardPage = () => {
                         <Pencil size={13} />
                       </button>
                       <button
-                        onClick={() => openModal("deleteCard", card.id)}
+                        onClick={() => setDeleteTarget(card)}
                         title="Delete card"
                         className="btn-ghost-icon hover:text-rose-400"
                       >
@@ -288,13 +288,13 @@ const CreditCardPage = () => {
         refreshData={fetchCreditCards}
         card={activeCard}
       />
-      <ConfirmDeleteModal
-        isOpen={modals.deleteCard}
-        onClose={() => closeModal("deleteCard")}
-        onConfirm={handleDelete}
-        itemType="credit card"
-        itemName={activeCard?.name}
-      />
+      {deleteTarget && (
+        <RetireAccountModal
+          account={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+        />
+      )}
     </div>
   );
 };
