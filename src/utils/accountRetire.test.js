@@ -1,6 +1,7 @@
 /* global process */
 import {
   describeDeleteImpact,
+  describeUnpaidItem,
   buildRetirePayload,
   getLedgerAccountLabel,
 } from "./accountRetire.js";
@@ -25,17 +26,21 @@ const cardImpact = {
     count: 2,
     total: 67,
     items: [
-      { title: "Netflix", type: "EXPENSE", recurringGroupId: "g1", movable: true },
-      { title: "Payment for Visa", type: "TRANSFER", recurringGroupId: null, movable: false },
+      { title: "Netflix", type: "EXPENSE", recurringGroupId: "g1", movable: true, overdue: false, date: "2026-11-13", amount: 16.99 },
+      { title: "Payment for Visa", type: "TRANSFER", recurringGroupId: null, movable: false, overdue: false, date: "2026-10-29", amount: 50 },
     ],
   },
   series: [{ recurringGroupId: "g1", title: "Netflix", recurrence: "monthly", movable: true }],
+  canRetire: true,
 };
 const card = describeDeleteImpact(cardImpact);
 assert(card.usedBy === "Netflix (monthly) and 1 upcoming payment use this card", `Card summary reads naturally (got "${card.usedBy}")`);
 assert(card.canMove === true, "A card charge can move to Checking");
 assert(card.endsAnyway === true, "The payment to the card ends even when charges move");
-assert(card.goalBalanceLine === null, "Cards never offer to move a balance");
+assert(card.balanceLine === null && card.finalPaymentLabel === null, "A $0 card needs no settling");
+assert(card.canRetire === true, "A $0 card can be archived");
+assert(card.unpaidCountsLine === "2 upcoming", `Counts upcoming rows (got "${card.unpaidCountsLine}")`);
+assert(card.upcomingItems[0].title === "Payment for Visa", "Upcoming rows are listed by date");
 
 const single = describeDeleteImpact({
   type: "DEBT",
@@ -44,11 +49,9 @@ const single = describeDeleteImpact({
   series: [],
 });
 assert(single.usedBy === "1 upcoming payment uses this debt", `Single payment uses singular verb (got "${single.usedBy}")`);
-assert(
-  single.owedLine === "$400.00 is still owed on this debt. It will no longer count in your net worth.",
-  `Warns about a debt balance (got "${single.owedLine}")`
-);
-assert(card.owedLine === null, "No warning for a card with nothing owed");
+assert(single.balanceLine === "$400.00 is still owed on this debt.", `Debt balance line (got "${single.balanceLine}")`);
+assert(single.finalPaymentLabel === "Record final payment of $400.00", "Offers a final payment for money owed");
+assert(single.canRetire === false, "A debt with money owed cannot be archived");
 assert(single.canMove === false && single.endsAnyway === false, "Debt payments cannot move to Checking");
 
 const two = describeDeleteImpact({
@@ -78,22 +81,41 @@ const empty = describeDeleteImpact({ type: "CREDIT_CARD", balance: 0, unpaid: { 
 assert(empty.usedBy === null && empty.hasCommitments === false, "Nothing uses an unused card");
 
 const goal = describeDeleteImpact({ type: "SAVINGS_GOAL", balance: 1250.5, unpaid: { items: [] }, series: [] });
-assert(goal.goalBalanceLine === "Move $1,250.50 back to Checking?", `Goal with money offers to move it (got "${goal.goalBalanceLine}")`);
+assert(goal.finalPaymentLabel === "Move $1,250.50 back to Checking", `Goal with money offers to move it (got "${goal.finalPaymentLabel}")`);
+assert(goal.balanceLine === "$1,250.50 is still in this goal.", "Goal balance line");
+assert(goal.canRetire === false, "A goal with money cannot be archived");
 assert(goal.noun === "goal", "Goal noun");
-const emptyGoal = describeDeleteImpact({ type: "SAVINGS_GOAL", balance: 0, unpaid: { items: [] }, series: [] });
-assert(emptyGoal.goalBalanceLine === null, "Empty goal has nothing to move");
-assert(describeDeleteImpact(undefined).usedBy === null, "Missing impact (still loading) is safe");
+const credit = describeDeleteImpact({ type: "CREDIT_CARD", balance: -20, unpaid: { items: [] }, series: [] });
+assert(credit.balanceLine === "This card has a $20.00 credit." && credit.finalPaymentLabel === null, "An overpaid card can only be adjusted");
+assert(credit.canRetire === false, "An overpaid card cannot be archived");
+const missing = describeDeleteImpact(undefined);
+assert(missing.usedBy === null && missing.canRetire === false, "Missing impact (still loading) is safe and blocks archive");
 
-const archivePayload = buildRetirePayload({ mode: "archive", seriesChoice: "moveToChecking", moveBalance: true });
+const mixed = describeDeleteImpact({
+  type: "CREDIT_CARD",
+  balance: 0,
+  canRetire: true,
+  unpaid: {
+    items: [
+      { id: "u1", title: "Gas", type: "EXPENSE", movable: true, overdue: false, date: "2026-11-02", amount: 40 },
+      { id: "o2", title: "Phone", type: "EXPENSE", movable: true, overdue: true, date: "2026-10-20", amount: 55 },
+      { id: "o1", title: "Hydro", type: "EXPENSE", movable: true, overdue: true, date: "2026-10-12", amount: 80 },
+    ],
+  },
+  series: [],
+});
 assert(
-  archivePayload.mode === "archive" && archivePayload.series === "moveToChecking" && archivePayload.moveBalanceToChecking === true,
-  "Builds the archive body"
+  mixed.usedBy === "2 overdue charges and 1 upcoming charge use this card",
+  `Overdue charges are not called upcoming (got "${mixed.usedBy}")`
 );
-const deletePayload = buildRetirePayload({ mode: "delete", seriesChoice: undefined, moveBalance: undefined });
-assert(
-  deletePayload.mode === "delete" && deletePayload.series === "end" && deletePayload.moveBalanceToChecking === false,
-  "Delete body defaults to ending series and keeping the balance"
-);
+assert(mixed.unpaidCountsLine === "2 overdue, 1 upcoming", `Overdue and upcoming are counted apart (got "${mixed.unpaidCountsLine}")`);
+assert(mixed.overdueItems.map((i) => i.id).join() === "o1,o2", "Overdue rows are listed oldest first");
+assert(describeUnpaidItem(mixed.overdueItems[0]) === "Oct 12 · $80.00", `Unpaid row shows date and amount (got "${describeUnpaidItem(mixed.overdueItems[0])}")`);
+
+const archivePayload = buildRetirePayload({ mode: "archive", seriesChoice: "moveToChecking" });
+assert(archivePayload.mode === "archive" && archivePayload.series === "moveToChecking", "Builds the archive body");
+const deletePayload = buildRetirePayload({ mode: "delete", seriesChoice: undefined });
+assert(deletePayload.mode === "delete" && deletePayload.series === "end", "Delete body defaults to ending series");
 
 assert(
   getLedgerAccountLabel({ fromAccount: "Visa", fromAccountType: "CREDIT_CARD", fromAccountArchived: true }) === "Visa (archived)",

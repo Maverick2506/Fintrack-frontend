@@ -155,7 +155,23 @@ const dashboardService = {
       .then((res) => res.data);
   },
 
-  // options: { mode: "archive" | "delete", series: "end" | "moveToChecking", moveBalanceToChecking }
+  // Brings a card or debt to $0 with a payment from Checking, or moves a goal's money back to Checking
+  recordFinalPayment: async (accountId) => {
+    return handleRequest(
+      api.post(`/accounts/${accountId}/final-payment`, {}),
+      "Final payment recorded."
+    );
+  },
+
+  // reason: "written_off" | "closed_by_bank" | "spent"
+  adjustBalanceToZero: async (accountId, reason) => {
+    return handleRequest(
+      api.post(`/accounts/${accountId}/adjust-to-zero`, { reason }),
+      "Balance adjusted to $0."
+    );
+  },
+
+  // options: { mode: "archive" | "delete", series: "end" | "moveToChecking" }. The balance must be $0.
   deleteCreditCard: async (cardId, options = {}) => {
     return handleRequest(
       api.delete(`/credit-cards/${cardId}`, { data: options }),

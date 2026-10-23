@@ -293,6 +293,7 @@ const CreditCardPage = () => {
           account={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onConfirm={handleDelete}
+          onChanged={fetchCreditCards}
         />
       )}
     </div>

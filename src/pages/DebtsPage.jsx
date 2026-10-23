@@ -489,6 +489,7 @@ const DebtsPage = () => {
           account={activeDebt}
           onClose={closeModal}
           onConfirm={handleDelete}
+          onChanged={fetchDebts}
         />
       )}
     </div>

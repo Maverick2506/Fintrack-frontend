@@ -390,6 +390,7 @@ const SavingsPage = () => {
           account={activeGoal}
           onClose={() => setDeleteModalOpen(false)}
           onConfirm={handleDelete}
+          onChanged={fetchGoals}
         />
       )}
     </div>
