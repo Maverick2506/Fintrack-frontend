@@ -4,6 +4,7 @@ import {
   getClientRefForKey,
   isDuplicateClientRefError,
   isTimeoutError,
+  saveMayHaveLanded,
 } from "./pendingSubmission.js";
 import { parseQuickAdd } from "./quickAddParser.js";
 
@@ -78,5 +79,11 @@ console.log("\n--- Test 8: Timeout detection ---");
 assert(isTimeoutError({ code: "ECONNABORTED" }), "Axios timeout (ECONNABORTED) is a timeout");
 assert(isTimeoutError({ code: "ETIMEDOUT" }), "ETIMEDOUT is a timeout");
 assert(!isTimeoutError({ response: { status: 400 } }), "Validation error is not a timeout");
+
+console.log("\n--- Test 9: Which failures may still have saved ---");
+assert(!saveMayHaveLanded({ response: { status: 400 } }), "A 400 validation error did not save, so the pending clientRef can go");
+assert(saveMayHaveLanded({ code: "ECONNABORTED" }), "A timeout may have saved");
+assert(saveMayHaveLanded({ response: { status: 500 } }), "A 500 may have saved");
+assert(saveMayHaveLanded({ code: "ERR_NETWORK" }), "A network error may have saved");
 
 console.log("\nAll pendingSubmission tests passed.");

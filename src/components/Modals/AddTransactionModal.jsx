@@ -26,7 +26,11 @@ import {
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { formatCurrency } from "../../utils/formatUtils";
-import { getClientRefForKey, isTimeoutError } from "../../utils/pendingSubmission";
+import {
+  getClientRefForKey,
+  isTimeoutError,
+  saveMayHaveLanded,
+} from "../../utils/pendingSubmission";
 import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
 
 const CATEGORY_CONFIG = [
@@ -451,6 +455,8 @@ const AddTransactionModal = ({
       refreshData();
     } catch (err) {
       console.error("Failed to save transaction:", err);
+      // The server rejected it, so nothing to dedupe: let category suggestions run again
+      if (!saveMayHaveLanded(err)) pendingRef.current = null;
       const msg = isTimeoutError(err)
         ? "Saving took too long. Press Record again to retry without a duplicate. If you change anything first, check the ledger, since the first save may have gone through."
         : err?.response?.data?.details?.[0]?.message ||

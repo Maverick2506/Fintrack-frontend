@@ -47,3 +47,10 @@ export const isDuplicateClientRefError = (err) =>
 // The request gave up before the server answered, so the save may still have landed
 export const isTimeoutError = (err) =>
   err?.code === "ECONNABORTED" || err?.code === "ETIMEDOUT";
+
+// A 4xx answer (validation error, bad request) means the server rejected the save, so it did not land
+// and the pending clientRef can be dropped. A timeout, 5xx or network error may have landed, so keep it.
+export const saveMayHaveLanded = (err) => {
+  const status = err?.response?.status;
+  return !(status >= 400 && status < 500);
+};
