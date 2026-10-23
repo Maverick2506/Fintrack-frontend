@@ -113,7 +113,10 @@ const RetireAccountModal = ({ account, onClose, onConfirm, onChanged }) => {
   return (
     <div
       className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-end sm:items-center p-3 sm:p-4 z-50"
-      onClick={handleClose}
+      onClick={() => {
+        // A tap outside while saving would hide the result half-way
+        if (!isBusy) handleClose();
+      }}
     >
       <div
         role="dialog"
@@ -300,7 +303,7 @@ const RetireAccountModal = ({ account, onClose, onConfirm, onChanged }) => {
 
         {!isLoading && !isError && !summary.canRetire && (
           <p className="text-[11px] text-amber-300 mt-2" role="status">
-            Archive is available once the balance is $0.
+            Archive and delete are available once the balance is $0.
           </p>
         )}
 
