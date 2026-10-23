@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { formatCurrency, formatMonthYear } from "../utils/formatUtils";
+import { formatCurrency, formatMonthYear, formatShortDate } from "../utils/formatUtils";
 import { simulate } from "../utils/debtMath";
 import DebtPayoffPlanner from "../components/Debts/DebtPayoffPlanner";
 import {
@@ -151,7 +151,7 @@ const DebtsPage = () => {
               }`}
             />
             <span>
-              Interest: <strong className="font-semibold">{interestEnabled ? "On" : "Off"}</strong>
+              Debt interest: <strong className="font-semibold">{interestEnabled ? "On" : "Off"}</strong>
             </span>
           </button>
           <button onClick={() => openModal("add")} className="btn-primary min-h-10">
@@ -306,6 +306,15 @@ const DebtsPage = () => {
                           </div>
                         </div>
 
+                        {/* The due date passed with no payment to this debt (server: missed_payment_due_date) */}
+                        {debt.missed_payment_due_date && (
+                          <p
+                            role="status"
+                            className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5 mb-3"
+                          >
+                            No payment recorded for the {formatShortDate(debt.missed_payment_due_date)} due date
+                          </p>
+                        )}
                         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
                           <div>
                             <p className="text-xs text-zinc-500 mb-0.5">Remaining</p>
