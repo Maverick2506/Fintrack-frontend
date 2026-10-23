@@ -42,6 +42,8 @@ const CATEGORY_COLORS = {
   Shopping:              "bg-sky-500/10 text-sky-300 border-sky-500/20",
   Health:                "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
   Transfer:              "bg-blue-500/10 text-blue-300 border-blue-500/20",
+  Interest:              "bg-orange-500/10 text-orange-300 border-orange-500/20",
+  Adjustment:            "bg-indigo-500/10 text-indigo-300 border-indigo-500/20",
   Other:                 "bg-zinc-800/80 text-zinc-400 border-white/[0.06]",
 };
 
@@ -469,6 +471,14 @@ const LedgerPage = () => {
             {row.name}
           </span>
           <div className="flex items-center gap-1 mt-0.5 text-[11px] text-zinc-500 min-w-0">
+            {/* Interest rows (daily sweep or statement sync) get their own chip on phones too */}
+            {row.category === "Interest" && (
+              <span
+                className={`text-[10px] font-medium px-1.5 rounded border whitespace-nowrap shrink-0 ${CATEGORY_COLORS.Interest}`}
+              >
+                Interest
+              </span>
+            )}
             {/* Card, debt or goal the row uses; archived ones keep their name */}
             {accountChip ? (
               <AccountChip type={accountChip.type} label={accountChip.label} className="shrink" />

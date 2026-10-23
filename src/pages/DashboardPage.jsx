@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Check, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { logout } from "../utils/auth";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
@@ -19,6 +19,7 @@ import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 import GeminiGemModal from "../components/Modals/GeminiGemModal";
 import { openAskFinTrack, isAskFinTrackOpen } from "../utils/askFinTrack";
+import SyncStatementModal from "../components/Modals/SyncStatementModal";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
@@ -165,6 +166,7 @@ const DashboardPage = () => {
     toDelete: null,
     toEdit: null,
   });
+  const [syncingChecking, setSyncingChecking] = useState(false);
   const [advice, setAdvice] = useState(
     () => localStorage.getItem("fintrack_advice") || ""
   );
@@ -238,25 +240,6 @@ const DashboardPage = () => {
       closeModal("delete");
     },
   });
-
-  const updateCheckingMutation = useMutation({
-    mutationFn: (balance) => dashboardService.updateCheckingBalance(balance),
-    onSuccess: async () => {
-      setActive((prev) => ({
-        ...prev,
-        editingChecking: false,
-      }));
-      invalidateDashboard();
-      await refetchDashboard();
-    },
-  });
-
-  const handleSaveChecking = () => {
-    const raw = active.checkingInput;
-    const parsed = parseFloat(String(raw).replace(/[^0-9.-]/g, ""));
-    const balance = isNaN(parsed) ? 0 : parsed;
-    updateCheckingMutation.mutate(balance);
-  };
 
   const handleMarkAsPaid = (billId) => {
     return markAsPaidMutation.mutateAsync(billId);
@@ -425,9 +408,18 @@ const DashboardPage = () => {
               <p className={`text-base font-semibold tabular-nums truncate ${positiveNetWorth ? "text-zinc-100" : "text-rose-400"}`}>
                 {formatCurrency(netWorth, { maximumFractionDigits: 0 })}
               </p>
-              <p className="text-[10px] text-zinc-500 truncate mt-0.5">
-                Checking: {formatCurrency(checkingBalance, { maximumFractionDigits: 0 })}
-              </p>
+              <button
+                type="button"
+                onClick={() => setSyncingChecking(true)}
+                disabled={!dashboardData?.checkingAccount?.id}
+                aria-label="Sync Checking with statement"
+                className="flex items-center gap-1 w-full min-h-10 -mb-2 text-[10px] text-zinc-500 hover:text-zinc-200 cursor-pointer disabled:opacity-50"
+              >
+                <span className="truncate tabular-nums">
+                  Checking: {formatCurrency(checkingBalance, { maximumFractionDigits: 0 })}
+                </span>
+                <RefreshCw size={10} className="flex-shrink-0" />
+              </button>
             </div>
 
             {/* 2. Total Savings */}
@@ -548,83 +540,24 @@ const DashboardPage = () => {
             </div>
 
             <div className="mt-2.5 pt-2 border-t border-white/[0.06]">
-              {active.editingChecking ? (
-                <div className="flex items-center gap-1">
-                  <span className="text-[11px] text-zinc-500">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={active.checkingInput ?? ""}
-                    onChange={(e) =>
-                      setActive((prev) => ({
-                        ...prev,
-                        checkingInput: e.target.value,
-                      }))
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleSaveChecking();
-                      } else if (e.key === "Escape") {
-                        setActive((prev) => ({
-                          ...prev,
-                          editingChecking: false,
-                        }));
-                      }
-                    }}
-                    className="w-full bg-zinc-950 text-zinc-100 rounded px-1.5 py-0.5 text-[11px] border border-white/10 focus:outline-none tabular-nums"
-                    placeholder="0.00"
-                    autoFocus
-                    disabled={updateCheckingMutation.isPending}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveChecking}
-                    disabled={updateCheckingMutation.isPending}
-                    className="btn-ghost-icon !p-1 text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
-                    title="Save checking balance (Enter)"
-                  >
-                    <Check size={12} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActive((prev) => ({
-                        ...prev,
-                        editingChecking: false,
-                      }))
-                    }
-                    disabled={updateCheckingMutation.isPending}
-                    className="btn-ghost-icon !p-1 hover:text-zinc-300"
-                    title="Cancel (Esc)"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between text-[11px] text-zinc-500">
-                  <span className="truncate tabular-nums">
-                    Checking:{" "}
-                    <span className="text-zinc-300 font-medium">
-                      {formatCurrency(checkingBalance)}
-                    </span>
+              <div className="text-[11px] text-zinc-500">
+                <p className="tabular-nums whitespace-nowrap">
+                  Checking:{" "}
+                  <span className="text-zinc-300 font-medium">
+                    {formatCurrency(checkingBalance)}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActive((prev) => ({
-                        ...prev,
-                        editingChecking: true,
-                        checkingInput: checkingBalance.toFixed(2),
-                      }))
-                    }
-                    className="text-zinc-500 hover:text-zinc-200 transition-colors p-0.5 cursor-pointer"
-                    title="Edit Primary Checking balance"
-                  >
-                    <Pencil size={11} />
-                  </button>
-                </div>
-              )}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSyncingChecking(true)}
+                  disabled={!dashboardData?.checkingAccount?.id}
+                  className="inline-flex items-center gap-1 min-h-10 px-2 -ml-2 -mb-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-50"
+                  title="Set Checking to the balance your bank shows"
+                >
+                  <RefreshCw size={11} />
+                  <span>Sync with statement</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -817,6 +750,18 @@ const DashboardPage = () => {
         isOpen={modals.geminiModal}
         onClose={() => closeModal("geminiModal")}
       />
+      {syncingChecking && dashboardData?.checkingAccount?.id && (
+        <SyncStatementModal
+          account={{
+            id: dashboardData.checkingAccount.id,
+            name: dashboardData.checkingAccount.name || "Checking",
+            type: "CHECKING",
+            balance: checkingBalance,
+          }}
+          onClose={() => setSyncingChecking(false)}
+          onSynced={invalidateDashboard}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatMonthYear } from "../utils/formatUtils";
 import { simulate } from "../utils/debtMath";
 import DebtPayoffPlanner from "../components/Debts/DebtPayoffPlanner";
@@ -18,6 +19,7 @@ import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import AddDebtPaymentModal from "../components/Modals/AddDebtPaymentModal";
 import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import EditDebtModal from "../components/Modals/EditDebtModal";
+import SyncStatementModal from "../components/Modals/SyncStatementModal";
 import dashboardService from "../services/dashboardService";
 
 const DebtsPage = () => {
@@ -29,8 +31,23 @@ const DebtsPage = () => {
     pay: false,
     edit: false,
     delete: false,
+    sync: false,
   });
   const [activeDebt, setActiveDebt] = useState(null);
+  const queryClient = useQueryClient();
+
+  // Debt interest: the daily sweep adds interest on each due date while this is on
+  const { data: interestSetting } = useQuery({
+    queryKey: ["debt-interest-setting"],
+    queryFn: () => dashboardService.fetchDebtInterestSetting(),
+  });
+  const interestEnabled = interestSetting?.enabled !== false;
+  const interestMutation = useMutation({
+    mutationFn: (enabled) => dashboardService.updateDebtInterestSetting(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["debt-interest-setting"] });
+    },
+  });
   const [showPlannerMobile, setShowPlannerMobile] = useState(false);
 
   const fetchDebts = async () => {
@@ -55,7 +72,7 @@ const DebtsPage = () => {
   };
 
   const closeModal = () => {
-    setModals({ add: false, pay: false, edit: false, delete: false });
+    setModals({ add: false, pay: false, edit: false, delete: false, sync: false });
     setActiveDebt(null);
   };
 
@@ -115,10 +132,33 @@ const DebtsPage = () => {
             Debt Management
           </h1>
         </div>
-        <button onClick={() => openModal("add")} className="btn-primary">
-          <Plus size={14} strokeWidth={2} />
-          <span>Add Debt</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <button
+            type="button"
+            onClick={() => interestMutation.mutate(!interestEnabled)}
+            disabled={interestMutation.isPending || !interestSetting}
+            aria-pressed={interestEnabled}
+            className={`flex items-center gap-1.5 min-h-10 px-3 rounded-lg border text-[11px] transition-colors cursor-pointer select-none disabled:opacity-60 ${
+              interestEnabled
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
+                : "bg-zinc-900/80 border-white/[0.08] text-zinc-400 hover:text-zinc-300"
+            }`}
+            title="Add interest to each debt on its due date"
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                interestEnabled ? "bg-emerald-400" : "bg-zinc-600"
+              }`}
+            />
+            <span>
+              Interest: <strong className="font-semibold">{interestEnabled ? "On" : "Off"}</strong>
+            </span>
+          </button>
+          <button onClick={() => openModal("add")} className="btn-primary min-h-10">
+            <Plus size={14} strokeWidth={2} />
+            <span>Add Debt</span>
+          </button>
+        </div>
       </div>
 
       {debts.length > 0 && (
@@ -198,13 +238,19 @@ const DebtsPage = () => {
                 {activeDebts.map((debt) => {
                   const progress =
                     parseFloat(debt.total_amount) > 0
-                      ? ((parseFloat(debt.total_amount) -
-                          parseFloat(debt.total_remaining)) /
-                          parseFloat(debt.total_amount)) *
-                        100
+                      ? Math.max(
+                          0,
+                          ((parseFloat(debt.total_amount) -
+                            parseFloat(debt.total_remaining)) /
+                            parseFloat(debt.total_amount)) *
+                            100
+                        )
                       : 0;
-                  const paidAmount =
-                    parseFloat(debt.total_amount) - parseFloat(debt.total_remaining);
+                  // Interest can take the balance above the original amount; show $0 paid, not a negative
+                  const paidAmount = Math.max(
+                    0,
+                    parseFloat(debt.total_amount) - parseFloat(debt.total_remaining)
+                  );
 
                   const freq = debt.payment_frequency || "monthly";
                   const hasApr =
@@ -260,11 +306,22 @@ const DebtsPage = () => {
                           </div>
                         </div>
 
-                        <div className="mb-4">
-                          <p className="text-xs text-zinc-500 mb-0.5">Remaining</p>
-                          <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
-                            {formatCurrency(debt.total_remaining)}
-                          </p>
+                        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                          <div>
+                            <p className="text-xs text-zinc-500 mb-0.5">Remaining</p>
+                            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
+                              {formatCurrency(debt.total_remaining)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => openModal("sync", debt)}
+                            className="btn-secondary min-h-10 flex-shrink-0"
+                            title="Set this debt to the balance on your statement"
+                          >
+                            <RefreshCw size={12} />
+                            <span>Sync with statement</span>
+                          </button>
                         </div>
                       </div>
 
@@ -484,6 +541,18 @@ const DebtsPage = () => {
         refreshData={fetchDebts}
         debt={activeDebt}
       />
+      {modals.sync && activeDebt && (
+        <SyncStatementModal
+          account={{
+            id: activeDebt.id,
+            name: activeDebt.name,
+            type: "DEBT",
+            balance: parseFloat(activeDebt.total_remaining) || 0,
+          }}
+          onClose={closeModal}
+          onSynced={fetchDebts}
+        />
+      )}
       {modals.delete && activeDebt && (
         <RetireAccountModal
           account={activeDebt}

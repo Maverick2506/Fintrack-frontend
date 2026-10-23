@@ -30,6 +30,21 @@ export function getMonthlyRate(apr) {
 }
 
 /**
+ * One month of interest exactly as the backend daily sweep records it on a debt's due date:
+ * round(balance × APR/100 / 12, 2). Keeps the planner and the real balances in step.
+ *
+ * @param {number|string} balance
+ * @param {number|string} apr
+ * @returns {number}
+ */
+export function getPeriodInterest(balance, apr) {
+  const b = parseFloat(balance) || 0;
+  const rate = parseFloat(apr) || 0;
+  if (b <= 0 || rate <= 0) return 0;
+  return Math.round(((b * rate) / 100 / 12) * 100) / 100;
+}
+
+/**
  * Checks if minimum payment covers monthly interest.
  *
  * @param {number} balance
@@ -176,8 +191,8 @@ export function simulate(
 
     // 1. Accrue interest on all active debts
     for (const debt of activeDebts) {
-      const r = getMonthlyRate(debt.apr);
-      const interest = Math.round(debt.balance * r * 100) / 100;
+      // Same formula and rounding as the backend's daily interest rows: round(balance × APR/100 / 12, 2)
+      const interest = getPeriodInterest(debt.balance, debt.apr);
       debt.balance = Math.round((debt.balance + interest) * 100) / 100;
       debt.totalInterest = Math.round((debt.totalInterest + interest) * 100) / 100;
       totalInterest = Math.round((totalInterest + interest) * 100) / 100;

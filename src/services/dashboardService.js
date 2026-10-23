@@ -339,10 +339,22 @@ const dashboardService = {
     );
   },
 
-  updateCheckingBalance: async (balance) => {
+  // Sync with statement: records one Interest or Adjustment row for the difference
+  reconcileAccount: async (accountId, payload) => {
     return handleRequest(
-      api.put("/checking", { balance }),
-      "Checking balance updated!"
+      api.post(`/accounts/${accountId}/reconcile`, payload),
+      "Synced with your statement."
+    );
+  },
+
+  fetchDebtInterestSetting: async () => {
+    return api.get("/settings/debt-interest").then((res) => res.data);
+  },
+
+  updateDebtInterestSetting: async (enabled) => {
+    return handleRequest(
+      api.put("/settings/debt-interest", { enabled }),
+      enabled ? "Debt interest tracking is on." : "Debt interest tracking is off."
     );
   },
 
