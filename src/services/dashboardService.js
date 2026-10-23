@@ -2,6 +2,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { getToken, isLoggedIn, logout } from "../utils/auth";
 import { queryClient } from "../utils/queryClient";
+import { isDuplicateClientRefError, isTimeoutError } from "../utils/pendingSubmission";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -69,7 +70,12 @@ const handleRequest = async (
       throw error;
     }
     console.error("API Error:", error);
-    if (showErrorToast) {
+    // showErrorToast can also be a function of the error, to skip the toast for some errors only
+    if (
+      typeof showErrorToast === "function"
+        ? showErrorToast(error)
+        : showErrorToast
+    ) {
       toast.error(
         error.response?.data?.error || "An unexpected error occurred."
       );
@@ -77,6 +83,16 @@ const handleRequest = async (
     throw error;
   }
 };
+
+// Creates that carry a clientRef: if a retry loses the race with the original request on the unique
+// clientRef index, the server answers 409 but the entry is saved, so count it as saved.
+const postWithClientRef = (endpoint, data) =>
+  api.post(endpoint, data).catch((err) => {
+    if (data.clientRef && isDuplicateClientRefError(err)) {
+      return { data: { isDuplicate: true } };
+    }
+    throw err;
+  });
 
 const dashboardService = {
   fetchDashboard: async (year, month) => {
@@ -189,13 +205,19 @@ const dashboardService = {
       : `/paycheques`;
     const request = isEditing
       ? api.put(endpoint, transaction)
-      : api.post(endpoint, transaction);
-    return handleRequest(request, "Transaction saved!");
+      : postWithClientRef(endpoint, transaction);
+    // The modal explains a timeout itself, so skip the generic toast for it
+    return handleRequest(
+      request,
+      "Transaction saved!",
+      true,
+      (err) => !isTimeoutError(err)
+    );
   },
 
   addExpense: async (expenseData) => {
     return handleRequest(
-      api.post("/expenses", expenseData),
+      postWithClientRef("/expenses", expenseData),
       null,
       true,
       false // Quick Add shows its own error toast
@@ -204,7 +226,7 @@ const dashboardService = {
 
   addPaycheque: async (paychequeData) => {
     return handleRequest(
-      api.post("/paycheques", paychequeData),
+      postWithClientRef("/paycheques", paychequeData),
       null,
       true,
       false // Quick Add shows its own error toast

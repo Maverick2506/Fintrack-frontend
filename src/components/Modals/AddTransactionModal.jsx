@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -26,6 +26,11 @@ import {
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { formatCurrency } from "../../utils/formatUtils";
+import {
+  getClientRefForKey,
+  isTimeoutError,
+  saveMayHaveLanded,
+} from "../../utils/pendingSubmission";
 import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
 
 const CATEGORY_CONFIG = [
@@ -94,6 +99,9 @@ const AddTransactionModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const isEditing = !!existingTransaction;
+  // Keeps the same clientRef when the same new transaction is retried (e.g. after a timeout
+  // during a cold start), so the server returns the save that already landed instead of a duplicate
+  const pendingRef = useRef(null);
 
   const { data: creditCards = [] } = useQuery({
     queryKey: ["creditCards"],
@@ -115,6 +123,7 @@ const AddTransactionModal = ({
 
   useEffect(() => {
     if (isOpen) {
+      pendingRef.current = null;
       setOpenDropdown(null);
       setManualPaidOverride(false);
       setManualAlreadyInBalanceOverride(false);
@@ -240,7 +249,14 @@ const AddTransactionModal = ({
       try {
         setIsSuggesting(true);
         const res = await dashboardService.categorizeExpense(trimmed);
-        if (isMounted && res?.category && !hasManuallySelectedCategory) {
+        // Once a save was attempted, a late suggestion (e.g. after a cold start) must not change the
+        // category, or the retry would no longer match and would get a new clientRef
+        if (
+          isMounted &&
+          res?.category &&
+          !hasManuallySelectedCategory &&
+          !pendingRef.current
+        ) {
           setCategory(res.category);
           setSuggestedSource(res.source || "ai");
         }
@@ -414,7 +430,18 @@ const AddTransactionModal = ({
             recurrence,
           };
 
+      if (!isEditing) {
+        const { pending, clientRef } = getClientRefForKey(
+          pendingRef.current,
+          JSON.stringify(payload),
+          () => crypto.randomUUID()
+        );
+        pendingRef.current = pending;
+        payload.clientRef = clientRef;
+      }
+
       const saved = await dashboardService.saveTransaction(payload, isEditing);
+      pendingRef.current = null;
       if (saved?.seriesEnded) {
         const removed = saved.removedUpcomingCount || 0;
         toast.success(
@@ -428,11 +455,14 @@ const AddTransactionModal = ({
       refreshData();
     } catch (err) {
       console.error("Failed to save transaction:", err);
-      const msg =
-        err?.response?.data?.details?.[0]?.message ||
-        err?.response?.data?.error ||
-        err.message ||
-        "Failed to save transaction.";
+      // The server rejected it, so nothing to dedupe: let category suggestions run again
+      if (!saveMayHaveLanded(err)) pendingRef.current = null;
+      const msg = isTimeoutError(err)
+        ? "Saving took too long. Press Record again to retry without a duplicate. If you change anything first, check the ledger, since the first save may have gone through."
+        : err?.response?.data?.details?.[0]?.message ||
+          err?.response?.data?.error ||
+          err.message ||
+          "Failed to save transaction.";
       setError(msg);
     } finally {
       setIsSubmitting(false);
