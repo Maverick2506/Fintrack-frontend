@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { formatCurrency } from "../../utils/formatUtils";
-import { nextClientRef } from "../../utils/clientRef";
+import { nextClientRef, isTimeoutError } from "../../utils/clientRef";
 import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
 
 const CATEGORY_CONFIG = [
@@ -442,11 +442,12 @@ const AddTransactionModal = ({
       refreshData();
     } catch (err) {
       console.error("Failed to save transaction:", err);
-      const msg =
-        err?.response?.data?.details?.[0]?.message ||
-        err?.response?.data?.error ||
-        err.message ||
-        "Failed to save transaction.";
+      const msg = isTimeoutError(err)
+        ? "Saving took too long. Press Record again to retry without a duplicate. If you change anything first, check the ledger, since the first save may have gone through."
+        : err?.response?.data?.details?.[0]?.message ||
+          err?.response?.data?.error ||
+          err.message ||
+          "Failed to save transaction.";
       setError(msg);
     } finally {
       setIsSubmitting(false);

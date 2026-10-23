@@ -2,6 +2,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { getToken, isLoggedIn, logout } from "../utils/auth";
 import { queryClient } from "../utils/queryClient";
+import { isDuplicateClientRefError } from "../utils/clientRef";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -185,7 +186,12 @@ const dashboardService = {
       : `/paycheques`;
     const request = isEditing
       ? api.put(endpoint, transaction)
-      : api.post(endpoint, transaction);
+      : api.post(endpoint, transaction).catch((err) => {
+          if (transaction.clientRef && isDuplicateClientRefError(err)) {
+            return { data: { isDuplicate: true } };
+          }
+          throw err;
+        });
     return handleRequest(request, "Transaction saved!");
   },
 
