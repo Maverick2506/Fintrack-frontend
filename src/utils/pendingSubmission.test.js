@@ -47,6 +47,10 @@ const afterMidnight = new Date(2026, 9, 23, 0, 5);
 const late = getClientRef(null, parse("4.50 coffee", beforeMidnight), makeId);
 assert(parse("4.50 coffee", beforeMidnight).date !== parse("4.50 coffee", afterMidnight).date, "Test setup: the two times fall on different days");
 assert(getClientRef(late.pending, parse("4.50 coffee", afterMidnight), makeId).clientRef === late.clientRef, "Entry with no date typed keeps its clientRef across midnight");
+for (const text of ["120 hydro due today", "120 hydro due tomorrow"]) {
+  const rel = getClientRef(null, parse(text, beforeMidnight), makeId);
+  assert(getClientRef(rel.pending, parse(text, afterMidnight), makeId).clientRef === rel.clientRef, `"${text.split(" ").slice(-2).join(" ")}" keeps its clientRef across midnight`);
+}
 const due = getClientRef(null, parse("120 hydro due 11/05", beforeMidnight), makeId);
 assert(getClientRef(due.pending, parse("120 hydro due 11/06", beforeMidnight), makeId).clientRef !== due.clientRef, "A different typed due date is a different save");
 
