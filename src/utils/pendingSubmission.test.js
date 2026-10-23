@@ -14,7 +14,7 @@ function assert(condition, message) {
 let counter = 0;
 const makeId = () => `ref-${++counter}`;
 const cards = [{ id: "card-1", name: "Visa" }];
-const parse = (text) => parseQuickAdd(text, cards);
+const parse = (text, baseDate) => parseQuickAdd(text, cards, baseDate);
 
 console.log("==================================================");
 console.log("   QUICK ADD RETRY (clientRef) UNIT TESTS         ");
@@ -39,5 +39,15 @@ console.log("\n--- Test 4: Whitespace, case and amount formatting don't change t
 const a = getClientRef(null, parse("7 coffee"), makeId);
 assert(getClientRef(a.pending, parse("  7 coffee  "), makeId).clientRef === a.clientRef, "Surrounding whitespace is ignored");
 assert(getClientRef(a.pending, parse("7.00 Coffee"), makeId).clientRef === a.clientRef, "\"7\" vs \"7.00\" and letter case are the same entry");
+
+console.log("\n--- Test 5: Retrying after midnight is still the same save ---");
+// The parser's "today" is the device's local day
+const beforeMidnight = new Date(2026, 9, 22, 23, 55);
+const afterMidnight = new Date(2026, 9, 23, 0, 5);
+const late = getClientRef(null, parse("4.50 coffee", beforeMidnight), makeId);
+assert(parse("4.50 coffee", beforeMidnight).date !== parse("4.50 coffee", afterMidnight).date, "Test setup: the two times fall on different days");
+assert(getClientRef(late.pending, parse("4.50 coffee", afterMidnight), makeId).clientRef === late.clientRef, "Entry with no date typed keeps its clientRef across midnight");
+const due = getClientRef(null, parse("120 hydro due 11/05", beforeMidnight), makeId);
+assert(getClientRef(due.pending, parse("120 hydro due 11/06", beforeMidnight), makeId).clientRef !== due.clientRef, "A different typed due date is a different save");
 
 console.log("\nAll pendingSubmission tests passed.");

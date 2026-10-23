@@ -10,7 +10,8 @@
  * - After a successful save the pending state is cleared (null), so a deliberate repeat gets a new one.
  *
  * "Same entry" is judged on the parsed fields, not the raw text, so "7 coffee" retyped as
- * "7.00 Coffee " still counts as the same save.
+ * "7.00 Coffee " still counts as the same save. An entry with no date typed means "today", and it
+ * stays the same save if it is retried after midnight (the server keeps the date of the first save).
  */
 
 export const submissionKey = (parsed) =>
@@ -18,7 +19,7 @@ export const submissionKey = (parsed) =>
     parsed.type,
     Number(parsed.amount),
     (parsed.name || "").trim().toLowerCase(),
-    parsed.date,
+    parsed.dateExplicit ? parsed.date : "today",
     parsed.creditCardId || null,
     parsed.category || null,
     Boolean(parsed.is_paid),
