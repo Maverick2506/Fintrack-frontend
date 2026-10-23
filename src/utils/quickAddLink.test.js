@@ -4,6 +4,7 @@ import {
   withoutTextParam,
   getSafeNextPath,
   buildLoginPath,
+  restoreLinkList,
   MAX_LINK_LINES,
 } from "./quickAddLink.js";
 
@@ -57,5 +58,26 @@ assert(getSafeNextPath("?next=https%3A%2F%2Fevil.example") === "/", "A full URL 
 assert(getSafeNextPath("?next=%2F%2Fevil.example") === "/", "A protocol-relative URL is refused");
 assert(getSafeNextPath("?next=%2F%5Cevil.example") === "/", "A backslash path is refused");
 assert(getSafeNextPath("?next=%2Flogin") === "/", "Login never sends you back to login");
+
+console.log("\n--- Test 4: Resuming a link list after a reload ---");
+const saved = JSON.stringify({
+  items: [
+    { text: "23.40 lunch visa", status: "saved" },
+    { text: "+2100 paycheque", status: "pending" },
+    { text: "4.50 coffee", status: "pending" },
+  ],
+  index: 1,
+});
+assert(same(restoreLinkList(saved), JSON.parse(saved)), "A saved list resumes at the current entry");
+assert(
+  restoreLinkList(JSON.stringify({ items: [{ text: "a", status: "saved" }, { text: "b", status: "pending" }], index: 0 })).index === 1,
+  "An index on a finished entry moves to the next pending one"
+);
+assert(restoreLinkList(JSON.stringify({ items: [{ text: "a", status: "saved" }, { text: "b", status: "skipped" }] })) === null, "A finished list is not resumed");
+assert(restoreLinkList(null) === null && restoreLinkList("not json") === null && restoreLinkList("{}") === null, "Missing or broken data is ignored");
+assert(
+  same(restoreLinkList(JSON.stringify({ items: [{ text: "a", status: "weird" }, 5, { text: "  " }] })), { items: [{ text: "a", status: "pending" }], index: 0 }),
+  "Unknown statuses become pending and junk entries are dropped"
+);
 
 console.log("\nAll Quick Add link tests passed.");

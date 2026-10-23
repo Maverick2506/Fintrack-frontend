@@ -20,14 +20,29 @@ import dashboardService from "../services/dashboardService";
 import { parseQuickAdd } from "../utils/quickAddParser";
 import { formatCurrency } from "../utils/formatUtils";
 import { getClientRef } from "../utils/pendingSubmission";
-import { parseQuickAddTextParam, withoutTextParam, TEXT_PARAM } from "../utils/quickAddLink";
+import {
+  parseQuickAddTextParam,
+  withoutTextParam,
+  restoreLinkList,
+  TEXT_PARAM,
+} from "../utils/quickAddLink";
 
 const RECENT_KEY = "fintrack_recent_quick_add";
+// The link list in progress, so a reload or a re-login mid-list picks up where it left off
+const LINK_LIST_KEY = "fintrack_quick_link_list";
+const readStoredLinkList = () => {
+  try {
+    return restoreLinkList(sessionStorage.getItem(LINK_LIST_KEY));
+  } catch {
+    return null;
+  }
+};
 // After this long, a save is probably waiting on a Render cold start, so say so
 const SLOW_SAVE_MS = 8000;
 
 const QuickAddPage = () => {
-  const [input, setInput] = useState("");
+  const [storedLink] = useState(readStoredLinkList);
+  const [input, setInput] = useState(() => (storedLink ? storedLink.items[storedLink.index].text : ""));
   const [creditCards, setCreditCards] = useState([]);
   const [recentChips, setRecentChips] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,8 +55,20 @@ const QuickAddPage = () => {
   const navigate = useNavigate();
   // Entries from a Quick Add link (/quick?text=..., e.g. from the Gemini Gem), one per line.
   // They only fill the input, one at a time; each needs its own Save.
-  const [linkItems, setLinkItems] = useState([]);
-  const [linkIndex, setLinkIndex] = useState(0);
+  const [linkItems, setLinkItems] = useState(() => (storedLink ? storedLink.items : []));
+  const [linkIndex, setLinkIndex] = useState(() => (storedLink ? storedLink.index : 0));
+
+  useEffect(() => {
+    try {
+      if (linkItems.length > 0) {
+        sessionStorage.setItem(LINK_LIST_KEY, JSON.stringify({ items: linkItems, index: linkIndex }));
+      } else {
+        sessionStorage.removeItem(LINK_LIST_KEY);
+      }
+    } catch {
+      // Ignore storage errors; the list still works for this page view
+    }
+  }, [linkItems, linkIndex]);
 
   useEffect(() => {
     if (!new URLSearchParams(location.search).has(TEXT_PARAM)) return;
@@ -109,7 +136,8 @@ const QuickAddPage = () => {
     if (next === -1) {
       if (items.length > 1) {
         const saved = items.filter((it) => it.status === "saved").length;
-        toast.success(`Done: ${saved} of ${items.length} saved`);
+        if (saved > 0) toast.success(`Done: ${saved} of ${items.length} saved`);
+        else toast("Nothing saved from this link");
       }
       setLinkItems([]);
       setLinkIndex(0);

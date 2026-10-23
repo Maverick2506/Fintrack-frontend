@@ -26,6 +26,30 @@ export const withoutTextParam = (search) => {
   return rest ? `?${rest}` : "";
 };
 
+// Checks a link list saved in sessionStorage (so a reload or re-login mid-list doesn't lose it).
+// Returns { items, index } pointing at a pending entry, or null when there's nothing usable.
+export const restoreLinkList = (raw) => {
+  try {
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.items)) return null;
+    const items = data.items
+      .slice(0, MAX_LINK_LINES)
+      .filter((it) => it && typeof it.text === "string" && it.text.trim())
+      .map((it) => ({
+        text: it.text.slice(0, MAX_LINE_LENGTH),
+        status: it.status === "saved" || it.status === "skipped" ? it.status : "pending",
+      }));
+    const preferred = Number.isInteger(data.index) ? data.index : 0;
+    const index =
+      items[preferred] && items[preferred].status === "pending"
+        ? preferred
+        : items.findIndex((it) => it.status === "pending");
+    return index === -1 ? null : { items, index };
+  } catch {
+    return null;
+  }
+};
+
 // Only same-site paths, so ?next= can't send someone to another site after login
 export const getSafeNextPath = (search) => {
   const next = new URLSearchParams(search || "").get("next");
