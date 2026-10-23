@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { formatCurrency } from "../../utils/formatUtils";
-import { nextClientRef, isTimeoutError } from "../../utils/clientRef";
+import { getClientRefForKey, isTimeoutError } from "../../utils/pendingSubmission";
 import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
 
 const CATEGORY_CONFIG = [
@@ -245,7 +245,14 @@ const AddTransactionModal = ({
       try {
         setIsSuggesting(true);
         const res = await dashboardService.categorizeExpense(trimmed);
-        if (isMounted && res?.category && !hasManuallySelectedCategory) {
+        // Once a save was attempted, a late suggestion (e.g. after a cold start) must not change the
+        // category, or the retry would no longer match and would get a new clientRef
+        if (
+          isMounted &&
+          res?.category &&
+          !hasManuallySelectedCategory &&
+          !pendingRef.current
+        ) {
           setCategory(res.category);
           setSuggestedSource(res.source || "ai");
         }
@@ -420,11 +427,13 @@ const AddTransactionModal = ({
           };
 
       if (!isEditing) {
-        pendingRef.current = nextClientRef(
+        const { pending, clientRef } = getClientRefForKey(
           pendingRef.current,
-          JSON.stringify(payload)
+          JSON.stringify(payload),
+          () => crypto.randomUUID()
         );
-        payload.clientRef = pendingRef.current.clientRef;
+        pendingRef.current = pending;
+        payload.clientRef = clientRef;
       }
 
       const saved = await dashboardService.saveTransaction(payload, isEditing);

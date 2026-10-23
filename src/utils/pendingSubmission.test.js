@@ -1,5 +1,10 @@
 /* global process */
-import { getClientRef } from "./pendingSubmission.js";
+import {
+  getClientRef,
+  getClientRefForKey,
+  isDuplicateClientRefError,
+  isTimeoutError,
+} from "./pendingSubmission.js";
 import { parseQuickAdd } from "./quickAddParser.js";
 
 function assert(condition, message) {
@@ -53,5 +58,25 @@ for (const text of ["120 hydro due today", "120 hydro due tomorrow"]) {
 }
 const due = getClientRef(null, parse("120 hydro due 11/05", beforeMidnight), makeId);
 assert(getClientRef(due.pending, parse("120 hydro due 11/06", beforeMidnight), makeId).clientRef !== due.clientRef, "A different typed due date is a different save");
+
+console.log("\n--- Test 6: Add Transaction keys on its own payload ---");
+const payload = (name, amount) => JSON.stringify({ name, amount, due_date: "2026-10-23" });
+const tx = getClientRefForKey(null, payload("Lunch", "12.34"), makeId);
+assert(getClientRefForKey(tx.pending, payload("Lunch", "12.34"), makeId).clientRef === tx.clientRef, "Same payload after a failure reuses the clientRef");
+assert(getClientRefForKey(tx.pending, payload("Lunch fixed", "12.34"), makeId).clientRef !== tx.clientRef, "Changed payload gets a new clientRef");
+const real = getClientRefForKey(null, "x", () => crypto.randomUUID());
+assert(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(real.clientRef), "crypto.randomUUID gives a v4 UUID (backend validates z.string().uuid())");
+
+console.log("\n--- Test 7: Lost race on the clientRef index counts as saved ---");
+const conflict = (error) => ({ response: { status: 409, data: { error } } });
+assert(isDuplicateClientRefError(conflict("A duplicate clientRef already exists.")), "409 naming clientRef is treated as already saved");
+assert(!isDuplicateClientRefError(conflict("Another occurrence of this recurring series is already on that date.")), "Other 409s (recurring date clash) are still errors");
+assert(!isDuplicateClientRefError({ response: { status: 500, data: { error: "clientRef" } } }), "Non-409 errors are still errors");
+assert(!isDuplicateClientRefError(undefined), "Missing error is not a duplicate");
+
+console.log("\n--- Test 8: Timeout detection ---");
+assert(isTimeoutError({ code: "ECONNABORTED" }), "Axios timeout (ECONNABORTED) is a timeout");
+assert(isTimeoutError({ code: "ETIMEDOUT" }), "ETIMEDOUT is a timeout");
+assert(!isTimeoutError({ response: { status: 400 } }), "Validation error is not a timeout");
 
 console.log("\nAll pendingSubmission tests passed.");

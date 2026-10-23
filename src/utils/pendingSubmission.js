@@ -26,11 +26,24 @@ export const submissionKey = (parsed) =>
     Boolean(parsed.is_paid),
   ]);
 
-export const getClientRef = (pending, parsed, makeId) => {
-  const key = submissionKey(parsed);
+// Same rule for callers that build their own key (Add Transaction keys on its full payload)
+export const getClientRefForKey = (pending, key, makeId) => {
   if (pending && pending.key === key) {
     return { pending, clientRef: pending.clientRef };
   }
   const next = { key, clientRef: makeId() };
   return { pending: next, clientRef: next.clientRef };
 };
+
+export const getClientRef = (pending, parsed, makeId) =>
+  getClientRefForKey(pending, submissionKey(parsed), makeId);
+
+// A retry that races the original request (both delivered together after a cold start) can lose on
+// the unique clientRef index. The server answers 409, but the entry is saved, so treat it as success.
+export const isDuplicateClientRefError = (err) =>
+  err?.response?.status === 409 &&
+  /clientRef/i.test(String(err.response?.data?.error || ""));
+
+// The request gave up before the server answered, so the save may still have landed
+export const isTimeoutError = (err) =>
+  err?.code === "ECONNABORTED" || err?.code === "ETIMEDOUT";
