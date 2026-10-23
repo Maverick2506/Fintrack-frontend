@@ -11,6 +11,8 @@ import {
   Check,
   Minus,
   X,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import dashboardService from "../services/dashboardService";
@@ -18,7 +20,12 @@ import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import { formatCurrency, formatNumber } from "../utils/formatUtils";
-import { getLedgerAccountLabel } from "../utils/accountRetire";
+import AccountChip from "../components/Common/AccountChip";
+import SwipeableRow from "../components/Ledger/SwipeableRow";
+import useMediaQuery from "../hooks/useMediaQuery";
+import { getLedgerAccountChip } from "../utils/accountRetire";
+import { getTorontoTodayStr } from "../utils/dateUtils";
+import { groupLedgerRows, summarizeLedgerGroup } from "../utils/ledgerGroups";
 
 const CATEGORY_COLORS = {
   Income:                "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -58,6 +65,11 @@ const LedgerPage = () => {
   const [lastClickedIndex, setLastClickedIndex] = useState(null);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
+  // Upcoming starts closed; swipe actions show on phones and touch screens
+  const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
+  const [swipeOpen, setSwipeOpen] = useState(null); // { id, action }
+  const isTouchList = useMediaQuery("(max-width: 639px), (pointer: coarse)");
+
   const loadLedger = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -81,6 +93,26 @@ const LedgerPage = () => {
   useEffect(() => {
     loadLedger();
   }, [loadLedger]);
+
+  // Re-reads the ledger without the loading screen, e.g. after marking a row paid
+  const refreshRowsQuietly = useCallback(() => {
+    dashboardService
+      .fetchLedger()
+      .then(setRows)
+      .catch((err) => console.error("Failed to refresh ledger:", err));
+  }, []);
+
+  const handleMarkPaid = async (row) => {
+    setSwipeOpen(null);
+    try {
+      await dashboardService.markBillAsPaid(row.id);
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_paid: true } : r)));
+      refreshRowsQuietly();
+    } catch (err) {
+      // handleRequest already showed the error toast
+      console.error("Failed to mark transaction as paid:", err);
+    }
+  };
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -113,7 +145,7 @@ const LedgerPage = () => {
   };
 
   const handleConfirmBulkDelete = async () => {
-    const ids = filtered.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
+    const ids = visibleRows.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
     if (ids.length === 0) return;
     try {
       await dashboardService.bulkDeleteTransactions(ids);
@@ -153,13 +185,15 @@ const LedgerPage = () => {
       data = data.filter((r) => r.category === categoryFilter);
     if (monthFilter !== "all")
       data = data.filter((r) => String(r.date).startsWith(monthFilter));
-    if (search)
-      data = data.filter(
-        (r) =>
-          r.name.toLowerCase().includes(search.toLowerCase()) ||
-          (r.category &&
-            r.category.toLowerCase().includes(search.toLowerCase()))
+    if (search) {
+      // Card, debt and goal names count too, since those rows show the account instead of the category
+      const q = search.toLowerCase();
+      data = data.filter((r) =>
+        [r.name, r.category, getLedgerAccountChip(r)?.name].some(
+          (text) => text && text.toLowerCase().includes(q)
+        )
       );
+    }
     return [...data].sort((a, b) => {
       let va = a[sortKey],
         vb = b[sortKey];
@@ -177,22 +211,56 @@ const LedgerPage = () => {
     });
   }, [rows, search, sortKey, sortDir, typeFilter, categoryFilter, monthFilter]);
 
+  const todayStr = getTorontoTodayStr();
+  const groups = useMemo(
+    () =>
+      groupLedgerRows(filtered, todayStr, {
+        dateDir: sortKey === "date" ? sortDir : "desc",
+      }),
+    [filtered, todayStr, sortKey, sortDir]
+  );
+
+  // Rows on screen, in screen order: select all, Shift ranges and bulk delete only touch these
+  const visibleRows = useMemo(
+    () =>
+      groups.flatMap((g) =>
+        g.key === "upcoming" && !isUpcomingOpen ? [] : g.rows
+      ),
+    [groups, isUpcomingOpen]
+  );
+  const visibleIndex = useMemo(
+    () => new Map(visibleRows.map((r, idx) => [r, idx])),
+    [visibleRows]
+  );
+
+  const toggleUpcoming = () => {
+    if (isUpcomingOpen) {
+      // Rows that get hidden drop out of the selection
+      const upcomingIds = new Set(
+        (groups.find((g) => g.key === "upcoming")?.rows || []).map((r) => r.id)
+      );
+      setSelectedIds((prev) => new Set([...prev].filter((id) => !upcomingIds.has(id))));
+      setLastClickedIndex(null);
+    }
+    setIsUpcomingOpen((open) => !open);
+  };
+
   const allFilteredSelected =
-    filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id));
+    visibleRows.length > 0 && visibleRows.every((r) => selectedIds.has(r.id));
   const someFilteredSelected =
-    filtered.some((r) => selectedIds.has(r.id)) && !allFilteredSelected;
+    visibleRows.some((r) => selectedIds.has(r.id)) && !allFilteredSelected;
 
   const handleToggleSelectAll = () => {
     if (allFilteredSelected) {
       setSelectedIds((prev) => {
         const next = new Set(prev);
-        filtered.forEach((r) => next.delete(r.id));
+        visibleRows.forEach((r) => next.delete(r.id));
         return next;
       });
     } else {
       setSelectedIds((prev) => {
         const next = new Set(prev);
-        filtered.forEach((r) => next.add(r.id));
+        visibleRows.forEach((r) => next.add(r.id));
         return next;
       });
     }
@@ -207,7 +275,7 @@ const LedgerPage = () => {
         const start = Math.min(lastClickedIndex, index);
         const end = Math.max(lastClickedIndex, index);
         for (let idx = start; idx <= end; idx++) {
-          const rowItem = filtered[idx];
+          const rowItem = visibleRows[idx];
           if (rowItem) {
             if (willSelect) next.add(rowItem.id);
             else next.delete(rowItem.id);
@@ -252,6 +320,169 @@ const LedgerPage = () => {
       <ArrowUp size={12} className="text-zinc-200 inline ml-1" />
     ) : (
       <ArrowDown size={12} className="text-zinc-200 inline ml-1" />
+    );
+  };
+
+  const formatRowDate = (date, withYear) => {
+    const d = new Date(String(date).slice(0, 10) + "T12:00:00");
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      ...(withYear || d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}),
+    });
+  };
+
+  // Unpaid rows dated today or earlier; rows under Upcoming need no badge
+  const getRowStatus = (row) =>
+    !row.is_paid && String(row.date).slice(0, 10) <= todayStr ? "Unpaid" : null;
+
+  const renderAmount = (row) => (
+    <span
+      className={
+        row.type === "income"
+          ? row.is_paid
+            ? "text-emerald-400"
+            : "text-emerald-400/70"
+          : row.type === "transfer"
+          ? "text-zinc-400"
+          : row.is_paid
+          ? "text-zinc-200"
+          : "text-zinc-400"
+      }
+    >
+      {row.type === "income" ? "+" : row.type === "transfer" ? "⇄ " : "-"}$
+      {formatNumber(row.amount)}
+    </span>
+  );
+
+  const renderSelectAll = () => (
+    <button
+      type="button"
+      onClick={handleToggleSelectAll}
+      disabled={visibleRows.length === 0}
+      aria-label="Select all transactions"
+      title={allFilteredSelected ? "Deselect all visible" : "Select all visible"}
+      className={`w-10 h-10 -ml-3 flex items-center justify-center ${
+        visibleRows.length === 0 ? "cursor-not-allowed" : "cursor-pointer"
+      }`}
+    >
+      <span
+        className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+          visibleRows.length === 0
+            ? "border-white/10 bg-zinc-900/40 opacity-40"
+            : allFilteredSelected || someFilteredSelected
+            ? "bg-zinc-100 border-zinc-100 text-zinc-950"
+            : "border-white/20 bg-zinc-900/80 hover:border-zinc-400"
+        }`}
+      >
+        {allFilteredSelected && <Check size={11} strokeWidth={3} />}
+        {someFilteredSelected && <Minus size={11} strokeWidth={3} />}
+      </span>
+    </button>
+  );
+
+  const renderRowCheckbox = (row, index) => {
+    const isSelected = selectedIds.has(row.id);
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggleRow(row.id, index, e.shiftKey);
+        }}
+        aria-label={`Select ${row.name}`}
+        className="w-10 h-10 -ml-3 flex items-center justify-center cursor-pointer shrink-0"
+      >
+        <span
+          className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+            isSelected
+              ? "bg-zinc-100 border-zinc-100 text-zinc-950"
+              : "border-white/20 bg-zinc-900/80 hover:border-zinc-400"
+          }`}
+        >
+          {isSelected && <Check size={11} strokeWidth={3} />}
+        </span>
+      </button>
+    );
+  };
+
+  const renderGroupHeader = (group) => {
+    if (group.key !== "upcoming") {
+      return (
+        <div className="px-4 pt-4 pb-1.5 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+          {group.label}
+        </div>
+      );
+    }
+    const { count, moneyIn, moneyOut } = summarizeLedgerGroup(group.rows);
+    const Chevron = isUpcomingOpen ? ChevronDown : ChevronRight;
+    return (
+      <button
+        type="button"
+        onClick={toggleUpcoming}
+        aria-expanded={isUpcomingOpen}
+        className="w-full min-h-11 px-4 py-2 flex items-center justify-between gap-3 text-left bg-amber-500/[0.04] hover:bg-amber-500/[0.07] border-b border-white/[0.04] cursor-pointer"
+      >
+        <span className="flex items-center gap-1.5 min-w-0">
+          <Chevron size={14} className="text-zinc-400 shrink-0" />
+          <span className="text-[11px] font-semibold text-amber-300 uppercase tracking-wider">
+            {group.label}
+          </span>
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 tabular-nums">
+            {count}
+          </span>
+        </span>
+        <span className="flex items-center gap-2 text-xs font-medium tabular-nums whitespace-nowrap">
+          {moneyIn > 0 && <span className="text-emerald-400/80">+{formatCurrency(moneyIn)}</span>}
+          {moneyOut > 0 && <span className="text-zinc-300">-{formatCurrency(moneyOut)}</span>}
+        </span>
+      </button>
+    );
+  };
+
+  // One row of the touch list: checkbox, name, category or account chip, date, amount
+  const renderListRow = (row) => {
+    const i = visibleIndex.get(row);
+    const isSelected = selectedIds.has(row.id);
+    const accountChip = getLedgerAccountChip(row);
+    const status = getRowStatus(row);
+    return (
+      <div
+        className={`flex items-center gap-1 pl-1 pr-4 py-1.5 min-h-14 ${
+          isSelected ? "bg-white/[0.04]" : ""
+        }`}
+      >
+        {renderRowCheckbox(row, i)}
+        <div className="flex-1 min-w-0">
+          <span
+            className={`text-sm font-medium block truncate ${
+              row.is_paid ? "text-zinc-200" : "text-zinc-400"
+            }`}
+            title={row.name}
+          >
+            {row.name}
+          </span>
+          <div className="flex items-center gap-1 mt-0.5 text-[11px] text-zinc-500 min-w-0">
+            {/* Card, debt or goal the row uses; archived ones keep their name */}
+            {accountChip ? (
+              <AccountChip type={accountChip.type} label={accountChip.label} className="shrink" />
+            ) : (
+              <span className="text-zinc-400 truncate">{row.category}</span>
+            )}
+            <span>·</span>
+            <span className="tabular-nums shrink-0">{formatRowDate(row.date, false)}</span>
+            {status && (
+              <>
+                <span>·</span>
+                <span className="text-amber-400 font-medium shrink-0">{status}</span>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="text-right font-medium text-sm tabular-nums whitespace-nowrap shrink-0 pl-2">
+          {renderAmount(row)}
+        </div>
+      </div>
     );
   };
 
@@ -355,7 +586,7 @@ const LedgerPage = () => {
           />
           <input
             type="text"
-            placeholder="Search description or category..."
+            placeholder="Search description, category or account..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-zinc-900/60 text-zinc-100 text-xs rounded-xl pl-9 pr-4 py-2.5 border border-white/[0.07] focus:outline-none focus:border-zinc-500 placeholder-zinc-500 transition-colors"
@@ -449,270 +680,246 @@ const LedgerPage = () => {
         </div>
       )}
 
-      {/* Table */}
+      {/* Rows, grouped by date: a swipeable list on phones and touch screens, a table elsewhere */}
       <div className="glass-panel overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
-            <thead>
-              <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-                <th className="w-12 sm:w-10 py-3.5 pl-3 sm:pl-4 pr-1 text-left">
-                  <button
-                    type="button"
-                    onClick={handleToggleSelectAll}
-                    disabled={filtered.length === 0}
-                    aria-label="Select all transactions"
-                    title={
-                      allFilteredSelected
-                        ? "Deselect all visible"
-                        : "Select all visible"
-                    }
-                    className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
-                      filtered.length === 0
-                        ? "border-white/10 bg-zinc-900/40 opacity-40 cursor-not-allowed"
-                        : allFilteredSelected || someFilteredSelected
-                        ? "bg-zinc-100 border-zinc-100 text-zinc-950 cursor-pointer"
-                        : "border-white/20 bg-zinc-900/80 hover:border-zinc-400 cursor-pointer"
-                    }`}
-                  >
-                    {allFilteredSelected && <Check size={11} strokeWidth={3} />}
-                    {someFilteredSelected && <Minus size={11} strokeWidth={3} />}
-                  </button>
-                </th>
-                <th
-                  className="text-left py-3.5 px-2 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors"
-                  onClick={() => handleSort("name")}
+        {filtered.length === 0 ? (
+          <div className="py-12 px-4 text-center">
+            <div className="flex flex-col items-center">
+              <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-white/[0.07] flex items-center justify-center text-zinc-500 mb-2.5">
+                <ReceiptText size={16} />
+              </div>
+              <p className="text-zinc-300 text-xs font-medium mb-1">
+                {rows.length === 0
+                  ? "No transactions recorded yet"
+                  : "No matching transactions"}
+              </p>
+              <p className="text-zinc-500 text-[11px] max-w-xs mb-4">
+                {rows.length === 0
+                  ? "Log your first expense or paycheck to start building your ledger."
+                  : "Try adjusting your search query or filters."}
+              </p>
+              {rows.length === 0 && (
+                <button
+                  onClick={() => {
+                    setEditingTx(null);
+                    setIsTxModalOpen(true);
+                  }}
+                  className="btn-primary"
                 >
-                  Description <SortIcon k="name" />
-                </th>
-                <th className="hidden sm:table-cell text-left py-3.5 px-4 w-28 md:w-36">
-                  Category
-                </th>
-                <th
-                  className="hidden sm:table-cell text-left py-3.5 px-4 w-24 md:w-28 cursor-pointer hover:text-zinc-300 transition-colors"
-                  onClick={() => handleSort("date")}
+                  <Plus size={14} strokeWidth={2} />
+                  <span>Add First Transaction</span>
+                </button>
+              )}
+            </div>
+          </div>
+        ) : isTouchList ? (
+          <div>
+            {/* Select all and sort, since the list has no column headers */}
+            <div className="flex items-center gap-1 pl-1 pr-2 border-b border-white/[0.06]">
+              {renderSelectAll()}
+              <span className="text-[11px] text-zinc-500 mr-1">Sort</span>
+              {[
+                ["date", "Date"],
+                ["name", "Name"],
+                ["amount", "Amount"],
+              ].map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => handleSort(k)}
+                  className={`h-10 px-2 inline-flex items-center text-[11px] font-medium rounded-lg cursor-pointer ${
+                    sortKey === k ? "text-zinc-100" : "text-zinc-500"
+                  }`}
                 >
-                  Date <SortIcon k="date" />
-                </th>
-                <th
-                  className="w-24 sm:w-28 text-right py-3.5 px-3 sm:px-4 cursor-pointer hover:text-zinc-300 transition-colors whitespace-nowrap"
-                  onClick={() => handleSort("amount")}
-                >
-                  Amount <SortIcon k="amount" />
-                </th>
-                <th className="hidden sm:table-cell w-16 sm:w-20 py-3.5 pr-3 sm:px-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 px-4 text-center">
-                    <div className="flex flex-col items-center">
-                      <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-white/[0.07] flex items-center justify-center text-zinc-500 mb-2.5">
-                        <ReceiptText size={16} />
-                      </div>
-                      <p className="text-zinc-300 text-xs font-medium mb-1">
-                        {rows.length === 0
-                          ? "No transactions recorded yet"
-                          : "No matching transactions"}
-                      </p>
-                      <p className="text-zinc-500 text-[11px] max-w-xs mb-4">
-                        {rows.length === 0
-                          ? "Log your first expense or paycheck to start building your ledger."
-                          : "Try adjusting your search query or filters."}
-                      </p>
-                      {rows.length === 0 && (
-                        <button
-                          onClick={() => {
-                            setEditingTx(null);
-                            setIsTxModalOpen(true);
-                          }}
-                          className="btn-primary"
-                        >
-                          <Plus size={14} strokeWidth={2} />
-                          <span>Add First Transaction</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((row, i) => {
-                  const isSelected = selectedIds.has(row.id);
-                  const rowDateObj = new Date(row.date + "T12:00:00");
-                  const currentYear = new Date().getFullYear();
-                  const formattedDate = rowDateObj.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  });
-                  const mobileDate = rowDateObj.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    ...(rowDateObj.getFullYear() === currentYear ? {} : { year: "numeric" }),
-                  });
-                  const accountLabel = getLedgerAccountLabel(row);
-                  return (
-                    <tr
-                      key={`${row.type}-${row.id}-${i}`}
-                      onClick={(e) => {
-                        if (e.target.closest("button") || e.target.closest("input")) return;
-                        if (window.innerWidth < 640) {
-                          setEditingTx(row);
-                          setIsTxModalOpen(true);
-                        }
-                      }}
-                      className={`transition-colors group cursor-pointer sm:cursor-default ${
-                        isSelected
-                          ? "bg-white/[0.04] hover:bg-white/[0.06]"
-                          : "hover:bg-white/[0.02]"
-                      }`}
-                    >
-                      <td
-                        className="py-2 sm:py-3 pl-3 sm:pl-4 pr-1 w-12 sm:w-10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleRow(row.id, i, e.shiftKey);
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleRow(row.id, i, e.shiftKey);
-                          }}
-                          aria-label={`Select ${row.name}`}
-                          className="w-10 h-10 -ml-2 flex items-center justify-center cursor-pointer"
-                        >
-                          <span
-                            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
-                              isSelected
-                                ? "bg-zinc-100 border-zinc-100 text-zinc-950"
-                                : "border-white/20 bg-zinc-900/80 hover:border-zinc-400"
-                            }`}
-                          >
-                            {isSelected && <Check size={11} strokeWidth={3} />}
-                          </span>
-                        </button>
-                      </td>
-                      <td className="py-2 sm:py-3 px-2 sm:px-4 min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span
-                            className={`text-sm font-medium block truncate ${
-                              row.is_paid ? "text-zinc-200" : "text-zinc-400"
-                            }`}
-                            title={row.name}
-                          >
-                            {row.name}
-                          </span>
-                          {!row.is_paid && (
-                            <span
-                              className="hidden sm:inline text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap"
-                              title="Upcoming / not yet cleared"
-                            >
-                              Upcoming
-                            </span>
-                          )}
-                        </div>
-                        {/* Card, debt or goal the row belongs to; archived ones keep their name */}
-                        {accountLabel && (
-                          <span
-                            className="hidden sm:block text-[11px] text-zinc-500 truncate mt-0.5"
-                            title={accountLabel}
-                          >
-                            {accountLabel}
-                          </span>
-                        )}
-                        {/* Mobile single meta line: Food · Nov 19 · Upcoming (M6 / B2) */}
-                        <div className="flex items-center gap-1 mt-0.5 sm:hidden text-[11px] text-zinc-500 min-w-0 truncate">
-                          <span className="text-zinc-400 truncate">{row.category}</span>
-                          <span>·</span>
-                          <span className="tabular-nums shrink-0">{mobileDate}</span>
-                          {accountLabel && (
-                            <>
-                              <span>·</span>
-                              <span className="truncate" title={accountLabel}>{accountLabel}</span>
-                            </>
-                          )}
-                          {!row.is_paid && (
-                            <>
-                              <span>·</span>
-                              <span className="text-amber-400 font-medium shrink-0">Upcoming</span>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      <td className="hidden sm:table-cell py-3 px-4 w-28 md:w-36">
-                        <span
-                          title={row.category}
-                          className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border whitespace-nowrap block truncate text-center ${
-                            CATEGORY_COLORS[row.category] ||
-                            CATEGORY_COLORS.Other
-                          }`}
-                        >
-                          {row.category}
-                        </span>
-                      </td>
-                      <td className="hidden sm:table-cell py-3 px-4 w-24 md:w-28 text-xs text-zinc-400 tabular-nums whitespace-nowrap">
-                        {formattedDate}
-                      </td>
-                      <td className="py-2 sm:py-3 px-3 sm:px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap w-24 sm:w-28">
-                        <span
-                          className={
-                            row.type === "income"
-                              ? row.is_paid
-                                ? "text-emerald-400"
-                                : "text-emerald-400/70"
-                              : row.type === "transfer"
-                              ? "text-zinc-400"
-                              : row.is_paid
-                              ? "text-zinc-200"
-                              : "text-zinc-400"
-                          }
-                        >
-                          {row.type === "income"
-                            ? "+"
-                            : row.type === "transfer"
-                            ? "⇄ "
-                            : "-"}
-                          ${formatNumber(row.amount)}
-                        </span>
-                      </td>
-                      <td className="hidden sm:table-cell py-3 pr-3 sm:px-4 text-right opacity-0 sm:group-hover:opacity-100 transition-opacity whitespace-nowrap w-16 sm:w-20">
-                        <div className="inline-flex items-center gap-0.5">
-                          <button
-                            onClick={() => {
+                  {label}
+                  <SortIcon k={k} />
+                </button>
+              ))}
+            </div>
+            {groups.map((group) => {
+              const isHidden = group.key === "upcoming" && !isUpcomingOpen;
+              return (
+                <section key={group.key}>
+                  {renderGroupHeader(group)}
+                  {!isHidden && (
+                    <ul className="divide-y divide-white/[0.04]">
+                      {group.rows.map((row) => (
+                        <li key={`${row.type}-${row.id}`}>
+                          <SwipeableRow
+                            openAction={swipeOpen?.id === row.id ? swipeOpen.action : null}
+                            onOpenChange={(action) =>
+                              setSwipeOpen(action ? { id: row.id, action } : null)
+                            }
+                            canMarkPaid={!row.is_paid}
+                            markPaidLabel={row.type === "income" ? "Received" : "Mark paid"}
+                            onMarkPaid={() => handleMarkPaid(row)}
+                            onDelete={() => {
+                              setSwipeOpen(null);
+                              setDeleteTarget(row);
+                            }}
+                            onTap={() => {
                               setEditingTx(row);
                               setIsTxModalOpen(true);
                             }}
-                            title="Edit transaction"
-                            className="btn-ghost-icon"
                           >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(row)}
-                            title="Delete transaction"
-                            className="btn-ghost-icon hover:text-rose-400"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                            {renderListRow(row)}
+                          </SwipeableRow>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <thead>
+                <tr className="border-b border-white/[0.06] text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                  <th className="w-10 py-3.5 pl-4 pr-1 text-left">
+                    {renderSelectAll()}
+                  </th>
+                  <th
+                    className="text-left py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors"
+                    onClick={() => handleSort("name")}
+                  >
+                    Description <SortIcon k="name" />
+                  </th>
+                  <th className="text-left py-3.5 px-4 w-28 md:w-36">
+                    Category
+                  </th>
+                  <th
+                    className="text-left py-3.5 px-4 w-24 md:w-28 cursor-pointer hover:text-zinc-300 transition-colors"
+                    onClick={() => handleSort("date")}
+                  >
+                    Date <SortIcon k="date" />
+                  </th>
+                  <th
+                    className="w-28 text-right py-3.5 px-4 cursor-pointer hover:text-zinc-300 transition-colors whitespace-nowrap"
+                    onClick={() => handleSort("amount")}
+                  >
+                    Amount <SortIcon k="amount" />
+                  </th>
+                  <th className="w-20 py-3.5 px-4"></th>
+                </tr>
+              </thead>
+              {groups.map((group) => {
+                const isHidden = group.key === "upcoming" && !isUpcomingOpen;
+                return (
+                  <tbody key={group.key} className="divide-y divide-white/[0.04]">
+                    <tr>
+                      <td colSpan={6} className="p-0">
+                        {renderGroupHeader(group)}
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="border-t border-white/[0.05] px-4 py-2.5 flex items-center justify-between">
-          <p className="text-[11px] text-zinc-500">
-            <span className="hidden sm:inline">{selectedIds.size > 0
-              ? `${selectedIds.size} of ${filtered.length} selected (Tip: Hold Shift to select a range)`
-              : "Tip: Use checkboxes or Shift+Click to select multiple transactions"}</span>
-            <span className="sm:hidden">{selectedIds.size > 0 ? `${selectedIds.size} selected` : ""}</span>
+                    {!isHidden &&
+                      group.rows.map((row) => {
+                        const i = visibleIndex.get(row);
+                        const isSelected = selectedIds.has(row.id);
+                        const accountChip = getLedgerAccountChip(row);
+                        const status = getRowStatus(row);
+                        return (
+                          <tr
+                            key={`${row.type}-${row.id}`}
+                            className={`transition-colors group ${
+                              isSelected
+                                ? "bg-white/[0.04] hover:bg-white/[0.06]"
+                                : "hover:bg-white/[0.02]"
+                            }`}
+                          >
+                            <td
+                              className="py-3 pl-4 pr-1 w-10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleRow(row.id, i, e.shiftKey);
+                              }}
+                            >
+                              {renderRowCheckbox(row, i)}
+                            </td>
+                            <td className="py-3 px-4 min-w-0">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className={`text-sm font-medium block truncate ${
+                                    row.is_paid ? "text-zinc-200" : "text-zinc-400"
+                                  }`}
+                                  title={row.name}
+                                >
+                                  {row.name}
+                                </span>
+                                {status && (
+                                  <span
+                                    className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap"
+                                    title="Not yet cleared"
+                                  >
+                                    {status}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 w-28 md:w-36">
+                              {/* Card, debt or goal the row uses; archived ones keep their name */}
+                              {accountChip ? (
+                                <AccountChip type={accountChip.type} label={accountChip.label} />
+                              ) : (
+                                <span
+                                  title={row.category}
+                                  className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border whitespace-nowrap block truncate text-center ${
+                                    CATEGORY_COLORS[row.category] ||
+                                    CATEGORY_COLORS.Other
+                                  }`}
+                                >
+                                  {row.category}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 w-24 md:w-28 text-xs text-zinc-400 tabular-nums whitespace-nowrap">
+                              {formatRowDate(row.date, true)}
+                            </td>
+                            <td className="py-3 px-4 text-right font-medium text-sm tabular-nums whitespace-nowrap w-28">
+                              {renderAmount(row)}
+                            </td>
+                            <td className="py-3 px-4 text-right opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity whitespace-nowrap w-20">
+                              <div className="inline-flex items-center gap-0.5">
+                                <button
+                                  onClick={() => {
+                                    setEditingTx(row);
+                                    setIsTxModalOpen(true);
+                                  }}
+                                  title="Edit transaction"
+                                  className="btn-ghost-icon"
+                                >
+                                  <Pencil size={13} />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteTarget(row)}
+                                  title="Delete transaction"
+                                  className="btn-ghost-icon hover:text-rose-400"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                );
+              })}
+            </table>
+          </div>
+        )}
+        <div className="border-t border-white/[0.05] px-4 py-2.5 flex items-center justify-between gap-3">
+          <p className="text-[11px] text-zinc-500 min-w-0">
+            {isTouchList
+              ? selectedIds.size > 0
+                ? `${selectedIds.size} selected`
+                : "Swipe a row for Delete or Mark paid"
+              : selectedIds.size > 0
+              ? `${selectedIds.size} of ${visibleRows.length} selected (Tip: Hold Shift to select a range)`
+              : "Tip: Use checkboxes or Shift+Click to select multiple transactions"}
           </p>
-          <p className="text-[11px] text-zinc-500 tabular-nums">
+          <p className="text-[11px] text-zinc-500 tabular-nums shrink-0">
             {filtered.length} transactions
           </p>
         </div>

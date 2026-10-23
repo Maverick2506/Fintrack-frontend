@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import useEscapeClose from "../../hooks/useEscapeClose";
+import { loadAskHistory, saveAskHistory } from "../../utils/askFinTrack";
 
 const SUGGESTED_PROMPTS = [
   {
@@ -71,7 +72,8 @@ const renderMarkdown = (text) => {
 const AskFinTrackModal = ({ isOpen, onClose }) => {
   useEscapeClose(isOpen, onClose);
 
-  const [messages, setMessages] = useState([]);
+  // Kept in sessionStorage, so the chat survives closing the panel and changing pages until the tab closes
+  const [messages, setMessages] = useState(() => loadAskHistory(window.sessionStorage));
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -84,8 +86,12 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+    saveAskHistory(window.sessionStorage, messages);
+  }, [messages]);
+
+  useEffect(() => {
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading, isOpen]);
 
   if (!isOpen) return null;
 
@@ -168,7 +174,8 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
               <button
                 type="button"
                 onClick={handleClear}
-                className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+                aria-label="Clear chat"
+                className="w-10 h-10 flex items-center justify-center text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
                 title="Clear chat"
               >
                 <Trash2 size={16} />
@@ -177,7 +184,8 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+              aria-label="Close Ask FinTrack"
+              className="w-10 h-10 flex items-center justify-center text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -286,7 +294,7 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
             </button>
           </form>
           <p className="text-[10px] text-center text-zinc-600">
-            Session history is kept only in memory and cleared on close.
+            This chat is kept until you close the tab or sign out.
           </p>
         </div>
       </div>

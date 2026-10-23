@@ -113,15 +113,32 @@ export const buildRetirePayload = ({ mode, seriesChoice }) => ({
 
 const NON_CHECKING = ["CREDIT_CARD", "DEBT", "SAVINGS_GOAL"];
 
+/** The card, debt or goal side of a Ledger row as { name, type, archived }. Null for Checking-only rows. */
+export const getLedgerAccountSide = (row) => {
+  const side = NON_CHECKING.includes(row?.toAccountType)
+    ? { name: row.toAccount, type: row.toAccountType, archived: Boolean(row.toAccountArchived) }
+    : NON_CHECKING.includes(row?.fromAccountType)
+    ? { name: row.fromAccount, type: row.fromAccountType, archived: Boolean(row.fromAccountArchived) }
+    : null;
+  return side && side.name ? side : null;
+};
+
 /**
  * The card, debt or goal a Ledger row belongs to, e.g. "Visa (archived)". Null for Checking-only rows.
  */
 export const getLedgerAccountLabel = (row) => {
-  const side = NON_CHECKING.includes(row?.toAccountType)
-    ? { name: row.toAccount, archived: row.toAccountArchived }
-    : NON_CHECKING.includes(row?.fromAccountType)
-    ? { name: row.fromAccount, archived: row.fromAccountArchived }
-    : null;
-  if (!side || !side.name) return null;
+  const side = getLedgerAccountSide(row);
+  if (!side) return null;
   return side.archived ? `${side.name} (archived)` : side.name;
+};
+
+/**
+ * Transfers (card, debt and goal payments), goal contributions and card purchases show their
+ * card, debt or goal as a chip instead of the category. Null for Checking-only rows, which keep
+ * the category.
+ */
+export const getLedgerAccountChip = (row) => {
+  const side = getLedgerAccountSide(row);
+  if (!side) return null;
+  return { ...side, label: side.archived ? `${side.name} (archived)` : side.name };
 };
