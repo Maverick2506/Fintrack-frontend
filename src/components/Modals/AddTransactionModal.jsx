@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { formatCurrency } from "../../utils/formatUtils";
+import { nextClientRef } from "../../utils/clientRef";
 import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
 
 const CATEGORY_CONFIG = [
@@ -94,6 +95,9 @@ const AddTransactionModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const isEditing = !!existingTransaction;
+  // Keeps the same clientRef when the same new transaction is retried (e.g. after a timeout
+  // during a cold start), so the server returns the save that already landed instead of a duplicate
+  const pendingRef = useRef(null);
 
   const { data: creditCards = [] } = useQuery({
     queryKey: ["creditCards"],
@@ -115,6 +119,7 @@ const AddTransactionModal = ({
 
   useEffect(() => {
     if (isOpen) {
+      pendingRef.current = null;
       setOpenDropdown(null);
       setManualPaidOverride(false);
       setManualAlreadyInBalanceOverride(false);
@@ -414,7 +419,16 @@ const AddTransactionModal = ({
             recurrence,
           };
 
+      if (!isEditing) {
+        pendingRef.current = nextClientRef(
+          pendingRef.current,
+          JSON.stringify(payload)
+        );
+        payload.clientRef = pendingRef.current.clientRef;
+      }
+
       const saved = await dashboardService.saveTransaction(payload, isEditing);
+      pendingRef.current = null;
       if (saved?.seriesEnded) {
         const removed = saved.removedUpcomingCount || 0;
         toast.success(
