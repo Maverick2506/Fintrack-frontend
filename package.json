@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node src/utils/debtMath.test.js && node src/utils/savingsPacing.test.js && node src/utils/quickAddParser.test.js && node src/utils/formatUtils.test.js && node src/utils/clientRef.test.js",
+    "test": "node src/utils/debtMath.test.js && node src/utils/savingsPacing.test.js && node src/utils/quickAddParser.test.js && node src/utils/formatUtils.test.js && node src/utils/pendingSubmission.test.js && node src/utils/clientRef.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

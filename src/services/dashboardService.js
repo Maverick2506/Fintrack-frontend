@@ -6,9 +6,10 @@ import { isDuplicateClientRefError } from "../utils/clientRef";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
+// Render's free instance takes 30-60s to wake from sleep, so allow a cold start to finish (N3)
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 60000,
 });
 
 api.interceptors.request.use(
@@ -52,7 +53,8 @@ api.interceptors.response.use(
 const handleRequest = async (
   requestPromise,
   successMessage,
-  shouldInvalidate = true
+  shouldInvalidate = true,
+  showErrorToast = true
 ) => {
   try {
     const response = await requestPromise;
@@ -68,9 +70,11 @@ const handleRequest = async (
       throw error;
     }
     console.error("API Error:", error);
-    toast.error(
-      error.response?.data?.error || "An unexpected error occurred."
-    );
+    if (showErrorToast) {
+      toast.error(
+        error.response?.data?.error || "An unexpected error occurred."
+      );
+    }
     throw error;
   }
 };
@@ -198,14 +202,18 @@ const dashboardService = {
   addExpense: async (expenseData) => {
     return handleRequest(
       api.post("/expenses", expenseData),
-      null
+      null,
+      true,
+      false // Quick Add shows its own error toast
     );
   },
 
   addPaycheque: async (paychequeData) => {
     return handleRequest(
       api.post("/paycheques", paychequeData),
-      null
+      null,
+      true,
+      false // Quick Add shows its own error toast
     );
   },
 

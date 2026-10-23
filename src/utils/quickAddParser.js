@@ -122,6 +122,7 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
       creditCardId: null,
       accountName: "Primary Checking",
       date: formatDateStr(baseDate),
+      dateKey: "today",
       is_paid: true,
       recurrence: "none",
       rawInput: input,
@@ -151,6 +152,8 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
   let date = formatDateStr(baseDate);
   let is_paid = true;
   let dateMatched = false;
+  // Stable label for the date as typed: "today"/"tomorrow" stay relative, typed dates are absolute
+  let dateKey = "today";
 
   // Patterns: "due YYYY-MM-DD", "due MM/DD", "due MM-DD", "due tomorrow", "due today", "on MM/DD"
   const dueFullMatch = text.match(/\b(?:due|on)\s+(\d{4}-\d{2}-\d{2})\b/i);
@@ -162,6 +165,7 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
     date = dueFullMatch[1];
     is_paid = date <= formatDateStr(baseDate);
     dateMatched = true;
+    dateKey = date;
     text = text.replace(dueFullMatch[0], " ").trim();
   } else if (dueShortMatch) {
     let year = baseDate.getFullYear();
@@ -178,17 +182,20 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
     date = `${year}-${month}-${day}`;
     is_paid = date <= formatDateStr(baseDate);
     dateMatched = true;
+    dateKey = date;
     text = text.replace(dueShortMatch[0], " ").trim();
   } else if (dueTomorrowMatch) {
     const tomorrow = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);
     date = formatDateStr(tomorrow);
     is_paid = false;
     dateMatched = true;
+    dateKey = "tomorrow";
     text = text.replace(dueTomorrowMatch[0], " ").trim();
   } else if (dueTodayMatch) {
     date = formatDateStr(baseDate);
     is_paid = true;
     dateMatched = true;
+    dateKey = "today";
     text = text.replace(dueTodayMatch[0], " ").trim();
   }
 
@@ -278,6 +285,7 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
     creditCardId,
     accountName,
     date,
+    dateKey,
     is_paid,
     applyToBalance,
     recurrence: "none",
