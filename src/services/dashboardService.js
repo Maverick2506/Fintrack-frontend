@@ -193,10 +193,10 @@ const dashboardService = {
     );
   },
 
-  markBillAsPaid: async (billId) => {
+  markBillAsPaid: async (billId, successMessage = "Bill marked as paid!") => {
     return handleRequest(
       api.put(`/expenses/${billId}`, { is_paid: true }),
-      "Bill marked as paid!"
+      successMessage
     );
   },
 

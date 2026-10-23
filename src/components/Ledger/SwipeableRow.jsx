@@ -57,6 +57,14 @@ const SwipeableRow = ({
     setDragX(null);
   };
 
+  // A cancelled drag (e.g. a system gesture took over) closes the row instead of settling by position
+  const handleTouchCancel = () => {
+    const wasSwiping = touch.current?.axis === "x";
+    touch.current = null;
+    setDragX(null);
+    if (wasSwiping) onOpenChange(null);
+  };
+
   const handleClick = (e) => {
     if (swiped.current) {
       swiped.current = false;
@@ -101,7 +109,7 @@ const SwipeableRow = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         onClick={handleClick}
         style={{
           transform: offset ? `translateX(${offset}px)` : undefined,

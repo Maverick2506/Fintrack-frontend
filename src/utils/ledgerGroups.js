@@ -28,10 +28,11 @@ const FIXED_LABELS = {
 
 /**
  * Splits already-sorted Ledger rows into date sections: Upcoming, Today, Yesterday,
- * This week, then one per month. Rows keep their order inside a section. Upcoming always
+ * This week, then one per month. Rows keep their order inside a section, except that with
+ * sortByDate Upcoming runs soonest first, so the next thing due is on top. Upcoming always
  * comes first; the other sections run newest first, or oldest first when dateDir is "asc".
  */
-export const groupLedgerRows = (rows, todayStr, { dateDir = "desc" } = {}) => {
+export const groupLedgerRows = (rows, todayStr, { dateDir = "desc", sortByDate = false } = {}) => {
   const byKey = new Map();
   for (const row of rows) {
     const key = getLedgerGroupKey(row.date, todayStr);
@@ -50,6 +51,11 @@ export const groupLedgerRows = (rows, todayStr, { dateDir = "desc" } = {}) => {
     .filter((k) => k !== "upcoming")
     .sort((a, b) => rank(b).localeCompare(rank(a)));
   if (dateDir === "asc") dated.reverse();
+
+  if (sortByDate && byKey.has("upcoming")) {
+    const dateOf = (r) => String(r.date).slice(0, 10);
+    byKey.get("upcoming").sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
+  }
 
   const keys = byKey.has("upcoming") ? ["upcoming", ...dated] : dated;
   return keys.map((key) => ({

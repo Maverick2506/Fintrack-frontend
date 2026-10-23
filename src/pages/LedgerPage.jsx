@@ -105,7 +105,10 @@ const LedgerPage = () => {
   const handleMarkPaid = async (row) => {
     setSwipeOpen(null);
     try {
-      await dashboardService.markBillAsPaid(row.id);
+      await dashboardService.markBillAsPaid(
+        row.id,
+        row.type === "income" ? "Marked as received!" : undefined
+      );
       setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_paid: true } : r)));
       refreshRowsQuietly();
     } catch (err) {
@@ -216,6 +219,7 @@ const LedgerPage = () => {
     () =>
       groupLedgerRows(filtered, todayStr, {
         dateDir: sortKey === "date" ? sortDir : "desc",
+        sortByDate: sortKey === "date",
       }),
     [filtered, todayStr, sortKey, sortDir]
   );
@@ -328,13 +332,15 @@ const LedgerPage = () => {
     return d.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      ...(withYear || d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}),
+      ...(withYear || String(date).slice(0, 4) !== todayStr.slice(0, 4) ? { year: "numeric" } : {}),
     });
   };
 
   // Unpaid rows dated today or earlier; rows under Upcoming need no badge
-  const getRowStatus = (row) =>
-    !row.is_paid && String(row.date).slice(0, 10) <= todayStr ? "Unpaid" : null;
+  const getRowStatus = (row) => {
+    if (row.is_paid || String(row.date).slice(0, 10) > todayStr) return null;
+    return row.type === "income" ? "Not received" : "Unpaid";
+  };
 
   const renderAmount = (row) => (
     <span

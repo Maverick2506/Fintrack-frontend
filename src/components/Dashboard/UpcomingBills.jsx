@@ -156,7 +156,7 @@ const UpcomingBills = ({
                   <div className="min-w-0">
                     <span
                       title={bill.title}
-                      className={`text-sm font-medium block truncate ${
+                      className={`text-sm font-medium line-clamp-2 break-words ${
                         isPaying
                           ? "line-through text-zinc-500"
                           : "text-zinc-200"
@@ -164,31 +164,30 @@ const UpcomingBills = ({
                     >
                       {bill.title}
                     </span>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className="text-xs text-zinc-500 tabular-nums">
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                      <span className="text-xs text-zinc-500 tabular-nums shrink-0">
                         {new Date(bill.date).toLocaleDateString("en-US", {
                           timeZone: "UTC",
                           month: "short",
                           day: "numeric",
                         })}
                       </span>
-                      <span className="text-zinc-600 text-xs">•</span>
                       {bill.fromAccount &&
                       bill.fromAccount.type === "CREDIT_CARD" ? (
                         <span
-                          className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded"
+                          className="inline-flex items-center gap-1 min-w-0 whitespace-nowrap text-[10px] font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded"
                           title={`Deducted from credit card: ${bill.fromAccount.name}`}
                         >
-                          <CreditCard size={10} />
-                          <span>{bill.fromAccount.name}</span>
+                          <CreditCard size={10} className="shrink-0" />
+                          <span className="truncate">{bill.fromAccount.name}</span>
                         </span>
                       ) : (
                         <span
-                          className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded"
+                          className="inline-flex items-center gap-1 min-w-0 whitespace-nowrap text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded"
                           title="Deducted from Primary Checking"
                         >
-                          <Landmark size={10} />
-                          <span>
+                          <Landmark size={10} className="shrink-0" />
+                          <span className="truncate">
                             {bill.fromAccount?.name || "Checking"}
                           </span>
                         </span>

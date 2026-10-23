@@ -14,7 +14,9 @@ import {
   X,
   Sparkles,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { logout } from "../../utils/auth";
+import dashboardService from "../../services/dashboardService";
 import { openAskFinTrack } from "../../utils/askFinTrack";
 
 const navItems = [
@@ -31,6 +33,13 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  // Same health check as the Overview card: no Ask button when the server has no AI configured
+  const { data: healthData } = useQuery({
+    queryKey: ["health"],
+    queryFn: () => dashboardService.fetchHealth(),
+    staleTime: 60000,
+  });
+  const isAiAvailable = healthData?.ai ?? true;
 
   const isMoreActive = [
     "/savings",
@@ -93,6 +102,7 @@ const Navbar = () => {
             </NavLink>
 
             {/* Ask FinTrack on phones; desktop opens it from the Overview card */}
+            {isAiAvailable && (
             <button
               type="button"
               onClick={openAskFinTrack}
@@ -102,6 +112,7 @@ const Navbar = () => {
               <Sparkles size={13} className="text-emerald-400" />
               <span>Ask</span>
             </button>
+            )}
 
             {/* Logout */}
             <button
@@ -264,6 +275,7 @@ const Navbar = () => {
                   </NavLink>
                 );
               })}
+              {isAiAvailable && (
               <button
                 type="button"
                 onClick={() => {
@@ -282,6 +294,7 @@ const Navbar = () => {
                   </span>
                 </div>
               </button>
+              )}
             </div>
 
             <div className="pt-2 border-t border-white/[0.06]">

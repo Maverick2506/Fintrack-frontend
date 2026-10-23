@@ -63,7 +63,11 @@ export const logout = () => {
   localStorage.removeItem(LAST_ACTIVE_KEY);
   localStorage.removeItem("fintrack_advice");
   localStorage.removeItem("fintrack_structured_advice");
-  sessionStorage.removeItem(ASK_HISTORY_KEY);
+  try {
+    sessionStorage.removeItem(ASK_HISTORY_KEY);
+  } catch {
+    // Blocked storage: nothing was saved there
+  }
   try {
     queryClient.clear();
   } catch (err) {

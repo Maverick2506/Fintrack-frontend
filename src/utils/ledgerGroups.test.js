@@ -66,7 +66,12 @@ assert(
     "Upcoming,Today,Yesterday,This week,October 2026,September 2026,December 2025",
   "sections have readable labels"
 );
-assert(groups[0].rows.map((r) => r.id).join(",") === "1,2", "Upcoming keeps the incoming row order");
+assert(groups[0].rows.map((r) => r.id).join(",") === "1,2", "Upcoming keeps the incoming row order when not sorting by date");
+const byDate = groupLedgerRows(rows, today, { sortByDate: true });
+assert(byDate[0].rows.map((r) => r.id).join(",") === "2,1", "sorted by date, Upcoming puts the soonest row first");
+assert(byDate[4].rows.map((r) => r.id).join(",") === "6", "other sections keep the newest-first order");
+const byDateAsc = groupLedgerRows([...rows].reverse(), today, { sortByDate: true, dateDir: "asc" });
+assert(byDateAsc[0].rows.map((r) => r.id).join(",") === "2,1", "oldest first, Upcoming is still soonest first");
 
 const ascGroups = groupLedgerRows(rows, today, { dateDir: "asc" });
 assert(
