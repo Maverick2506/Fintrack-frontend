@@ -6,7 +6,7 @@ import AddSavingsContributionModal from "../components/Modals/AddSavingsContribu
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import EditSavingsGoalModal from "../components/Modals/EditSavingsGoalModal";
-import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
+import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import dashboardService from "../services/dashboardService";
 
 const getRegBadge = (type) => {
@@ -70,8 +70,8 @@ const SavingsPage = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = async () => {
-    await dashboardService.deleteSavingsGoal(activeGoalId);
+  const handleDelete = async (options) => {
+    await dashboardService.deleteSavingsGoal(activeGoalId, options);
     setDeleteModalOpen(false);
     setActiveGoal(null);
     fetchGoals();
@@ -385,13 +385,14 @@ const SavingsPage = () => {
         refreshData={fetchGoals}
         goal={activeGoal}
       />
-      <ConfirmDeleteModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        itemType="savings goal"
-        itemName={activeGoal?.name}
-      />
+      {isDeleteModalOpen && activeGoal && (
+        <RetireAccountModal
+          account={activeGoal}
+          onClose={() => setDeleteModalOpen(false)}
+          onConfirm={handleDelete}
+          onChanged={fetchGoals}
+        />
+      )}
     </div>
   );
 };

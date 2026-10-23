@@ -148,10 +148,34 @@ const dashboardService = {
     );
   },
 
-  deleteCreditCard: async (cardId) => {
+  // What archiving or deleting a card, debt or goal would affect (read, so no handleRequest)
+  fetchDeleteImpact: async (accountId) => {
+    return api
+      .get(`/accounts/${accountId}/delete-impact`)
+      .then((res) => res.data);
+  },
+
+  // Brings a card or debt to $0 with a payment from Checking, or moves a goal's money back to Checking
+  recordFinalPayment: async (accountId) => {
     return handleRequest(
-      api.delete(`/credit-cards/${cardId}`),
-      "Credit card deleted."
+      api.post(`/accounts/${accountId}/final-payment`, {}),
+      "Final payment recorded."
+    );
+  },
+
+  // reason: "written_off" | "closed_by_bank" | "spent"
+  adjustBalanceToZero: async (accountId, reason) => {
+    return handleRequest(
+      api.post(`/accounts/${accountId}/adjust-to-zero`, { reason }),
+      "Balance adjusted to $0."
+    );
+  },
+
+  // options: { mode: "archive" | "delete", series: "end" | "moveToChecking" }. The balance must be $0.
+  deleteCreditCard: async (cardId, options = {}) => {
+    return handleRequest(
+      api.delete(`/credit-cards/${cardId}`, { data: options }),
+      options.mode === "delete" ? "Credit card deleted." : "Credit card archived."
     );
   },
 
@@ -183,17 +207,17 @@ const dashboardService = {
     );
   },
 
-  deleteDebt: async (debtId) => {
+  deleteDebt: async (debtId, options = {}) => {
     return handleRequest(
-      api.delete(`/debts/${debtId}`),
-      "Debt deleted successfully."
+      api.delete(`/debts/${debtId}`, { data: options }),
+      options.mode === "delete" ? "Debt deleted." : "Debt archived."
     );
   },
 
-  deleteSavingsGoal: async (goalId) => {
+  deleteSavingsGoal: async (goalId, options = {}) => {
     return handleRequest(
-      api.delete(`/savings-goals/${goalId}`),
-      "Savings goal deleted."
+      api.delete(`/savings-goals/${goalId}`, { data: options }),
+      options.mode === "delete" ? "Savings goal deleted." : "Savings goal archived."
     );
   },
 

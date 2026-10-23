@@ -16,7 +16,7 @@ import {
 import AddDebtModal from "../components/Modals/AddDebtModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import AddDebtPaymentModal from "../components/Modals/AddDebtPaymentModal";
-import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
+import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import EditDebtModal from "../components/Modals/EditDebtModal";
 import dashboardService from "../services/dashboardService";
 
@@ -59,9 +59,9 @@ const DebtsPage = () => {
     setActiveDebt(null);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (options) => {
     if (!activeDebt) return;
-    await dashboardService.deleteDebt(activeDebt.id);
+    await dashboardService.deleteDebt(activeDebt.id, options);
     closeModal();
     fetchDebts();
   };
@@ -484,13 +484,14 @@ const DebtsPage = () => {
         refreshData={fetchDebts}
         debt={activeDebt}
       />
-      <ConfirmDeleteModal
-        isOpen={modals.delete}
-        onClose={closeModal}
-        onConfirm={handleDelete}
-        itemType="debt"
-        itemName={activeDebt?.name}
-      />
+      {modals.delete && activeDebt && (
+        <RetireAccountModal
+          account={activeDebt}
+          onClose={closeModal}
+          onConfirm={handleDelete}
+          onChanged={fetchDebts}
+        />
+      )}
     </div>
   );
 };
