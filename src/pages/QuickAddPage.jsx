@@ -427,8 +427,8 @@ const QuickAddPage = () => {
         </button>
       </form>
 
-      {/* Recent Chips */}
-      {recentChips.length > 0 && (
+      {/* Recent Chips (hidden during a link list, so a chip can't be saved as a link entry) */}
+      {recentChips.length > 0 && linkItems.length === 0 && (
         <div className="mt-8 pt-6 border-t border-white/[0.06]">
           <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium mb-3">
             <History size={13} />
