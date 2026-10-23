@@ -15,15 +15,31 @@ import toast from "react-hot-toast";
 import dashboardService from "../services/dashboardService";
 import { parseQuickAdd } from "../utils/quickAddParser";
 import { formatCurrency } from "../utils/formatUtils";
+import { getClientRef } from "../utils/pendingSubmission";
 
 const RECENT_KEY = "fintrack_recent_quick_add";
+// After this long, a save is probably waiting on a Render cold start, so say so
+const SLOW_SAVE_MS = 8000;
 
 const QuickAddPage = () => {
   const [input, setInput] = useState("");
   const [creditCards, setCreditCards] = useState([]);
   const [recentChips, setRecentChips] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSlowSave, setIsSlowSave] = useState(false);
   const inputRef = useRef(null);
+  // Keeps the same clientRef when the same entry is retried (e.g. after a timeout during a cold start),
+  // so the server can recognise a save that already landed instead of storing it twice (N2)
+  const pendingRef = useRef(null);
+
+  useEffect(() => {
+    if (!isSubmitting) return undefined;
+    const timer = setTimeout(() => setIsSlowSave(true), SLOW_SAVE_MS);
+    return () => {
+      clearTimeout(timer);
+      setIsSlowSave(false);
+    };
+  }, [isSubmitting]);
 
   useEffect(() => {
     // Load credit cards for fuzzy matching
@@ -75,7 +91,11 @@ const QuickAddPage = () => {
     if (!parsed.isValid || isSubmitting) return;
 
     setIsSubmitting(true);
-    const clientRef = crypto.randomUUID();
+    const entry = input.trim();
+    const { pending, clientRef } = getClientRef(pendingRef.current, parsed, () =>
+      crypto.randomUUID()
+    );
+    pendingRef.current = pending;
 
     try {
       if (parsed.type === "income") {
@@ -106,12 +126,16 @@ const QuickAddPage = () => {
           : `Saved: ${parsed.name} (${formatCurrency(parsed.amount)})`
       );
 
-      saveRecentChip(input.trim());
+      pendingRef.current = null;
+      saveRecentChip(entry);
       setInput("");
       if (inputRef.current) inputRef.current.focus();
     } catch (err) {
       console.error("Quick add failed:", err);
-      toast.error(err?.response?.data?.error || "Could not save transaction");
+      toast.error(
+        err?.response?.data?.error ||
+          "Could not save transaction. Press Save again to retry; it won't be saved twice."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -268,7 +292,7 @@ const QuickAddPage = () => {
           }`}
         >
           {isSubmitting ? (
-            <span>Saving...</span>
+            <span>{isSlowSave ? "Waking up the server..." : "Saving..."}</span>
           ) : (
             <>
               <CheckCircle2 size={16} />
