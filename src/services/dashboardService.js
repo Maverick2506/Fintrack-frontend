@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { getToken, isLoggedIn, logout } from "../utils/auth";
 import { queryClient } from "../utils/queryClient";
 import { isDuplicateClientRefError, isTimeoutError } from "../utils/pendingSubmission";
+import { buildLoginPath } from "../utils/quickAddLink";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -17,7 +18,7 @@ api.interceptors.request.use(
     if (!isLoggedIn()) {
       logout();
       if (window.location.pathname !== "/login") {
-        window.location.replace("/login");
+        window.location.replace(buildLoginPath(window.location.pathname, window.location.search));
       }
       return Promise.reject(new axios.Cancel("Session expired"));
     }
@@ -38,7 +39,7 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       logout();
       if (window.location.pathname !== "/login") {
-        window.location.replace("/login");
+        window.location.replace(buildLoginPath(window.location.pathname, window.location.search));
       }
     }
     return Promise.reject(error);

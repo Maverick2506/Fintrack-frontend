@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Zap,
   ArrowRight,
@@ -10,19 +11,38 @@ import {
   History,
   TrendingDown,
   TrendingUp,
+  Sparkles,
+  SkipForward,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import dashboardService from "../services/dashboardService";
 import { parseQuickAdd } from "../utils/quickAddParser";
 import { formatCurrency } from "../utils/formatUtils";
 import { getClientRef } from "../utils/pendingSubmission";
+import {
+  parseQuickAddTextParam,
+  withoutTextParam,
+  restoreLinkList,
+  TEXT_PARAM,
+} from "../utils/quickAddLink";
 
 const RECENT_KEY = "fintrack_recent_quick_add";
+// The link list in progress, so a reload or a re-login mid-list picks up where it left off
+const LINK_LIST_KEY = "fintrack_quick_link_list";
+const readStoredLinkList = () => {
+  try {
+    return restoreLinkList(sessionStorage.getItem(LINK_LIST_KEY));
+  } catch {
+    return null;
+  }
+};
 // After this long, a save is probably waiting on a Render cold start, so say so
 const SLOW_SAVE_MS = 8000;
 
 const QuickAddPage = () => {
-  const [input, setInput] = useState("");
+  const [storedLink] = useState(readStoredLinkList);
+  const [input, setInput] = useState(() => (storedLink ? storedLink.items[storedLink.index].text : ""));
   const [creditCards, setCreditCards] = useState([]);
   const [recentChips, setRecentChips] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +51,40 @@ const QuickAddPage = () => {
   // Keeps the same clientRef when the same entry is retried (e.g. after a timeout during a cold start),
   // so the server can recognise a save that already landed instead of storing it twice (N2)
   const pendingRef = useRef(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Entries from a Quick Add link (/quick?text=..., e.g. from the Gemini Gem), one per line.
+  // They only fill the input, one at a time; each needs its own Save.
+  const [linkItems, setLinkItems] = useState(() => (storedLink ? storedLink.items : []));
+  const [linkIndex, setLinkIndex] = useState(() => (storedLink ? storedLink.index : 0));
+
+  useEffect(() => {
+    try {
+      if (linkItems.length > 0) {
+        sessionStorage.setItem(LINK_LIST_KEY, JSON.stringify({ items: linkItems, index: linkIndex }));
+      } else {
+        sessionStorage.removeItem(LINK_LIST_KEY);
+      }
+    } catch {
+      // Ignore storage errors; the list still works for this page view
+    }
+  }, [linkItems, linkIndex]);
+
+  useEffect(() => {
+    if (!new URLSearchParams(location.search).has(TEXT_PARAM)) return;
+    const lines = parseQuickAddTextParam(location.search);
+    if (lines.length > 0) {
+      setLinkItems(lines.map((text) => ({ text, status: "pending" })));
+      setLinkIndex(0);
+      setInput(lines[0]);
+      pendingRef.current = null;
+    }
+    // Clear ?text= so a refresh or a shared screenshot of the URL doesn't bring it back
+    navigate(
+      { pathname: location.pathname, search: withoutTextParam(location.search) },
+      { replace: true }
+    );
+  }, [location.pathname, location.search, navigate]);
 
   useEffect(() => {
     if (!isSubmitting) return undefined;
@@ -72,6 +126,36 @@ const QuickAddPage = () => {
   }, []);
 
   const parsed = parseQuickAdd(input, creditCards);
+  const isLinkList = linkItems.length > 1;
+
+  // Marks the current link entry saved or skipped and moves to the next one
+  const advanceLink = (status) => {
+    const items = linkItems.map((it, i) => (i === linkIndex ? { ...it, status } : it));
+    const next = items.findIndex((it, i) => i > linkIndex && it.status === "pending");
+    pendingRef.current = null;
+    if (next === -1) {
+      if (items.length > 1) {
+        const saved = items.filter((it) => it.status === "saved").length;
+        if (saved > 0) toast.success(`Done: ${saved} of ${items.length} saved`);
+        else toast("Nothing saved from this link");
+      }
+      setLinkItems([]);
+      setLinkIndex(0);
+      setInput("");
+    } else {
+      setLinkItems(items);
+      setLinkIndex(next);
+      setInput(items[next].text);
+    }
+    if (inputRef.current) inputRef.current.focus();
+  };
+
+  const stopLink = () => {
+    pendingRef.current = null;
+    setLinkItems([]);
+    setLinkIndex(0);
+    setInput("");
+  };
 
   const saveRecentChip = (entryText) => {
     try {
@@ -128,8 +212,12 @@ const QuickAddPage = () => {
 
       pendingRef.current = null;
       saveRecentChip(entry);
-      setInput("");
-      if (inputRef.current) inputRef.current.focus();
+      if (linkItems.length > 0) {
+        advanceLink("saved");
+      } else {
+        setInput("");
+        if (inputRef.current) inputRef.current.focus();
+      }
     } catch (err) {
       console.error("Quick add failed:", err);
       toast.error(
@@ -162,6 +250,67 @@ const QuickAddPage = () => {
           </p>
         </div>
       </div>
+
+      {/* Entries from a Quick Add link: never saved until Save is tapped */}
+      {linkItems.length > 0 && (
+        <div className="glass-panel p-4 mb-4 border border-sky-500/25 bg-sky-950/10">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0">
+              <Sparkles size={15} className="text-sky-400 mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-zinc-100">
+                  {isLinkList
+                    ? `From a link: entry ${linkIndex + 1} of ${linkItems.length}`
+                    : "Filled from a link"}
+                </p>
+                <p className="text-xs text-zinc-400">
+                  Check it, then tap Save. Nothing is saved until you do.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={stopLink}
+              disabled={isSubmitting}
+              aria-label="Dismiss link entries"
+              className="shrink-0 min-h-[40px] min-w-[40px] -mr-2 -mt-2 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 disabled:opacity-50"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {isLinkList && (
+            <>
+              <ol className="mt-3 space-y-1">
+                {linkItems.map((it, i) => (
+                  <li
+                    key={i}
+                    className={`flex items-center gap-2 text-xs rounded-md px-2 py-1 min-w-0 ${
+                      i === linkIndex ? "bg-white/[0.06] text-zinc-100" : "text-zinc-500"
+                    }`}
+                  >
+                    <span className="w-14 shrink-0 tabular-nums">
+                      {it.status === "saved" ? "✓ Saved" : it.status === "skipped" ? "Skipped" : i === linkIndex ? "Now" : `${i + 1}.`}
+                    </span>
+                    <span className={`truncate font-mono ${it.status === "skipped" ? "line-through" : ""}`}>
+                      {it.text}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                onClick={() => advanceLink("skipped")}
+                disabled={isSubmitting}
+                className="mt-3 min-h-[40px] px-3 rounded-lg border border-white/[0.08] bg-zinc-900 text-xs font-medium text-zinc-300 hover:text-zinc-100 hover:border-white/20 inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <SkipForward size={13} />
+                Skip this one
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Main Input Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -306,8 +455,8 @@ const QuickAddPage = () => {
         </button>
       </form>
 
-      {/* Recent Chips */}
-      {recentChips.length > 0 && (
+      {/* Recent Chips (hidden during a link list, so a chip can't be saved as a link entry) */}
+      {recentChips.length > 0 && linkItems.length === 0 && (
         <div className="mt-8 pt-6 border-t border-white/[0.06]">
           <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium mb-3">
             <History size={13} />

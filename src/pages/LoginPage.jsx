@@ -1,18 +1,22 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { login, devLogin, isLocalHost } from "../utils/auth";
 import toast from "react-hot-toast";
+import { getSafeNextPath } from "../utils/quickAddLink";
 
 const LoginPage = () => {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const isLocal = isLocalHost();
+  // Where to go after logging in: the page that sent you here, or the dashboard
+  const nextPath = getSafeNextPath(location.search);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await login(password);
-      navigate("/");
+      navigate(nextPath, { replace: true });
       window.location.reload();
     } catch {
       toast.error("Invalid password.");
@@ -23,7 +27,7 @@ const LoginPage = () => {
     try {
       await devLogin();
       toast.success("Dev bypass activated!");
-      navigate("/");
+      navigate(nextPath, { replace: true });
       window.location.reload();
     } catch (err) {
       toast.error(err?.message || "Dev bypass failed.");
