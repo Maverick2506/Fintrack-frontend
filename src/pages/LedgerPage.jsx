@@ -14,6 +14,7 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  CircleStop,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
@@ -21,6 +22,8 @@ import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import { formatCurrency, formatNumber } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
+import { canEndSeries } from "../utils/endSeries";
+import { confirmAndEndSeries } from "../services/endSeriesAction";
 import AccountChip from "../components/Common/AccountChip";
 import SwipeableRow from "../components/Ledger/SwipeableRow";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
@@ -276,6 +279,20 @@ const LedgerPage = () => {
       setLastClickedIndex(null);
     }
     setIsUpcomingOpen((open) => !open);
+  };
+
+  // One selected row of a recurring series (income and transfers too) can end its series
+  const selectedSeriesRow =
+    selectedIds.size === 1
+      ? visibleRows.find((r) => selectedIds.has(r.id) && canEndSeries(r)) || null
+      : null;
+
+  const handleEndSelectedSeries = async () => {
+    const result = await confirmAndEndSeries(selectedSeriesRow);
+    if (result) {
+      setSelectedIds(new Set());
+      loadLedger();
+    }
   };
 
   const allFilteredSelected =
@@ -720,7 +737,17 @@ const LedgerPage = () => {
               <span>Clear selection</span>
             </button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedSeriesRow && (
+              <button
+                type="button"
+                onClick={handleEndSelectedSeries}
+                className="min-h-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.1] hover:bg-white/[0.05] text-rose-400 text-xs font-medium transition-colors cursor-pointer"
+              >
+                <CircleStop size={13} />
+                <span>End series</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsBulkDeleteModalOpen(true)}
