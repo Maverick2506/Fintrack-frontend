@@ -9,6 +9,7 @@ import SpendingTrendsChart from "../components/Dashboard/SpendingTrendsChart";
 import NetWorthHistoryChart from "../components/Dashboard/NetWorthHistoryChart";
 import CategoryDetailModal from "../components/Modals/CategoryDetailModal";
 import { formatCurrency } from "../utils/formatUtils";
+import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
 
@@ -696,6 +697,7 @@ const ReportsPage = () => {
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         itemType="expense"
+        description={TRASH_DELETE_DESCRIPTION}
       />
     </div>
   );

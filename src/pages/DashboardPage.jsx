@@ -23,6 +23,7 @@ import SyncStatementModal from "../components/Modals/SyncStatementModal";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
+import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
 
 const DashboardPage = () => {
@@ -733,6 +734,7 @@ const DashboardPage = () => {
         isOpen={modals.delete}
         onClose={() => closeModal("delete")}
         onConfirm={handleDeleteConfirm}
+        description={TRASH_DELETE_DESCRIPTION}
         itemType={
           Array.isArray(active.toDeleteIds) && active.toDeleteIds.length > 0
             ? "selected bills"

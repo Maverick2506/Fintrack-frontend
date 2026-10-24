@@ -21,6 +21,7 @@ import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import { formatCurrency, formatNumber } from "../utils/formatUtils";
+import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import AccountChip from "../components/Common/AccountChip";
 import SwipeableRow from "../components/Ledger/SwipeableRow";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
@@ -1002,6 +1003,7 @@ const LedgerPage = () => {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
         itemType="transaction"
+        description={TRASH_DELETE_DESCRIPTION}
         itemName={deleteTarget?.name}
       />
       <ConfirmDeleteModal
@@ -1009,6 +1011,7 @@ const LedgerPage = () => {
         onClose={() => setIsBulkDeleteModalOpen(false)}
         onConfirm={handleConfirmBulkDelete}
         itemType="selected transactions"
+        description={TRASH_DELETE_DESCRIPTION}
         itemName={`${selectedIds.size} transaction${
           selectedIds.size === 1 ? "" : "s"
         }`}

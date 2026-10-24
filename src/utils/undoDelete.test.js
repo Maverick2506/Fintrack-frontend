@@ -5,6 +5,9 @@ import {
   restoredMessage,
   deletedIdsFrom,
   seriesEndConfirmMessage,
+  seriesEndConfirmFromPreview,
+  seriesEndedToast,
+  SERIES_END_FALLBACK_MESSAGE,
   mayEndSeries,
   purgeLabel,
   restoreResultMessages,
@@ -89,6 +92,63 @@ assert(restoreResultMessages({ restoredCount: 0, moved: [], refused: [] }).succe
 assert(trashArchivedHint({ archivedAccount: "Visa", restoreAction: "moveToChecking" }) === "Restores to Checking", "Trash hint: unpaid row restores to Checking");
 assert(trashArchivedHint({ archivedAccount: "Visa", restoreAction: "refuse" }) === "Can't restore: it would change Visa's balance", "Trash hint: paid row can't be restored");
 assert(trashArchivedHint({ archivedAccount: null }) === null, "No hint without an archived account");
+
+assert(
+  trashArchivedHint({ archivedAccount: "Old Amex", restoreAction: "refuse", refuseReason: "nothingToPay" }) ===
+    "Can't restore: Old Amex is archived, so there's nothing left to pay",
+  "Trash hint: an unpaid payment to an archived card has nothing left to pay"
+);
+const unpaidPair = restoreResultMessages({
+  restoredCount: 0,
+  moved: [],
+  refused: [
+    { archivedAccount: "Old Amex", reason: "nothingToPay", message: "x" },
+    { archivedAccount: "Old Amex", reason: "nothingToPay", message: "y" },
+  ],
+});
+assert(
+  unpaidPair.error === "2 unpaid payments stay in the Trash: Old Amex is archived, so there's nothing left to pay.",
+  "Two refused payments are not called paid transactions"
+);
+const bothKinds = restoreResultMessages({
+  restoredCount: 0,
+  moved: [],
+  refused: [
+    { archivedAccount: "Old Amex", reason: "nothingToPay", message: "Can't restore 'Payment for Old Amex': Old Amex is archived, so there's nothing left to pay." },
+    { archivedAccount: "Visa", reason: "balance", message: "Can't restore 'Lunch': Visa is archived, and restoring this paid transaction would change its balance." },
+  ],
+});
+assert(
+  bothKinds.error.includes("Payment for Old Amex") && bothKinds.error.includes("'Lunch'"),
+  "One refused row of each kind shows both messages"
+);
+
+// Series end confirm from the dry run (R4)
+assert(
+  seriesEndConfirmFromPreview({ seriesEnded: true, removedUpcomingCount: 3, removedUpcomingTotal: 48 }) ===
+    SERIES_END_FALLBACK_MESSAGE,
+  "A preview without dryRun: true (older backend saved for real) falls back to the general question"
+);
+assert(seriesEndConfirmFromPreview(null) === SERIES_END_FALLBACK_MESSAGE, "No preview falls back to the general question");
+assert(
+  seriesEndConfirmFromPreview({ dryRun: true, seriesEnded: true, removedUpcomingCount: 3, removedUpcomingTotal: 48 }) ===
+    "Ends the series and removes 3 upcoming charges ($48.00).",
+  "A real dry run gives the exact count and total"
+);
+assert(
+  seriesEndConfirmFromPreview({ dryRun: true, seriesEnded: false }) === null,
+  "A dry run that ends nothing needs no confirm"
+);
+assert(seriesEndedToast({ removedUpcomingCount: 0 }) === "Series ended.", "Toast with nothing removed");
+assert(
+  seriesEndedToast({ removedUpcomingCount: 2, removedUpcomingTotal: 4200 }, "income") ===
+    "Series ended. Removed 2 upcoming payments ($4,200.00).",
+  "Income toast says payments"
+);
+assert(
+  seriesEndedToast({ removedUpcomingCount: 1, removedUpcomingTotal: 16 }) === "Series ended. Removed 1 upcoming charge ($16.00).",
+  "Expense toast says charge"
+);
 
 // Quick Add examples (R6)
 assert(weekdayOf("2026-10-23") === "fri" && weekdayOf("2026-10-25") === "sun", "Weekday of a date");

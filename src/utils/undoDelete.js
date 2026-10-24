@@ -29,6 +29,25 @@ export const seriesEndConfirmMessage = (preview, type = "expense") => {
   )}).`;
 };
 
+/**
+ * Confirm text from a dry-run answer. A backend without dry runs answers a plain save (no
+ * dryRun: true), so that answer says nothing reliable: ask with the general message instead.
+ */
+export const seriesEndConfirmFromPreview = (preview, type = "expense") =>
+  preview?.dryRun === true ? seriesEndConfirmMessage(preview, type) : SERIES_END_FALLBACK_MESSAGE;
+
+/** Toast after a save that ended a series, with the same noun as the confirm */
+export const seriesEndedToast = (saved, type = "expense") => {
+  const count = parseInt(saved?.removedUpcomingCount, 10) || 0;
+  if (count === 0) return "Series ended.";
+  const noun = type === "income" ? "payment" : "charge";
+  return `Series ended. Removed ${plural(count, `upcoming ${noun}`)} (${formatCurrency(saved.removedUpcomingTotal || 0)}).`;
+};
+
+// Delete confirms: deletes go to the Trash now, so they are not permanent
+export const TRASH_DELETE_DESCRIPTION =
+  "It moves to the Trash for 30 days. You can restore it from there.";
+
 // Used when the preview could not be loaded: ask anyway, since the change may end the series
 export const SERIES_END_FALLBACK_MESSAGE =
   "End this recurring series? If this is its current charge, the series stops here and its upcoming unpaid charges are removed.";
@@ -75,8 +94,26 @@ export const restoreResultMessages = (data, requestedCount = 0) => {
   let error = null;
   if (refused.length === 1) error = refused[0].message;
   else if (refused.length > 1) {
-    const accounts = [...new Set(refused.map((r) => r.archivedAccount))].join(", ");
-    error = `${refused.length} paid transactions stay in the Trash: restoring them would change the balance of ${accounts}, which ${refused.length > 1 && accounts.includes(",") ? "are" : "is"} archived.`;
+    // Unpaid payments to an archived account (nothingToPay) and paid rows (balance) read differently
+    const parts = [];
+    const unpaid = refused.filter((r) => r.reason === "nothingToPay");
+    const paid = refused.filter((r) => r.reason !== "nothingToPay");
+    const accountsOf = (rows) => [...new Set(rows.map((r) => r.archivedAccount))];
+    if (unpaid.length === 1) parts.push(unpaid[0].message);
+    else if (unpaid.length > 1) {
+      const accounts = accountsOf(unpaid);
+      parts.push(
+        `${unpaid.length} unpaid payments stay in the Trash: ${accounts.join(", ")} ${accounts.length > 1 ? "are" : "is"} archived, so there's nothing left to pay.`
+      );
+    }
+    if (paid.length === 1) parts.push(paid[0].message);
+    else if (paid.length > 1) {
+      const accounts = accountsOf(paid);
+      parts.push(
+        `${paid.length} paid transactions stay in the Trash: restoring them would change the balance of ${accounts.join(", ")}, which ${accounts.length > 1 ? "are" : "is"} archived.`
+      );
+    }
+    error = parts.join(" ");
   }
   if (success.length === 0 && !error && restoredCount === 0) success.push("Already restored");
   return { success, error };
@@ -86,6 +123,9 @@ export const restoreResultMessages = (data, requestedCount = 0) => {
 export const trashArchivedHint = (row) => {
   if (!row?.archivedAccount) return null;
   if (row.restoreAction === "moveToChecking") return "Restores to Checking";
+  if (row.restoreAction === "refuse" && row.refuseReason === "nothingToPay") {
+    return `Can't restore: ${row.archivedAccount} is archived, so there's nothing left to pay`;
+  }
   if (row.restoreAction === "refuse") return `Can't restore: it would change ${row.archivedAccount}'s balance`;
   return null;
 };

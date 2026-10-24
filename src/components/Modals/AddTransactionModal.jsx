@@ -34,7 +34,8 @@ import {
 import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
 import {
   mayEndSeries,
-  seriesEndConfirmMessage,
+  seriesEndConfirmFromPreview,
+  seriesEndedToast,
   SERIES_END_FALLBACK_MESSAGE,
 } from "../../utils/undoDelete";
 
@@ -420,7 +421,7 @@ const AddTransactionModal = ({
         let confirmMessage;
         try {
           const preview = await dashboardService.previewTransactionUpdate(payload);
-          confirmMessage = seriesEndConfirmMessage(preview, type);
+          confirmMessage = seriesEndConfirmFromPreview(preview, type);
         } catch (previewErr) {
           // The server refused it (e.g. 409): the save below shows why. No answer at all: ask anyway.
           confirmMessage = previewErr?.response ? null : SERIES_END_FALLBACK_MESSAGE;
@@ -441,14 +442,7 @@ const AddTransactionModal = ({
       const saved = await dashboardService.saveTransaction(payload, isEditing);
       pendingRef.current = null;
       if (saved?.seriesEnded) {
-        const removed = saved.removedUpcomingCount || 0;
-        toast.success(
-          removed > 0
-            ? `Series ended. Removed ${removed} upcoming charge${removed === 1 ? "" : "s"} (${formatCurrency(
-                saved.removedUpcomingTotal || 0
-              )}).`
-            : "Series ended."
-        );
+        toast.success(seriesEndedToast(saved, type));
       }
 
       onClose();
