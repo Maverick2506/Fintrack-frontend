@@ -468,11 +468,15 @@ const AddTransactionModal = ({
 
   // Ends the whole series (any type) after a confirm with the dry run's numbers
   const handleEndSeries = async () => {
-    const result = await confirmAndEndSeries({
-      recurringGroupId: existingTransaction?.recurringGroupId,
-      name: existingTransaction?.name || existingTransaction?.title || name,
-      type: existingTransaction?.type ? String(existingTransaction.type).toLowerCase() : type,
-    });
+    // Ending closes the form, so say that edits in it are not saved
+    const result = await confirmAndEndSeries(
+      {
+        recurringGroupId: existingTransaction?.recurringGroupId,
+        name: existingTransaction?.name || existingTransaction?.title || name,
+        type: existingTransaction?.type ? String(existingTransaction.type).toLowerCase() : type,
+      },
+      { note: "Changes in this form aren't saved." }
+    );
     if (result) {
       onClose();
       refreshData();

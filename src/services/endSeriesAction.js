@@ -1,12 +1,17 @@
 import toast from "react-hot-toast";
 import dashboardService from "./dashboardService";
-import { endSeriesConfirmMessage, endSeriesDoneToast } from "../utils/endSeries";
+import {
+  endSeriesConfirmMessage,
+  endSeriesDoneToast,
+  alreadyEndedMessage,
+} from "../utils/endSeries";
 
 /**
  * Asks with the dry run's numbers, then ends the series of a Ledger-shaped row
- * ({ recurringGroupId, name, type }). Returns the result, or null when cancelled or refused.
+ * ({ recurringGroupId, name, type }). Returns the result, or null when cancelled, refused or already
+ * ended. note is added to the confirm.
  */
-export const confirmAndEndSeries = async (row) => {
+export const confirmAndEndSeries = async (row, { note = "" } = {}) => {
   if (!row?.recurringGroupId) return null;
   let preview;
   try {
@@ -15,7 +20,11 @@ export const confirmAndEndSeries = async (row) => {
     toast.error(err?.response?.data?.error || "Couldn't load this series. Try again.");
     return null;
   }
-  if (!window.confirm(endSeriesConfirmMessage(preview, row.name, row.type))) return null;
+  if (preview?.alreadyEnded) {
+    toast(alreadyEndedMessage(row.name));
+    return null;
+  }
+  if (!window.confirm(endSeriesConfirmMessage(preview, row.name, row.type, note))) return null;
   try {
     const result = await dashboardService.endSeries(row.recurringGroupId);
     toast.success(endSeriesDoneToast(result, row.name, row.type));

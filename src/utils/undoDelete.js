@@ -1,4 +1,5 @@
 import { formatCurrency } from "./formatUtils.js";
+import { seriesNoun } from "./endSeries.js";
 
 // Undo after a delete: deleted transactions go to the Trash, and the toast offers Undo for 10 s
 export const UNDO_TOAST_MS = 10000;
@@ -40,7 +41,7 @@ export const seriesEndConfirmFromPreview = (preview, type = "expense") =>
 export const seriesEndedToast = (saved, type = "expense") => {
   const count = parseInt(saved?.removedUpcomingCount, 10) || 0;
   if (count === 0) return "Series ended.";
-  const noun = type === "income" ? "payment" : "charge";
+  const noun = seriesNoun(type);
   return `Series ended. Removed ${plural(count, `upcoming ${noun}`)} (${formatCurrency(saved.removedUpcomingTotal || 0)}).`;
 };
 
@@ -49,10 +50,10 @@ export const seriesEndedToast = (saved, type = "expense") => {
  * row changed and End series is how to stop it. Null when the save was not a One-time edit of a series row.
  */
 export const oneTimeEditToast = (saved, type = "expense", wasOneTimeEdit = false) => {
-  if (saved?.seriesEnded) return seriesEndedToast(saved, type);
-  if (!wasOneTimeEdit) return null;
-  const noun = type === "income" ? "payment" : "charge";
-  return `Only this ${noun} changed — use End series to stop it.`;
+  if (saved?.seriesEnded === true) return seriesEndedToast(saved, type);
+  // Only an explicit false says the series continues: an older backend leaves the field out
+  if (!wasOneTimeEdit || saved?.seriesEnded !== false) return null;
+  return `Only this ${seriesNoun(type)} changed — use End series to stop it.`;
 };
 
 // Delete confirms: deletes go to the Trash now, so they are not permanent

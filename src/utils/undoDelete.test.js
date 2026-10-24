@@ -170,6 +170,14 @@ assert(
   "Ending through the current charge still says the series ended"
 );
 assert(oneTimeEditToast({ seriesEnded: false }, "expense", false) === null, "Other saves show no series toast");
+assert(
+  [{}, undefined, null].every((saved) => oneTimeEditToast(saved, "expense", true) === null),
+  "No series toast unless the server says seriesEnded: false (older backend, missing answer)"
+);
+assert(
+  oneTimeEditToast({ seriesEnded: false }, "transfer", true) === "Only this payment changed — use End series to stop it.",
+  "Transfers (card and debt payments) say payment"
+);
 
 // Quick Add examples (R6)
 assert(weekdayOf("2026-10-23") === "fri" && weekdayOf("2026-10-25") === "sun", "Weekday of a date");
