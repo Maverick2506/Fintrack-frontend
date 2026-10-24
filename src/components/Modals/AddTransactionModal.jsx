@@ -35,7 +35,7 @@ import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
 import {
   mayEndSeries,
   seriesEndConfirmFromPreview,
-  seriesEndedToast,
+  oneTimeEditToast,
   SERIES_END_FALLBACK_MESSAGE,
 } from "../../utils/undoDelete";
 
@@ -417,7 +417,8 @@ const AddTransactionModal = ({
       // Setting a recurring row to One-time can end its series (B3, R4): the backend then removes the
       // series' upcoming unpaid charges. A dry run of the same save says whether it does and how
       // much it removes, which covers a series that has not started yet too.
-      if (isEditing && mayEndSeries(existingTransaction, recurrence)) {
+      const isOneTimeEdit = isEditing && mayEndSeries(existingTransaction, recurrence);
+      if (isOneTimeEdit) {
         let confirmMessage;
         try {
           const preview = await dashboardService.previewTransactionUpdate(payload);
@@ -441,9 +442,8 @@ const AddTransactionModal = ({
 
       const saved = await dashboardService.saveTransaction(payload, isEditing);
       pendingRef.current = null;
-      if (saved?.seriesEnded) {
-        toast.success(seriesEndedToast(saved, type));
-      }
+      const oneTimeToast = oneTimeEditToast(saved, type, isOneTimeEdit);
+      if (oneTimeToast) toast.success(oneTimeToast);
 
       onClose();
       refreshData();

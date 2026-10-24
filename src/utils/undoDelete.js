@@ -44,6 +44,17 @@ export const seriesEndedToast = (saved, type = "expense") => {
   return `Series ended. Removed ${plural(count, `upcoming ${noun}`)} (${formatCurrency(saved.removedUpcomingTotal || 0)}).`;
 };
 
+/**
+ * Toast after setting a recurring row to One-time: the series ended (current charge), or only this
+ * row changed and the series continues. Null when the save was not a One-time edit of a series row.
+ */
+export const oneTimeEditToast = (saved, type = "expense", wasOneTimeEdit = false) => {
+  if (saved?.seriesEnded) return seriesEndedToast(saved, type);
+  if (!wasOneTimeEdit) return null;
+  const noun = type === "income" ? "payment" : "charge";
+  return `Only this ${noun} changed; the series continues.`;
+};
+
 // Delete confirms: deletes go to the Trash now, so they are not permanent
 export const TRASH_DELETE_DESCRIPTION =
   "It moves to the Trash for 30 days. You can restore it from there.";

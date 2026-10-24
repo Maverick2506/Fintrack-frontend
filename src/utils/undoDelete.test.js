@@ -7,6 +7,7 @@ import {
   seriesEndConfirmMessage,
   seriesEndConfirmFromPreview,
   seriesEndedToast,
+  oneTimeEditToast,
   SERIES_END_FALLBACK_MESSAGE,
   mayEndSeries,
   purgeLabel,
@@ -152,6 +153,23 @@ assert(
   seriesEndedToast({ removedUpcomingCount: 1, removedUpcomingTotal: 16 }) === "Series ended. Removed 1 upcoming charge ($16.00).",
   "Expense toast says charge"
 );
+
+// One-time edit of a series row: the series continues unless it was the current charge
+assert(
+  oneTimeEditToast({ seriesEnded: false, removedUpcomingCount: 0 }, "expense", true) ===
+    "Only this charge changed; the series continues.",
+  "One-time edit of a later charge says the series continues"
+);
+assert(
+  oneTimeEditToast({ seriesEnded: false }, "income", true) === "Only this payment changed; the series continues.",
+  "Income says payment"
+);
+assert(
+  oneTimeEditToast({ seriesEnded: true, removedUpcomingCount: 1, removedUpcomingTotal: 16 }, "expense", true) ===
+    "Series ended. Removed 1 upcoming charge ($16.00).",
+  "Ending through the current charge still says the series ended"
+);
+assert(oneTimeEditToast({ seriesEnded: false }, "expense", false) === null, "Other saves show no series toast");
 
 // Quick Add examples (R6)
 assert(weekdayOf("2026-10-23") === "fri" && weekdayOf("2026-10-25") === "sun", "Weekday of a date");
