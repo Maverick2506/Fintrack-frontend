@@ -7,6 +7,8 @@ import {
   seriesEndConfirmMessage,
   mayEndSeries,
   purgeLabel,
+  restoreResultMessages,
+  trashArchivedHint,
 } from "./undoDelete.js";
 import { buildExampleChips, weekdayOf, cleanRecentChips } from "./quickAddExamples.js";
 import { parseQuickAdd } from "./quickAddParser.js";
@@ -65,6 +67,28 @@ assert(mayEndSeries(null, "none") === false, "A new row ends nothing");
 assert(purgeLabel("2026-11-23T05:00:00.000Z") === "Nov 23", "Purge date shows as Nov 23 (Toronto)");
 assert(purgeLabel("2026-11-23T03:00:00.000Z") === "Nov 22", "Purge date uses Toronto time, not UTC");
 assert(purgeLabel(null) === "" && purgeLabel("nope") === "", "No purge date, no label");
+
+// Restore answers with archived accounts
+const plainRestore = restoreResultMessages({ restoredCount: 3, ids: ["a", "b", "c"], moved: [], refused: [] });
+assert(plainRestore.success.join("|") === "Restored 3 transactions" && plainRestore.error === null, "Plain restore: Restored 3 transactions");
+const movedOne = restoreResultMessages({ restoredCount: 1, moved: [{ id: "a", archivedAccount: "Visa Infinite" }], refused: [] });
+assert(movedOne.success.join("|") === "Restored to Checking — Visa Infinite is archived", "Unpaid row on an archived card: Restored to Checking — Visa Infinite is archived");
+const mixed = restoreResultMessages({
+  restoredCount: 3,
+  moved: [{ archivedAccount: "Visa Infinite" }, { archivedAccount: "Visa Infinite" }],
+  refused: [{ archivedAccount: "Visa Infinite", message: '"Lunch" can\'t be restored: Visa Infinite is archived, and restoring this paid transaction would change its balance.' }],
+});
+assert(
+  mixed.success.join("|") === "Restored 1 transaction|Restored 2 to Checking — Visa Infinite is archived" &&
+    mixed.error.startsWith('"Lunch" can\'t be restored: Visa Infinite is archived'),
+  "Mixed restore: what came back, what moved to Checking, and the refused row by name"
+);
+const twoRefused = restoreResultMessages({ restoredCount: 1, moved: [], refused: [{ archivedAccount: "Visa" }, { archivedAccount: "Visa" }] });
+assert(twoRefused.error === "2 paid transactions stay in the Trash: restoring them would change the balance of Visa, which is archived.", "Two refused rows are summed up with the account");
+assert(restoreResultMessages({ restoredCount: 0, moved: [], refused: [] }).success.join() === "Already restored", "A double Undo says Already restored");
+assert(trashArchivedHint({ archivedAccount: "Visa", restoreAction: "moveToChecking" }) === "Restores to Checking", "Trash hint: unpaid row restores to Checking");
+assert(trashArchivedHint({ archivedAccount: "Visa", restoreAction: "refuse" }) === "Can't restore: it would change Visa's balance", "Trash hint: paid row can't be restored");
+assert(trashArchivedHint({ archivedAccount: null }) === null, "No hint without an archived account");
 
 // Quick Add examples (R6)
 assert(weekdayOf("2026-10-23") === "fri" && weekdayOf("2026-10-25") === "sun", "Weekday of a date");

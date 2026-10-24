@@ -6,7 +6,7 @@ import AccountChip from "../components/Common/AccountChip";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
 import { formatNumber, formatShortDate } from "../utils/formatUtils";
 import { getLedgerAccountChip } from "../utils/accountRetire";
-import { purgeLabel } from "../utils/undoDelete";
+import { purgeLabel, trashArchivedHint } from "../utils/undoDelete";
 
 // Deleted transactions, kept for 30 days. Restore puts each row and its balance back.
 const TrashPage = () => {
@@ -140,6 +140,8 @@ const TrashPage = () => {
               const isSelected = selectedIds.has(row.id);
               const chip = getLedgerAccountChip(row);
               const purge = purgeLabel(row.purgeAfter);
+              const archivedHint = trashArchivedHint(row);
+              const cannotRestore = row.restoreAction === "refuse";
               return (
                 <li
                   key={row.id}
@@ -175,6 +177,14 @@ const TrashPage = () => {
                       <span>·</span>
                       <span className="tabular-nums shrink-0">{formatShortDate(row.date)}</span>
                     </div>
+                    {archivedHint && (
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1 text-[10px] min-w-0">
+                        <span className="px-1.5 rounded border border-amber-500/25 bg-amber-500/10 text-amber-300 font-medium whitespace-nowrap">
+                          Archived account
+                        </span>
+                        <span className={cannotRestore ? "text-amber-300/80" : "text-zinc-400"}>{archivedHint}</span>
+                      </div>
+                    )}
                     {purge && (
                       <span className="text-[10px] text-zinc-600 block mt-0.5">Removed for good on {purge}</span>
                     )}
@@ -185,10 +195,10 @@ const TrashPage = () => {
                   <button
                     type="button"
                     onClick={() => restore([row.id])}
-                    disabled={restoringIds.has(row.id)}
+                    disabled={restoringIds.has(row.id) || cannotRestore}
                     aria-label={`Restore ${row.name}`}
-                    title="Restore"
-                    className="shrink-0 ml-1 inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-2.5 sm:px-3 rounded-lg text-xs font-medium text-zinc-200 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors cursor-pointer disabled:opacity-50"
+                    title={cannotRestore ? archivedHint : "Restore"}
+                    className="shrink-0 ml-1 inline-flex items-center justify-center gap-1.5 h-10 min-w-10 px-2.5 sm:px-3 rounded-lg text-xs font-medium text-zinc-200 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <RotateCcw size={14} />
                     <span className="hidden sm:inline">Restore</span>

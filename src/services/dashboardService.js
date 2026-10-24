@@ -4,7 +4,7 @@ import { getToken, isLoggedIn, logout } from "../utils/auth";
 import { queryClient } from "../utils/queryClient";
 import { isDuplicateClientRefError, isTimeoutError } from "../utils/pendingSubmission";
 import { buildLoginPath } from "../utils/quickAddLink";
-import { deletedIdsFrom, restoredMessage } from "../utils/undoDelete";
+import { deletedIdsFrom, restoreResultMessages } from "../utils/undoDelete";
 import {
   showUndoDeleteToast,
   TRANSACTIONS_RESTORED_EVENT,
@@ -372,9 +372,10 @@ const dashboardService = {
   // Undo and Trash: brings rows back and puts their balances back on cards, debts and goals
   restoreTransactions: async (ids) => {
     const data = await handleRequest(api.post("/expenses/restore", { ids }), null);
-    const count = data?.restoredCount ?? ids.length;
-    if (count > 0) toast.success(restoredMessage(count));
-    else toast("Already restored");
+    // Unpaid rows of an archived account come back on Checking; paid ones that would change its balance stay
+    const { success, error } = restoreResultMessages(data, ids.length);
+    success.forEach((msg) => toast.success(msg));
+    if (error) toast.error(error, { duration: 8000 });
     window.dispatchEvent(new CustomEvent(TRANSACTIONS_RESTORED_EVENT, { detail: data }));
     return data;
   },
