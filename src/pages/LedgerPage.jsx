@@ -22,17 +22,23 @@ import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
-import { formatCurrency } from "../utils/formatUtils";
+import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import SwipeableRow from "../components/Ledger/SwipeableRow";
 import CategoryIcon from "../components/Ledger/CategoryIcon";
 import LedgerFilterSheet from "../components/Ledger/LedgerFilterSheet";
+import RowActionsMenu from "../components/Ledger/RowActionsMenu";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
 import useMediaQuery from "../hooks/useMediaQuery";
 import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine } from "../utils/accountRetire";
 import { getTorontoTodayStr } from "../utils/dateUtils";
-import { groupLedgerRows, summarizeLedgerGroup, formatDayLabel } from "../utils/ledgerGroups";
+import {
+  groupLedgerRows,
+  summarizeLedgerGroup,
+  formatDayLabel,
+  getLedgerRowTag,
+} from "../utils/ledgerGroups";
 import {
   TYPE_OPTIONS,
   SORT_OPTIONS,
@@ -52,11 +58,14 @@ const ACCOUNT_GLYPHS = {
 // Sticky offsets: the app header is h-14; the Upcoming header below it is h-11
 const UPCOMING_HEADER_TOP = "top-14";
 const UPCOMING_DAY_TOP = "top-[100px]";
+// Pointer screens: rows end with three 40 px action buttons (gap 12 px, row padding 16 px), so
+// headers pad their totals by the same 148 px to line up with the row amounts
+const POINTER_TOTALS_PAD = "pr-[148px]";
 
-const AccountName = ({ side }) => {
+const AccountName = ({ side, className = "min-w-0" }) => {
   const Glyph = ACCOUNT_GLYPHS[side.type] || Wallet;
   return (
-    <span className="inline-flex items-center gap-1 min-w-0" title={side.name}>
+    <span className={`inline-flex items-center gap-1 ${className}`} title={side.name}>
       <Glyph size={11} className="shrink-0 text-zinc-500" aria-hidden="true" />
       <span className="truncate">{side.name}</span>
     </span>
@@ -422,17 +431,6 @@ const LedgerPage = () => {
 
   const clearedNet = clearedIncome - clearedExpense;
 
-  // Unpaid rows dated before today are overdue; unpaid rows dated today are due today
-  const getRowTag = (row) => {
-    if (row.is_paid) return null;
-    const d = String(row.date).slice(0, 10);
-    if (d < todayStr) {
-      return { label: row.type === "income" ? "Not received" : "Overdue", tone: "overdue" };
-    }
-    if (d === todayStr) return { label: "Due today", tone: "today" };
-    return null;
-  };
-
   const renderAmount = (row) => {
     if (row.type === "income") {
       return <span className="text-emerald-400">+{formatCurrency(row.amount)}</span>;
@@ -459,9 +457,10 @@ const LedgerPage = () => {
   };
 
   // Icon, "Name [Overdue]" over "Category · Account", then the amount; ~56 px tall
-  const renderRowContent = (row, isUpcoming) => {
+  // showDate: Name and Amount sorts have no day headers, so the row carries its date
+  const renderRowContent = (row, isUpcoming, showDate) => {
     const isSelected = selectedIds.has(row.id);
-    const tag = getRowTag(row);
+    const tag = getLedgerRowTag(row, todayStr);
     const { from, to } = getLedgerAccountLine(row);
     const dim = isUpcoming && !isSelected ? "opacity-75" : "";
     return (
@@ -505,7 +504,9 @@ const LedgerPage = () => {
                 {row.type !== "transfer" && (
                   <span aria-hidden="true" className="shrink-0">·</span>
                 )}
-                <AccountName side={from} />
+                {/* With "from → to", the from side ("Checking") keeps its width up to 40% and
+                    the other side truncates first */}
+                <AccountName side={from} className={to ? "shrink-0 max-w-[40%]" : "min-w-0"} />
                 {to && (
                   <>
                     <span aria-hidden="true" className="shrink-0">→</span>
@@ -514,46 +515,65 @@ const LedgerPage = () => {
                 )}
               </>
             )}
+            {showDate && (
+              <>
+                <span aria-hidden="true" className="shrink-0">·</span>
+                <span className="shrink-0 tabular-nums whitespace-nowrap">
+                  {formatShortDate(row.date)}
+                  {String(row.date).slice(0, 4) !== todayStr.slice(0, 4) && `, ${String(row.date).slice(0, 4)}`}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <div className={`text-sm font-medium tabular-nums text-right whitespace-nowrap shrink-0 ${dim}`}>
           {renderAmount(row)}
         </div>
-        {/* Pointer screens: Mark paid and Delete on hover or keyboard focus (touch screens swipe instead) */}
-        {!isTouchList && !isSelecting && (
-          <div className="flex items-center -mr-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMarkPaid(row);
-              }}
-              disabled={row.is_paid}
-              title={row.type === "income" ? "Mark received" : "Mark paid"}
-              aria-label={`${row.type === "income" ? "Mark received" : "Mark paid"}: ${row.name}`}
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:text-emerald-400 hover:bg-white/[0.06] cursor-pointer disabled:invisible"
-            >
-              <Check size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteTarget(row);
-              }}
-              title="Delete transaction"
-              aria-label={`Delete ${row.name}`}
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:text-rose-400 hover:bg-white/[0.06] cursor-pointer"
-            >
-              <Trash2 size={15} />
-            </button>
+        {/* Pointer screens: Mark paid and Delete on hover or keyboard focus, and an always-visible
+            ⋯ menu (touch screens swipe instead). Kept in place while selecting, so amounts don't move. */}
+        {!isTouchList && (
+          <div className={`flex items-center ${isSelecting ? "invisible" : ""}`}>
+            <div className="flex items-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 transition-opacity">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMarkPaid(row);
+                }}
+                disabled={row.is_paid}
+                title={row.type === "income" ? "Mark received" : "Mark paid"}
+                aria-label={`${row.type === "income" ? "Mark received" : "Mark paid"}: ${row.name}`}
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:text-emerald-400 hover:bg-white/[0.06] cursor-pointer disabled:invisible"
+              >
+                <Check size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(row);
+                }}
+                title="Delete transaction"
+                aria-label={`Delete ${row.name}`}
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:text-rose-400 hover:bg-white/[0.06] cursor-pointer"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+            <RowActionsMenu
+              rowName={row.name}
+              isIncome={row.type === "income"}
+              canMarkPaid={!row.is_paid}
+              onMarkPaid={() => handleMarkPaid(row)}
+              onDelete={() => setDeleteTarget(row)}
+            />
           </div>
         )}
       </div>
     );
   };
 
-  const renderRow = (row, isUpcoming) => {
+  const renderRow = (row, isUpcoming, showDate) => {
     if (isTouchList) {
       return (
         <SwipeableRow
@@ -567,7 +587,7 @@ const LedgerPage = () => {
           onTap={() => handleRowActivate(row)}
           onLongPress={isSelecting ? undefined : () => startSelection(row)}
         >
-          {renderRowContent(row, isUpcoming)}
+          {renderRowContent(row, isUpcoming, showDate)}
         </SwipeableRow>
       );
     }
@@ -587,7 +607,7 @@ const LedgerPage = () => {
         }}
         className="group cursor-pointer select-none hover:bg-white/[0.025] focus-visible:outline-none focus-visible:bg-white/[0.04]"
       >
-        {renderRowContent(row, isUpcoming)}
+        {renderRowContent(row, isUpcoming, showDate)}
       </div>
     );
   };
@@ -600,7 +620,7 @@ const LedgerPage = () => {
         type="button"
         onClick={toggleUpcoming}
         aria-expanded={isUpcomingOpen}
-        className={`sticky ${UPCOMING_HEADER_TOP} z-20 w-full h-11 px-4 flex items-center justify-between gap-3 text-left bg-[#16140f] hover:bg-[#1b1812] border-b border-white/[0.05] cursor-pointer`}
+        className={`sticky ${UPCOMING_HEADER_TOP} z-20 w-full h-11 px-4 ${isTouchList ? "" : POINTER_TOTALS_PAD} flex items-center justify-between gap-3 text-left bg-[#16140f] hover:bg-[#1b1812] border-b border-white/[0.05] cursor-pointer`}
       >
         <span className="flex items-center gap-1.5 min-w-0">
           <Chevron size={14} className="text-zinc-400 shrink-0" />
@@ -623,7 +643,8 @@ const LedgerPage = () => {
     const isUpcoming = group.key === "upcoming";
     const isHidden = isUpcoming && !isUpcomingOpen;
     // Today and Yesterday hold one day, whose header already says so
-    const showSectionLabel = !isUpcoming && group.key !== "today" && group.key !== "yesterday";
+    const showSectionLabel =
+      !isUpcoming && (sortKey !== "date" || (group.key !== "today" && group.key !== "yesterday"));
     return (
       <section key={group.key}>
         {isUpcoming && renderUpcomingHeader(group)}
@@ -634,16 +655,19 @@ const LedgerPage = () => {
         )}
         {!isHidden &&
           group.days.map((day) => (
-            <div key={day.date || "undated"}>
-              <div
-                className={`sticky ${isUpcoming ? UPCOMING_DAY_TOP : "top-14"} z-10 h-8 px-4 flex items-center justify-between gap-3 text-xs font-medium bg-[#141416] border-y border-white/[0.04]`}
-              >
-                <span className="text-zinc-300 truncate">{formatDayLabel(day.date, todayStr)}</span>
-                {renderDayNet(day.net)}
-              </div>
+            // date null: a Name or Amount sort, one block without a day header
+            <div key={day.date ?? "sorted"}>
+              {day.date !== null && (
+                <div
+                  className={`sticky ${isUpcoming ? UPCOMING_DAY_TOP : "top-14"} z-10 h-8 px-4 ${isTouchList ? "" : POINTER_TOTALS_PAD} flex items-center justify-between gap-3 text-xs font-medium bg-[#141416] border-y border-white/[0.04]`}
+                >
+                  <span className="text-zinc-300 truncate">{formatDayLabel(day.date, todayStr)}</span>
+                  {renderDayNet(day.net)}
+                </div>
+              )}
               <ul className="divide-y divide-white/[0.04]">
                 {day.rows.map((row) => (
-                  <li key={`${row.type}-${row.id}`}>{renderRow(row, isUpcoming)}</li>
+                  <li key={`${row.type}-${row.id}`}>{renderRow(row, isUpcoming, day.date === null)}</li>
                 ))}
               </ul>
             </div>
@@ -668,7 +692,7 @@ const LedgerPage = () => {
 
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-20 text-center">
+      <div className="max-w-[880px] mx-auto px-4 sm:px-6 pt-12 pb-20 text-center">
         <div className="glass-panel p-8 max-w-md mx-auto">
           <p className="text-rose-400 text-sm mb-4">{error}</p>
           <button
@@ -683,7 +707,7 @@ const LedgerPage = () => {
   }
 
   return (
-    <div className={`max-w-6xl mx-auto px-4 sm:px-6 ${isSelecting ? "pb-40" : "pb-20"}`}>
+    <div className={`max-w-[880px] mx-auto px-4 sm:px-6 ${isSelecting ? "pb-40" : "pb-20"}`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 mb-8">
         <div>
           <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
@@ -759,9 +783,10 @@ const LedgerPage = () => {
         ]}
       />
 
-      {/* One row: search, Filter (sheet) or the inline filters from 1024 px, and Select */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="relative flex-1 min-w-0">
+      {/* One row: search, Filter (sheet) and Select. From 1024 px the search gets its own line and
+          the inline filters sit under it, since the page is capped at 880 px */}
+      <div className={`flex items-center gap-2 mb-3 ${isWide ? "flex-wrap" : ""}`}>
+        <div className={`relative flex-1 min-w-0 ${isWide ? "basis-full" : ""}`}>
           <Search
             size={14}
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
@@ -804,14 +829,14 @@ const LedgerPage = () => {
                 </option>
               ))}
             </select>
-            <div className="inline-flex p-1 rounded-xl bg-zinc-900/80 border border-white/[0.06]">
+            <div className="inline-flex rounded-xl bg-zinc-900/80 border border-white/[0.06]">
               {TYPE_OPTIONS.map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
                   aria-pressed={typeFilter === value}
                   onClick={() => setTypeFilter(value)}
-                  className={`h-8 px-3 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  className={`h-10 px-3 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                     typeFilter === value
                       ? "bg-zinc-100 text-zinc-950"
                       : "text-zinc-400 hover:text-zinc-200"
@@ -861,7 +886,7 @@ const LedgerPage = () => {
           type="button"
           onClick={() => (isSelecting ? exitSelection() : startSelection(null))}
           aria-pressed={isSelecting}
-          className={`h-10 px-3 shrink-0 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+          className={`h-10 px-3 shrink-0 ${isWide ? "ml-auto" : ""} rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
             isSelecting
               ? "bg-zinc-100 text-zinc-950 border-zinc-100"
               : "bg-zinc-900/80 text-zinc-300 border-white/[0.07] hover:text-zinc-100"

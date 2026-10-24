@@ -6,6 +6,7 @@ import {
   groupRowsByDay,
   getDayNet,
   formatDayLabel,
+  getLedgerRowTag,
 } from "./ledgerGroups.js";
 import {
   getCategoryStyle,
@@ -130,7 +131,7 @@ assert(getDayNet([]) === 0, "an empty day nets zero");
 const undatedDays = groupRowsByDay([{ id: 1, date: null, type: "expense", amount: 1 }]);
 assert(undatedDays.length === 1 && undatedDays[0].date === "", "rows without a date share one day");
 
-const withDays = groupLedgerRows(rows, today);
+const withDays = groupLedgerRows(rows, today, { sortByDate: true });
 assert(
   withDays[0].days.map((d) => d.date).join(",") === "2026-10-24,2026-11-05",
   "Upcoming days run soonest first even when history runs newest first"
@@ -144,13 +145,48 @@ const monthRows = [
   { id: 2, date: "2026-10-05", type: "expense", amount: 2 },
 ];
 assert(
-  groupLedgerRows(monthRows, today)[0].days.map((d) => d.date).join(",") === "2026-10-05,2026-10-02",
+  groupLedgerRows(monthRows, today, { sortByDate: true })[0].days.map((d) => d.date).join(",") === "2026-10-05,2026-10-02",
   "past days run newest first"
 );
 assert(
-  groupLedgerRows(monthRows, today, { dateDir: "asc" })[0].days.map((d) => d.date).join(",") === "2026-10-02,2026-10-05",
+  groupLedgerRows(monthRows, today, { sortByDate: true, dateDir: "asc" })[0].days.map((d) => d.date).join(",") === "2026-10-02,2026-10-05",
   "past days run oldest first when sorting oldest first"
 );
+
+// Name and Amount sorts run across a whole section, not inside each day (review R1)
+const weekRows = [
+  { id: "small", date: "2026-10-19", type: "expense", amount: 4.75 },
+  { id: "mid", date: "2026-10-21", type: "expense", amount: 65 },
+  { id: "big", date: "2026-10-20", type: "expense", amount: 12345.67 },
+  { id: "pay", date: "2026-10-21", type: "income", amount: 2400 },
+];
+const byAmount = [...weekRows].sort((a, b) => b.amount - a.amount);
+const amountGroups = groupLedgerRows(byAmount, today, { sortByDate: false });
+assert(amountGroups.length === 1 && amountGroups[0].key === "week", "the rows all sit in This week");
+assert(amountGroups[0].days.length === 1 && amountGroups[0].days[0].date === null, "an amount sort shows one undated block, no day headers");
+assert(
+  amountGroups[0].days[0].rows.map((r) => r.id).join(",") === "big,pay,mid,small",
+  "largest amount first across the section, even when the rows are on different days"
+);
+assert(amountGroups[0].days[0].net === 2400 - 4.75 - 65 - 12345.67, "the undated block still carries its net");
+const byDateDays = groupLedgerRows(byAmount, today, { sortByDate: true });
+assert(byDateDays[0].days.length === 3, "a date sort keeps one block per day");
+
+// Row tags: Overdue, Due today, nothing for paid or upcoming rows
+assert(getLedgerRowTag({ date: "2026-10-22", is_paid: false }, today).label === "Overdue", "unpaid and past its date is Overdue");
+assert(getLedgerRowTag({ date: "2026-10-22", is_paid: false }, today).tone === "overdue", "Overdue is the red tone");
+assert(getLedgerRowTag({ date: "2026-10-23", is_paid: false }, today).label === "Due today", "unpaid and dated today is Due today");
+assert(getLedgerRowTag({ date: "2026-10-23", is_paid: false }, today).tone === "today", "Due today is the amber tone");
+assert(getLedgerRowTag({ date: "2026-10-24", is_paid: false }, today) === null, "upcoming rows get no tag");
+assert(getLedgerRowTag({ date: "2026-10-20", is_paid: true }, today) === null, "paid rows get no tag");
+assert(getLedgerRowTag({ date: "2026-10-22T00:00:00.000Z", type: "income", is_paid: false }, today).label === "Overdue", "a late paycheque is Overdue too, read by its date");
+// Around midnight in Toronto (EDT, UTC-4): the same bill goes from Due today to Overdue
+const bill = { date: "2026-10-24", is_paid: false };
+assert(getLedgerRowTag(bill, getTorontoTodayStr(new Date("2026-10-25T03:59:00Z"))).label === "Due today", "11:59 pm Oct 24 in Toronto: still Due today, though UTC is the 25th");
+assert(getLedgerRowTag(bill, getTorontoTodayStr(new Date("2026-10-25T04:01:00Z"))).label === "Overdue", "12:01 am Oct 25 in Toronto: Overdue");
+assert(getLedgerRowTag({ date: "2026-10-25", is_paid: false }, getTorontoTodayStr(new Date("2026-10-25T03:59:00Z"))) === null, "11:59 pm Oct 24: a bill for the 25th is still upcoming");
+// Winter (EST, UTC-5)
+assert(getLedgerRowTag({ date: "2026-12-01", is_paid: false }, getTorontoTodayStr(new Date("2026-12-02T04:30:00Z"))).label === "Due today", "11:30 pm Dec 1 in Toronto (EST): Due today");
 
 // Day header labels, today = Fri Oct 23 2026
 assert(formatDayLabel("2026-10-25", today) === "Sun, Oct 25", "a day reads like Sun, Oct 25");

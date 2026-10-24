@@ -62,8 +62,11 @@ export const groupLedgerRows = (rows, todayStr, { dateDir = "desc", sortByDate =
     key,
     label: FIXED_LABELS[key] || monthLabel(key.slice("month:".length)),
     rows: byKey.get(key),
-    // Upcoming days run soonest first; past days follow the date direction
-    days: groupRowsByDay(byKey.get(key), key === "upcoming" ? "asc" : dateDir),
+    // Date sorts: one block per day (Upcoming soonest first, past days follow the date
+    // direction). Name or Amount sorts: one undated block, so the sort runs across the section.
+    days: sortByDate
+      ? groupRowsByDay(byKey.get(key), key === "upcoming" ? "asc" : dateDir)
+      : [{ date: null, rows: byKey.get(key), net: getDayNet(byKey.get(key)) }],
   }));
 };
 
@@ -127,3 +130,17 @@ export const summarizeLedgerGroup = (rows) =>
     },
     { count: 0, moneyIn: 0, moneyOut: 0 }
   );
+
+/**
+ * The tag a Ledger row carries: unpaid and dated before today is "Overdue" (red), unpaid and
+ * dated today is "Due today" (amber). Paid rows and upcoming rows get none (upcoming rows are
+ * dimmed instead). todayStr is Toronto's YYYY-MM-DD from getTorontoTodayStr.
+ */
+export const getLedgerRowTag = (row, todayStr) => {
+  if (row?.is_paid) return null;
+  const d = String(row?.date || "").slice(0, 10);
+  if (!d) return null;
+  if (d < todayStr) return { label: "Overdue", tone: "overdue" };
+  if (d === todayStr) return { label: "Due today", tone: "today" };
+  return null;
+};
