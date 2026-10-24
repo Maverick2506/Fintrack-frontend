@@ -18,7 +18,7 @@ import AddDebtModal from "../components/Modals/AddDebtModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CreditCardSummary from "../components/Dashboard/CreditCardSummary";
 import GeminiGemModal from "../components/Modals/GeminiGemModal";
-import AskFinTrackModal from "../components/Modals/AskFinTrackModal";
+import { openAskFinTrack, isAskFinTrackOpen } from "../utils/askFinTrack";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
@@ -157,7 +157,6 @@ const DashboardPage = () => {
     addDebt: false,
     addSavingsGoal: false,
     geminiModal: false,
-    askFinTrack: false,
   });
   const [active, setActive] = useState({
     debtId: null,
@@ -193,7 +192,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const anyModalOpen = Object.values(modals).some(Boolean);
     const handleKeyDown = (e) => {
-      if (anyModalOpen) return;
+      if (anyModalOpen || isAskFinTrackOpen()) return;
       const tag = document.activeElement?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
       if (
@@ -751,7 +750,7 @@ const DashboardPage = () => {
               onGetAdvice={handleGetAdvice}
               isLoading={adviceLoading}
               onOpenGemModal={() => openModal("geminiModal")}
-              onOpenChat={() => openModal("askFinTrack")}
+              onOpenChat={openAskFinTrack}
               isAiAvailable={isAiAvailable}
             />
             <CreditCardSummary creditCards={creditCardSummary} />
@@ -817,10 +816,6 @@ const DashboardPage = () => {
       <GeminiGemModal
         isOpen={modals.geminiModal}
         onClose={() => closeModal("geminiModal")}
-      />
-      <AskFinTrackModal
-        isOpen={modals.askFinTrack}
-        onClose={() => closeModal("askFinTrack")}
       />
     </div>
   );

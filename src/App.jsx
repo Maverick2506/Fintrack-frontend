@@ -5,6 +5,7 @@ import Navbar from "./components/Layout/Navbar";
 import ProtectedRoute from "./components/Layout/ProtectedRoute";
 import { isLoggedIn } from "./utils/auth";
 import IdleTimeoutHandler from "./components/Layout/IdleTimeoutHandler";
+import AskFinTrackHost from "./components/Layout/AskFinTrackHost";
 
 // Route-level code splitting to cut initial bundle size by >50%
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
@@ -35,6 +36,7 @@ function AppLayout() {
       <IdleTimeoutHandler />
       <div className="bg-zinc-950 text-zinc-100 min-h-screen pb-20 md:pb-0">
         {loggedIn && <Navbar />}
+        {loggedIn && <AskFinTrackHost />}
         <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />

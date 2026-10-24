@@ -12,8 +12,12 @@ import {
   LogOut,
   MoreHorizontal,
   X,
+  Sparkles,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { logout } from "../../utils/auth";
+import dashboardService from "../../services/dashboardService";
+import { openAskFinTrack } from "../../utils/askFinTrack";
 
 const navItems = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
@@ -29,6 +33,13 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  // Same health check as the Overview card: no Ask button when the server has no AI configured
+  const { data: healthData } = useQuery({
+    queryKey: ["health"],
+    queryFn: () => dashboardService.fetchHealth(),
+    staleTime: 60000,
+  });
+  const isAiAvailable = healthData?.ai ?? true;
 
   const isMoreActive = [
     "/savings",
@@ -83,18 +94,32 @@ const Navbar = () => {
           <div className="flex items-center gap-2 shrink-0">
             <NavLink
               to="/quick"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 h-10 md:h-auto md:py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
               title="Quick Add (Natural Language Entry)"
             >
               <Zap size={13} />
               <span>Quick</span>
             </NavLink>
 
+            {/* Ask FinTrack on phones; desktop opens it from the Overview card */}
+            {isAiAvailable && (
+            <button
+              type="button"
+              onClick={openAskFinTrack}
+              title="Ask FinTrack"
+              className="md:hidden inline-flex items-center gap-1 px-2.5 h-10 rounded-lg text-xs font-semibold text-zinc-200 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors cursor-pointer"
+            >
+              <Sparkles size={13} className="text-emerald-400" />
+              <span>Ask</span>
+            </button>
+            )}
+
             {/* Logout */}
             <button
               onClick={handleLogout}
               title="Sign out"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-colors cursor-pointer shrink-0"
+              aria-label="Sign out"
+              className="inline-flex items-center gap-1.5 px-2.5 h-10 md:h-auto md:py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-colors cursor-pointer shrink-0"
             >
               <LogOut size={14} strokeWidth={1.75} />
               <span className="hidden lg:inline">Sign out</span>
@@ -250,6 +275,26 @@ const Navbar = () => {
                   </NavLink>
                 );
               })}
+              {isAiAvailable && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreOpen(false);
+                  openAskFinTrack();
+                }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl hover:bg-white/[0.04] text-zinc-300 border border-transparent transition-all cursor-pointer"
+              >
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Sparkles size={17} />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-medium text-zinc-200">Ask FinTrack</span>
+                  <span className="text-[11px] text-zinc-500">
+                    Ask about your money and plans
+                  </span>
+                </div>
+              </button>
+              )}
             </div>
 
             <div className="pt-2 border-t border-white/[0.06]">

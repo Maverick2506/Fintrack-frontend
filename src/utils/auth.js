@@ -1,5 +1,6 @@
 import axios from "axios";
 import { queryClient } from "./queryClient";
+import { ASK_HISTORY_KEY } from "./askFinTrack";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 export const IDLE_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
@@ -62,6 +63,11 @@ export const logout = () => {
   localStorage.removeItem(LAST_ACTIVE_KEY);
   localStorage.removeItem("fintrack_advice");
   localStorage.removeItem("fintrack_structured_advice");
+  try {
+    sessionStorage.removeItem(ASK_HISTORY_KEY);
+  } catch {
+    // Blocked storage: nothing was saved there
+  }
   try {
     queryClient.clear();
   } catch (err) {

@@ -4,6 +4,7 @@ import {
   describeUnpaidItem,
   buildRetirePayload,
   getLedgerAccountLabel,
+  getLedgerAccountChip,
 } from "./accountRetire.js";
 
 function assert(condition, message) {
@@ -130,5 +131,17 @@ assert(
   "Checking-only rows get no label"
 );
 assert(getLedgerAccountLabel({}) === null, "Rows without accounts get no label");
+
+// Account chip instead of the category (transfers and card rows only)
+const cardBuy = getLedgerAccountChip({ type: "expense", fromAccount: "Visa", fromAccountType: "CREDIT_CARD" });
+assert(cardBuy && cardBuy.type === "CREDIT_CARD" && cardBuy.label === "Visa", "A card purchase shows its card as a chip");
+const cardPay = getLedgerAccountChip({ type: "transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Visa", toAccountType: "CREDIT_CARD", toAccountArchived: true });
+assert(cardPay && cardPay.label === "Visa (archived)" && cardPay.archived, "A card payment shows the card it pays, marked archived");
+const goalMove = getLedgerAccountChip({ type: "transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Trip", toAccountType: "SAVINGS_GOAL" });
+assert(goalMove && goalMove.type === "SAVINGS_GOAL", "A savings transfer shows its goal");
+const contribution = getLedgerAccountChip({ type: "expense", category: "Savings Transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Trip", toAccountType: "SAVINGS_GOAL" });
+assert(contribution && contribution.label === "Trip", "A goal contribution saved as an expense still shows its goal");
+assert(getLedgerAccountChip({ type: "expense", fromAccount: "Primary Checking", fromAccountType: "CHECKING" }) === null, "A checking expense keeps its category");
+assert(getLedgerAccountChip({ type: "transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING" }) === null, "A transfer with no card, debt or goal keeps its category");
 
 console.log("All account archive tests passed.");
