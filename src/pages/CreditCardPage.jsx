@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, CreditCard, Wifi } from "lucide-react";
+import { Plus, Pencil, Trash2, CreditCard, Wifi, RefreshCw } from "lucide-react";
 import AddCreditCardModal from "../components/Modals/AddCreditCardModal";
 import AddCreditCardPaymentModal from "../components/Modals/AddCreditCardPaymentModal";
 import EditCreditCardModal from "../components/Modals/EditCreditCardModal";
 import RetireAccountModal from "../components/Modals/RetireAccountModal";
+import SyncStatementModal from "../components/Modals/SyncStatementModal";
 import dashboardService from "../services/dashboardService";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 
@@ -18,6 +19,7 @@ const CreditCardPage = () => {
   const [activeCardId, setActiveCardId] = useState(null);
   const [activeCard, setActiveCard] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [syncTarget, setSyncTarget] = useState(null);
 
   const fetchCreditCards = async () => {
     setLoading(true);
@@ -256,12 +258,24 @@ const CreditCardPage = () => {
                     <span className="text-[11px] text-zinc-400 tabular-nums">
                       {utilization.toFixed(0)}% utilization
                     </span>
-                    <button
-                      onClick={() => openModal("addPayment", card.id, card)}
-                      className="btn-secondary !py-1 !px-3 !text-xs"
-                    >
-                      Pay Balance
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSyncTarget(card)}
+                        className="btn-secondary min-h-10 min-w-10 !px-2.5"
+                        title="Sync with statement"
+                        aria-label={`Sync ${card.name} with statement`}
+                      >
+                        <RefreshCw size={12} />
+                        <span className="hidden min-[380px]:inline">Sync</span>
+                      </button>
+                      <button
+                        onClick={() => openModal("addPayment", card.id, card)}
+                        className="btn-secondary min-h-10 !px-3 !text-xs"
+                      >
+                        Pay Balance
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -288,6 +302,18 @@ const CreditCardPage = () => {
         refreshData={fetchCreditCards}
         card={activeCard}
       />
+      {syncTarget && (
+        <SyncStatementModal
+          account={{
+            id: syncTarget.id,
+            name: syncTarget.name,
+            type: "CREDIT_CARD",
+            balance: parseFloat(syncTarget.currentBalance) || 0,
+          }}
+          onClose={() => setSyncTarget(null)}
+          onSynced={fetchCreditCards}
+        />
+      )}
       {deleteTarget && (
         <RetireAccountModal
           account={deleteTarget}

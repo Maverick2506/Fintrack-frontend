@@ -4,6 +4,7 @@ import {
   checkSolvency,
   simulate,
   comparePlans,
+  getPeriodInterest,
 } from "./debtMath.js";
 
 function assert(condition, message) {
@@ -90,6 +91,16 @@ assert(avalanchePlan.totalInterest <= snowballPlan.totalInterest, "Avalanche pro
 const comparison = comparePlans(debtsMulti, 200, "avalanche");
 assert(comparison.interestSaved > 0, "Extra payment saves interest compared to baseline");
 assert(comparison.monthsSaved > 0, "Extra payment saves months compared to baseline");
+
+// Matches the backend sweep: $12,000 at 6.9% paying $350 a month (Suite 38: $69.00, $67.38, $65.76 ...)
+assert(getPeriodInterest(12000, 6.9) === 69, "Monthly interest on $12,000 at 6.9% is $69.00, like the sweep's interest row");
+assert(getPeriodInterest(11719, 6.9) === 67.38 && getPeriodInterest(11436.38, 6.9) === 65.76, "Months 2 and 3 match the sweep ($67.38, $65.76)");
+assert(getPeriodInterest(500, 0) === 0 && getPeriodInterest(0, 6.9) === 0, "No interest at 0% APR or $0 balance");
+const sweepMatch = simulate([{ id: "s", name: "Car", total_remaining: 12000, monthly_payment: 350, interest_rate: 6.9 }], 0);
+assert(
+  sweepMatch.totalInterest === 1404.25 && sweepMatch.perDebt[0].payoffMonth === 39,
+  `Planner total interest and payoff month match the backend projection ($1,404.25 in 39 months, got $${sweepMatch.totalInterest} in ${sweepMatch.perDebt[0].payoffMonth})`
+);
 
 console.log("\n==================================================");
 console.log("   ALL DEBT MATH UNIT TESTS PASSED                ");
