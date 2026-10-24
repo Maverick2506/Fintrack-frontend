@@ -3,6 +3,7 @@
 export const SWIPE_AXIS_LOCK_PX = 10; // movement before deciding between a swipe and a scroll
 export const SWIPE_OPEN_PX = 88; // how far an opened row sits, the width of the action button
 export const SWIPE_THRESHOLD_PX = 48; // a row released past this stays open
+export const LONG_PRESS_MS = 450; // holding a row this long without moving starts selection mode
 
 /**
  * Decides whether a touch is a sideways swipe ("x") or a page scroll ("y").

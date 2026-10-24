@@ -62,7 +62,57 @@ export const groupLedgerRows = (rows, todayStr, { dateDir = "desc", sortByDate =
     key,
     label: FIXED_LABELS[key] || monthLabel(key.slice("month:".length)),
     rows: byKey.get(key),
+    // Upcoming days run soonest first; past days follow the date direction
+    days: groupRowsByDay(byKey.get(key), key === "upcoming" ? "asc" : dateDir),
   }));
+};
+
+/**
+ * Splits a section's rows into days, each with its net total. Rows keep their order inside a
+ * day (so a Name or Amount sort still applies there); days run by date in the given direction.
+ * Rows without a date share one day keyed "".
+ */
+export const groupRowsByDay = (rows, dir = "desc") => {
+  const byDay = new Map();
+  for (const row of rows) {
+    const day = String(row.date || "").slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(row);
+  }
+  const days = [...byDay.keys()].sort((a, b) => (dir === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
+  return days.map((date) => ({ date, rows: byDay.get(date), net: getDayNet(byDay.get(date)) }));
+};
+
+/**
+ * A day's net: income minus expenses. Transfers (card, debt and goal payments) move money
+ * between your own accounts, and card purchases already count as expenses, so they add nothing.
+ */
+export const getDayNet = (rows) => {
+  const cents = rows.reduce((sum, r) => {
+    const amount = Math.round((parseFloat(r.amount) || 0) * 100);
+    if (r.type === "income") return sum + amount;
+    if (r.type === "expense") return sum - amount;
+    return sum;
+  }, 0);
+  return cents / 100;
+};
+
+const DAY_FORMAT = { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" };
+
+/** Day header text: "Today · Sat, Oct 24", "Yesterday · Fri, Oct 23", "Thu, Oct 22", "Wed, Dec 31, 2025". */
+export const formatDayLabel = (dateStr, todayStr) => {
+  const d = String(dateStr || "").slice(0, 10);
+  if (!d) return "No date";
+  const [y, m, day] = d.split("-").map(Number);
+  const sameYear = d.slice(0, 4) === String(todayStr).slice(0, 4);
+  const text = new Date(Date.UTC(y, m - 1, day, 12)).toLocaleDateString("en-US", {
+    ...DAY_FORMAT,
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
+  if (d === todayStr) return `Today · ${text}`;
+  if (d === addDaysToDateStr(todayStr, -1)) return `Yesterday · ${text}`;
+  if (d === addDaysToDateStr(todayStr, 1)) return `Tomorrow · ${text}`;
+  return text;
 };
 
 /** Count and money in/out of a section. Transfers count as money out. */
