@@ -4,6 +4,11 @@ import { getToken, isLoggedIn, logout } from "../utils/auth";
 import { queryClient } from "../utils/queryClient";
 import { isDuplicateClientRefError, isTimeoutError } from "../utils/pendingSubmission";
 import { buildLoginPath } from "../utils/quickAddLink";
+import { deletedIdsFrom, restoreResultMessages } from "../utils/undoDelete";
+import {
+  showUndoDeleteToast,
+  TRANSACTIONS_RESTORED_EVENT,
+} from "../components/Common/UndoDeleteToast";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -200,11 +205,11 @@ const dashboardService = {
     );
   },
 
+  // Deleted rows go to the Trash; the toast offers Undo for 10 s
   deleteBill: async (billId) => {
-    return handleRequest(
-      api.delete(`/expenses/${billId}`),
-      "Transaction deleted."
-    );
+    const data = await handleRequest(api.delete(`/expenses/${billId}`), null);
+    showUndoDeleteToast([billId], dashboardService.restoreTransactions);
+    return data;
   },
 
   deleteDebt: async (debtId, options = {}) => {
@@ -359,10 +364,31 @@ const dashboardService = {
   },
 
   bulkDeleteTransactions: async (ids) => {
-    return handleRequest(
-      api.post("/expenses/bulk-delete", { ids }),
-      `${ids.length} transaction${ids.length === 1 ? "" : "s"} deleted.`
-    );
+    const data = await handleRequest(api.post("/expenses/bulk-delete", { ids }), null);
+    showUndoDeleteToast(deletedIdsFrom(ids, data), dashboardService.restoreTransactions);
+    return data;
+  },
+
+  // Undo and Trash: brings rows back and puts their balances back on cards, debts and goals
+  restoreTransactions: async (ids) => {
+    const data = await handleRequest(api.post("/expenses/restore", { ids }), null);
+    // Unpaid rows of an archived account come back on Checking; paid ones that would change its balance stay
+    const { success, error } = restoreResultMessages(data, ids.length);
+    success.forEach((msg) => toast.success(msg));
+    if (error) toast.error(error, { duration: 8000 });
+    window.dispatchEvent(new CustomEvent(TRANSACTIONS_RESTORED_EVENT, { detail: data }));
+    return data;
+  },
+
+  fetchTrash: async () => {
+    return api.get("/expenses/trash").then((res) => res.data);
+  },
+
+  // Dry run of an edit (PUT ?dryRun=1): saves nothing, so it skips handleRequest and its refresh
+  previewTransactionUpdate: async (transaction) => {
+    return api
+      .put(`/expenses/${transaction.id}?dryRun=1`, transaction)
+      .then((res) => res.data);
   },
 
   getGeminiLiveConfig: async () => {

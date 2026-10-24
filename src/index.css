@@ -33,6 +33,13 @@
   }
 }
 
+/* Keep toasts (and the Undo button) above the phone bottom nav */
+@media (max-width: 767px) {
+  .fintrack-toaster {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 body {
   font-family: 'Outfit', sans-serif;
   background-color: #09090b;

@@ -9,7 +9,9 @@ import SpendingTrendsChart from "../components/Dashboard/SpendingTrendsChart";
 import NetWorthHistoryChart from "../components/Dashboard/NetWorthHistoryChart";
 import CategoryDetailModal from "../components/Modals/CategoryDetailModal";
 import { formatCurrency } from "../utils/formatUtils";
+import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
+import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -113,6 +115,12 @@ const ReportsPage = () => {
 
   useEffect(() => { fetchReportData(); }, [fetchReportData]);
 
+  // An Undo after a delete brings rows back
+  useEffect(() => {
+    window.addEventListener(TRANSACTIONS_RESTORED_EVENT, fetchReportData);
+    return () => window.removeEventListener(TRANSACTIONS_RESTORED_EVENT, fetchReportData);
+  }, [fetchReportData]);
+
   const handleDateChange = (e) => {
     setSelectedDate((prev) => ({ ...prev, [e.target.name]: parseInt(e.target.value) }));
   };
@@ -145,9 +153,14 @@ const ReportsPage = () => {
   }, [monthlyExpenses, sortConfig]);
 
   const handleDelete = async () => {
-    await dashboardService.deleteBill(activeExpenseId);
-    setDeleteModalOpen(false);
-    fetchReportData();
+    try {
+      await dashboardService.deleteBill(activeExpenseId);
+      setDeleteModalOpen(false);
+      fetchReportData();
+    } catch (err) {
+      // handleRequest already showed the error toast
+      console.error("Failed to delete transaction:", err);
+    }
   };
 
   const handleCategoryClick = async (category) => {
@@ -689,6 +702,7 @@ const ReportsPage = () => {
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         itemType="expense"
+        description={TRASH_DELETE_DESCRIPTION}
       />
     </div>
   );
