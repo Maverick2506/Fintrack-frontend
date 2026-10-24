@@ -522,7 +522,9 @@ const LedgerPage = () => {
           {/* "Category · Account"; a transfer reads "Checking → Amex", its ⇄ icon already says payment */}
           <div className="flex items-center gap-1 mt-0.5 text-xs text-zinc-500 min-w-0">
             {row.type !== "transfer" && (
-              <span className="truncate min-w-0 shrink-[4]" title={row.category}>
+              // The category keeps up to half the line and the account truncates first, so the
+              // category never collapses to a lone "·"
+              <span className="truncate shrink-0 max-w-[50%]" title={row.category}>
                 {row.category}
               </span>
             )}

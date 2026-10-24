@@ -205,6 +205,7 @@ assert(
   EXPENSE_CATEGORIES.every((c) => CATEGORY_STYLES[c] !== DEFAULT_CATEGORY_STYLE),
   "no expense category falls back to the default icon"
 );
+assert(getCategoryStyle("Savings Transfer", "expense").icon === "PiggyBank", "a goal contribution gets the piggy bank");
 assert(getCategoryStyle("Gardening", "expense") === DEFAULT_CATEGORY_STYLE, "an unknown category gets the default icon");
 assert(getCategoryStyle(undefined, "expense") === DEFAULT_CATEGORY_STYLE, "a missing category gets the default icon");
 assert(getCategoryStyle("toString", "expense") === DEFAULT_CATEGORY_STYLE, "object built-ins are not categories");

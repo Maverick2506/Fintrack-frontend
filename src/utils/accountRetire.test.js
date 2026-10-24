@@ -165,8 +165,12 @@ assert(
   "Income shows the account it landed in"
 );
 assert(
-  names(getLedgerAccountLine({ type: "expense", category: "Savings Transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Trip", toAccountType: "SAVINGS_GOAL" })) === "Checking → Trip",
-  "A goal contribution saved as an expense shows both sides"
+  names(getLedgerAccountLine({ type: "expense", category: "Savings Transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Trip", toAccountType: "SAVINGS_GOAL" })) === "Trip",
+  "A goal contribution saved as an expense shows only its goal, after the category"
+);
+assert(
+  getLedgerAccountLine({ type: "expense", category: "Savings Transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Trip", toAccountType: "SAVINGS_GOAL" }).from.type === "SAVINGS_GOAL",
+  "the goal keeps its type, so it gets the piggy bank glyph"
 );
 assert(
   names(getLedgerAccountLine({ type: "transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Visa", toAccountType: "CREDIT_CARD", toAccountArchived: true })) === "Checking → Visa (archived)",
