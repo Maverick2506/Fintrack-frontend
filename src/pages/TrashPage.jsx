@@ -20,8 +20,9 @@ const TrashPage = () => {
     setError(null);
     try {
       const data = await dashboardService.fetchTrash();
-      setRows(Array.isArray(data) ? data : []);
-      setSelectedIds((prev) => new Set([...prev].filter((id) => data.some((r) => r.id === id))));
+      const list = Array.isArray(data) ? data : [];
+      setRows(list);
+      setSelectedIds((prev) => new Set([...prev].filter((id) => list.some((r) => r.id === id))));
     } catch (err) {
       console.error("Failed to load trash:", err);
       setError(err?.response?.data?.error || "Could not load the Trash.");

@@ -123,6 +123,9 @@ assert(
   "One refused row of each kind shows both messages"
 );
 
+const noCount = restoreResultMessages({ refused: [{ message: "x", archivedAccount: "A" }] }, 1);
+assert(noCount.success.length === 0 && noCount.error === "x", "Without restoredCount, refused rows are not counted as restored");
+
 // Series end confirm from the dry run (R4)
 assert(
   seriesEndConfirmFromPreview({ seriesEnded: true, removedUpcomingCount: 3, removedUpcomingTotal: 48 }) ===

@@ -15,7 +15,6 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import toast from "react-hot-toast";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
@@ -172,8 +171,8 @@ const LedgerPage = () => {
       await deleteRow(deleteTarget);
       setDeleteTarget(null);
     } catch (err) {
+      // handleRequest already showed the error toast
       console.error("Failed to delete transaction:", err);
-      toast.error(err?.response?.data?.error || "Could not delete the transaction. Please try again.");
     }
   };
 
@@ -192,8 +191,8 @@ const LedgerPage = () => {
       setLastClickedIndex(null);
       setIsBulkDeleteModalOpen(false);
     } catch (err) {
+      // handleRequest already showed the error toast
       console.error("Failed to bulk delete:", err);
-      toast.error(err?.response?.data?.error || "Could not delete the selected transactions. Please try again.");
     }
   };
 

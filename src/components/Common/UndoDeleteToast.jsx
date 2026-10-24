@@ -2,7 +2,7 @@ import toast from "react-hot-toast";
 import { Trash2 } from "lucide-react";
 import { UNDO_TOAST_MS, deletedMessage } from "../../utils/undoDelete";
 
-// Pages that keep rows in local state (Ledger, Analytics, Trash) listen for this to re-read them
+// Pages that keep rows in local state (Ledger, Reports, Trash) listen for this to re-read them
 export const TRANSACTIONS_RESTORED_EVENT = "fintrack:transactions-restored";
 
 /**

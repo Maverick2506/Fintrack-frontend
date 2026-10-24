@@ -153,9 +153,14 @@ const ReportsPage = () => {
   }, [monthlyExpenses, sortConfig]);
 
   const handleDelete = async () => {
-    await dashboardService.deleteBill(activeExpenseId);
-    setDeleteModalOpen(false);
-    fetchReportData();
+    try {
+      await dashboardService.deleteBill(activeExpenseId);
+      setDeleteModalOpen(false);
+      fetchReportData();
+    } catch (err) {
+      // handleRequest already showed the error toast
+      console.error("Failed to delete transaction:", err);
+    }
   };
 
   const handleCategoryClick = async (category) => {

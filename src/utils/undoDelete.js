@@ -80,7 +80,8 @@ export const purgeLabel = (purgeAfter) => {
 export const restoreResultMessages = (data, requestedCount = 0) => {
   const moved = Array.isArray(data?.moved) ? data.moved : [];
   const refused = Array.isArray(data?.refused) ? data.refused : [];
-  const restoredCount = data?.restoredCount ?? requestedCount;
+  // An answer without restoredCount: everything asked for, less what was refused
+  const restoredCount = data?.restoredCount ?? Math.max(0, requestedCount - refused.length);
   const success = [];
   const plain = restoredCount - moved.length;
   if (plain > 0) success.push(restoredMessage(plain));
