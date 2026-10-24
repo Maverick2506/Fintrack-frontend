@@ -46,13 +46,13 @@ export const seriesEndedToast = (saved, type = "expense") => {
 
 /**
  * Toast after setting a recurring row to One-time: the series ended (current charge), or only this
- * row changed and the series continues. Null when the save was not a One-time edit of a series row.
+ * row changed and End series is how to stop it. Null when the save was not a One-time edit of a series row.
  */
 export const oneTimeEditToast = (saved, type = "expense", wasOneTimeEdit = false) => {
   if (saved?.seriesEnded) return seriesEndedToast(saved, type);
   if (!wasOneTimeEdit) return null;
   const noun = type === "income" ? "payment" : "charge";
-  return `Only this ${noun} changed; the series continues.`;
+  return `Only this ${noun} changed — use End series to stop it.`;
 };
 
 // Delete confirms: deletes go to the Trash now, so they are not permanent

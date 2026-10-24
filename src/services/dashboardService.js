@@ -344,6 +344,17 @@ const dashboardService = {
     );
   },
 
+  // End series (any type). The dry run saves nothing, so it skips handleRequest and its refresh.
+  previewEndSeries: async (recurringGroupId) => {
+    return api
+      .post(`/recurring/${recurringGroupId}/end`, { dryRun: true })
+      .then((res) => res.data);
+  },
+
+  endSeries: async (recurringGroupId) => {
+    return handleRequest(api.post(`/recurring/${recurringGroupId}/end`, {}), null);
+  },
+
   // Sync with statement: records one Interest or Adjustment row for the difference
   reconcileAccount: async (accountId, payload) => {
     return handleRequest(

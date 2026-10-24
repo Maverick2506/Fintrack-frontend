@@ -157,11 +157,11 @@ assert(
 // One-time edit of a series row: the series continues unless it was the current charge
 assert(
   oneTimeEditToast({ seriesEnded: false, removedUpcomingCount: 0 }, "expense", true) ===
-    "Only this charge changed; the series continues.",
-  "One-time edit of a later charge says the series continues"
+    "Only this charge changed — use End series to stop it.",
+  "One-time edit of a later charge points to End series"
 );
 assert(
-  oneTimeEditToast({ seriesEnded: false }, "income", true) === "Only this payment changed; the series continues.",
+  oneTimeEditToast({ seriesEnded: false }, "income", true) === "Only this payment changed — use End series to stop it.",
   "Income says payment"
 );
 assert(

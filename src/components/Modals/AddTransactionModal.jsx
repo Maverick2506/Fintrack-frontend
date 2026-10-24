@@ -23,6 +23,7 @@ import {
   Clock,
   Percent,
   Trash2,
+  CircleStop,
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { formatCurrency } from "../../utils/formatUtils";
@@ -32,6 +33,8 @@ import {
   saveMayHaveLanded,
 } from "../../utils/pendingSubmission";
 import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
+import { canEndSeries } from "../../utils/endSeries";
+import { confirmAndEndSeries } from "../../services/endSeriesAction";
 import {
   mayEndSeries,
   seriesEndConfirmFromPreview,
@@ -460,6 +463,19 @@ const AddTransactionModal = ({
       setError(msg);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Ends the whole series (any type) after a confirm with the dry run's numbers
+  const handleEndSeries = async () => {
+    const result = await confirmAndEndSeries({
+      recurringGroupId: existingTransaction?.recurringGroupId,
+      name: existingTransaction?.name || existingTransaction?.title || name,
+      type: existingTransaction?.type ? String(existingTransaction.type).toLowerCase() : type,
+    });
+    if (result) {
+      onClose();
+      refreshData();
     }
   };
 
@@ -1298,23 +1314,35 @@ const AddTransactionModal = ({
             </div>
           )}
 
-          {/* Action Footer */}
-          {isEditing && onDelete && (
-            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onDelete(existingTransaction);
-                }}
-                className="py-2 px-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 size={13} />
-                <span>Delete Transaction</span>
-              </button>
-              <div className="text-[11px] text-zinc-500 hidden sm:block">
-                Permanently removes this record
-              </div>
+          {/* Action Footer: Delete, and End series for a row of a recurring series */}
+          {isEditing && (onDelete || canEndSeries(existingTransaction)) && (
+            <div className="pt-2 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
+              {onDelete ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onDelete(existingTransaction);
+                  }}
+                  className="min-h-10 py-2 px-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-400 hover:bg-rose-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Transaction</span>
+                </button>
+              ) : (
+                <span />
+              )}
+              {canEndSeries(existingTransaction) && (
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleEndSeries}
+                  className="min-h-10 py-2 px-3 rounded-lg border border-white/[0.08] text-xs font-medium text-rose-400 hover:bg-white/[0.04] transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <CircleStop size={13} />
+                  <span>End series</span>
+                </button>
+              )}
             </div>
           )}
           <div className="flex items-center justify-end gap-2 pt-2">
