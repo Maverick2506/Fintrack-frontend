@@ -47,6 +47,10 @@ const CATEGORY_COLORS = {
   Other:                 "bg-zinc-800/80 text-zinc-400 border-white/[0.06]",
 };
 
+// Rows from the daily interest sweep or Sync with statement keep their own chip next to the account
+const SYNC_CATEGORIES = ["Interest", "Adjustment"];
+
+
 const LedgerPage = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -471,19 +475,21 @@ const LedgerPage = () => {
             {row.name}
           </span>
           <div className="flex items-center gap-1 mt-0.5 text-[11px] text-zinc-500 min-w-0">
-            {/* Interest rows (daily sweep or statement sync) get their own chip on phones too */}
-            {row.category === "Interest" && (
+            {/* Interest and Adjustment rows (daily sweep or statement sync) get their own chip */}
+            {SYNC_CATEGORIES.includes(row.category) && (
               <span
-                className={`text-[10px] font-medium px-1.5 rounded border whitespace-nowrap shrink-0 ${CATEGORY_COLORS.Interest}`}
+                className={`text-[10px] font-medium px-1.5 rounded border whitespace-nowrap shrink-0 ${CATEGORY_COLORS[row.category]}`}
               >
-                Interest
+                {row.category}
               </span>
             )}
             {/* Card, debt or goal the row uses; archived ones keep their name */}
             {accountChip ? (
               <AccountChip type={accountChip.type} label={accountChip.label} className="shrink" />
             ) : (
-              <span className="text-zinc-400 truncate">{row.category}</span>
+              !SYNC_CATEGORIES.includes(row.category) && (
+                <span className="text-zinc-400 truncate">{row.category}</span>
+              )
             )}
             <span>·</span>
             <span className="tabular-nums shrink-0">{formatRowDate(row.date, false)}</span>
@@ -874,8 +880,18 @@ const LedgerPage = () => {
                               </div>
                             </td>
                             <td className="py-3 px-4 w-28 md:w-36">
-                              {/* Card, debt or goal the row uses; archived ones keep their name */}
-                              {accountChip ? (
+                              {/* Card, debt or goal the row uses; archived ones keep their name.
+                                  Interest and Adjustment rows show their own chip above it. */}
+                              {accountChip && SYNC_CATEGORIES.includes(row.category) ? (
+                                <div className="flex flex-col items-start gap-1 min-w-0">
+                                  <span
+                                    className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border whitespace-nowrap ${CATEGORY_COLORS[row.category]}`}
+                                  >
+                                    {row.category}
+                                  </span>
+                                  <AccountChip type={accountChip.type} label={accountChip.label} />
+                                </div>
+                              ) : accountChip ? (
                                 <AccountChip type={accountChip.type} label={accountChip.label} />
                               ) : (
                                 <span

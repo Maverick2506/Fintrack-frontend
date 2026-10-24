@@ -41,8 +41,20 @@ assert(same.canSave === false && same.tone === "same", "Same balance can't be sa
 const empty = describeStatementDifference({ type: "DEBT", appBalance: 500, actualRaw: "" });
 assert(empty.canSave === false && empty.line === "", "Nothing typed: no preview, can't save");
 
-const payload = buildReconcilePayload({ actualRaw: "$1,012.34", reason: "interest" });
+assert(debtUp.allowInterest === true, "Debt owes more: interest is allowed");
+assert(describeStatementDifference({ type: "CREDIT_CARD", appBalance: 100, actualRaw: "120" }).allowInterest === true, "Card owes more: interest is allowed");
+const debtDown = describeStatementDifference({ type: "DEBT", appBalance: 18450.75, actualRaw: "18200" });
+assert(debtDown.canSave && debtDown.allowInterest === false, "Debt statement lower (paid at the bank): interest is not allowed");
+assert(cardDown.allowInterest === false, "Card statement lower: interest is not allowed");
+assert(checkingUp.allowInterest === false && checkingDown.allowInterest === false, "Checking never offers interest");
+assert(same.allowInterest === false && empty.allowInterest === false, "Nothing to save: no interest option");
+
+const payload = buildReconcilePayload({ actualRaw: "$1,012.34", reason: "interest", allowInterest: true });
 assert(payload.actualBalance === 1012.34 && payload.reason === "interest", "Payload has the parsed balance and reason");
-assert(buildReconcilePayload({ actualRaw: "1", reason: "other" }).reason === "adjustment", "Unknown reasons send adjustment");
+assert(buildReconcilePayload({ actualRaw: "1", reason: "other", allowInterest: true }).reason === "adjustment", "Unknown reasons send adjustment");
+assert(
+  buildReconcilePayload({ actualRaw: "18200", reason: "interest", allowInterest: debtDown.allowInterest }).reason === "adjustment",
+  "A debt sheet left on Interest sends adjustment once the statement is lower"
+);
 
 console.log("\n  All Sync with statement tests passed.");

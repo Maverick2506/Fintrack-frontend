@@ -37,7 +37,11 @@ const DebtsPage = () => {
   const queryClient = useQueryClient();
 
   // Debt interest: the daily sweep adds interest on each due date while this is on
-  const { data: interestSetting } = useQuery({
+  const {
+    data: interestSetting,
+    isError: interestLoadFailed,
+    refetch: refetchInterestSetting,
+  } = useQuery({
     queryKey: ["debt-interest-setting"],
     queryFn: () => dashboardService.fetchDebtInterestSetting(),
   });
@@ -135,24 +139,38 @@ const DebtsPage = () => {
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
             type="button"
-            onClick={() => interestMutation.mutate(!interestEnabled)}
-            disabled={interestMutation.isPending || !interestSetting}
-            aria-pressed={interestEnabled}
+            onClick={() =>
+              interestLoadFailed && !interestSetting
+                ? refetchInterestSetting()
+                : interestMutation.mutate(!interestEnabled)
+            }
+            disabled={interestMutation.isPending || (!interestSetting && !interestLoadFailed)}
+            aria-pressed={interestSetting ? interestEnabled : undefined}
             className={`flex items-center gap-1.5 min-h-10 px-3 rounded-lg border text-[11px] transition-colors cursor-pointer select-none disabled:opacity-60 ${
               interestEnabled
                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20"
                 : "bg-zinc-900/80 border-white/[0.08] text-zinc-400 hover:text-zinc-300"
             }`}
-            title="Add interest to each debt on its due date"
+            title={
+              interestLoadFailed && !interestSetting
+                ? "Couldn't load the debt interest setting. Tap to try again."
+                : "Add interest to each debt on its due date"
+            }
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 interestEnabled ? "bg-emerald-400" : "bg-zinc-600"
               }`}
             />
-            <span>
-              Debt interest: <strong className="font-semibold">{interestEnabled ? "On" : "Off"}</strong>
-            </span>
+            {interestLoadFailed && !interestSetting ? (
+              <span>
+                Debt interest: <strong className="font-semibold text-amber-300">Retry</strong>
+              </span>
+            ) : (
+              <span>
+                Debt interest: <strong className="font-semibold">{interestEnabled ? "On" : "Off"}</strong>
+              </span>
+            )}
           </button>
           <button onClick={() => openModal("add")} className="btn-primary min-h-10">
             <Plus size={14} strokeWidth={2} />

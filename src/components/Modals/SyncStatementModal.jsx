@@ -14,6 +14,7 @@ import {
 // account: { id, name, type: "CHECKING" | "CREDIT_CARD" | "DEBT", balance }. Mount it only while open.
 const SyncStatementModal = ({ account, onClose, onSynced }) => {
   const [actualRaw, setActualRaw] = useState("");
+  // Debts default to Interest, but it only applies while the statement shows more owed
   const [reason, setReason] = useState(account?.type === "DEBT" ? "interest" : "adjustment");
   const [saving, setSaving] = useState(false);
 
@@ -33,7 +34,10 @@ const SyncStatementModal = ({ account, onClose, onSynced }) => {
     if (!preview.canSave || saving) return;
     setSaving(true);
     try {
-      await dashboardService.reconcileAccount(account.id, buildReconcilePayload({ actualRaw, reason }));
+      await dashboardService.reconcileAccount(
+        account.id,
+        buildReconcilePayload({ actualRaw, reason, allowInterest: preview.allowInterest })
+      );
       onSynced?.();
       onClose();
     } catch {
@@ -124,7 +128,11 @@ const SyncStatementModal = ({ account, onClose, onSynced }) => {
           {preview.line}
         </p>
 
-        {preview.canSave && (
+        {preview.canSave && !preview.allowInterest && (
+          <p className="text-[11px] text-zinc-400 mt-2">Recorded as an adjustment.</p>
+        )}
+
+        {preview.allowInterest && (
           <fieldset className="mt-2">
             <legend className="text-[11px] text-zinc-400 mb-2">Record the difference as</legend>
             <div className="grid grid-cols-2 gap-2">
