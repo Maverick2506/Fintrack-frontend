@@ -1,5 +1,21 @@
 /* global process */
-import { getLedgerGroupKey, groupLedgerRows, summarizeLedgerGroup } from "./ledgerGroups.js";
+import {
+  getLedgerGroupKey,
+  groupLedgerRows,
+  summarizeLedgerGroup,
+  groupRowsByDay,
+  getDayNet,
+  formatDayLabel,
+  getLedgerRowTag,
+} from "./ledgerGroups.js";
+import {
+  getCategoryStyle,
+  EXPENSE_CATEGORIES,
+  CATEGORY_STYLES,
+  DEFAULT_CATEGORY_STYLE,
+  INCOME_STYLE,
+  TRANSFER_STYLE,
+} from "../constants/categories.js";
 import { getTorontoTodayStr, addDaysToDateStr, getWeekStartStr } from "./dateUtils.js";
 
 function assert(condition, message) {
@@ -91,5 +107,111 @@ assert(upcoming.count === 2, "Upcoming counts its rows");
 assert(upcoming.moneyIn === 2000 && upcoming.moneyOut === 50, "Upcoming totals money in and out apart");
 const week = summarizeLedgerGroup([{ type: "transfer", amount: "100.10" }, { type: "expense", amount: 0.2 }]);
 assert(Math.abs(week.moneyOut - 100.3) < 1e-9, "transfers count as money out and string amounts are read");
+
+// Days inside a section
+const dayRows = [
+  { id: "a", date: "2026-10-30", type: "expense", amount: 90 },
+  { id: "b", date: "2026-10-26", type: "expense", amount: 45 },
+  { id: "c", date: "2026-10-26", type: "expense", amount: 65 },
+  { id: "d", date: "2026-11-02", type: "income", amount: 2400 },
+  { id: "e", date: "2026-11-02", type: "expense", amount: 11.99 },
+];
+const upDays = groupRowsByDay(dayRows, "asc");
+assert(upDays.map((d) => d.date).join(",") === "2026-10-26,2026-10-30,2026-11-02", "days run soonest first when asked");
+assert(upDays[0].rows.map((r) => r.id).join(",") === "b,c", "rows keep their order inside a day");
+assert(groupRowsByDay(dayRows).map((d) => d.date)[0] === "2026-11-02", "days run newest first by default");
+assert(upDays[0].net === -110, "a day of two bills nets -$110");
+assert(upDays[2].net === 2388.01, "a payday nets income minus spending, to the cent");
+assert(
+  getDayNet([{ type: "transfer", amount: 300 }, { type: "expense", amount: "4.75" }]) === -4.75,
+  "transfers add nothing to a day's net and string amounts are read"
+);
+assert(getDayNet([{ type: "expense", amount: 0.1 }, { type: "expense", amount: 0.2 }]) === -0.3, "cents add up without float drift");
+assert(getDayNet([]) === 0, "an empty day nets zero");
+const undatedDays = groupRowsByDay([{ id: 1, date: null, type: "expense", amount: 1 }]);
+assert(undatedDays.length === 1 && undatedDays[0].date === "", "rows without a date share one day");
+
+const withDays = groupLedgerRows(rows, today, { sortByDate: true });
+assert(
+  withDays[0].days.map((d) => d.date).join(",") === "2026-10-24,2026-11-05",
+  "Upcoming days run soonest first even when history runs newest first"
+);
+assert(
+  withDays.find((g) => g.key === "month:2026-10").days.map((d) => d.date).join(",") === "2026-10-02",
+  "each section carries its days"
+);
+const monthRows = [
+  { id: 1, date: "2026-10-02", type: "expense", amount: 1 },
+  { id: 2, date: "2026-10-05", type: "expense", amount: 2 },
+];
+assert(
+  groupLedgerRows(monthRows, today, { sortByDate: true })[0].days.map((d) => d.date).join(",") === "2026-10-05,2026-10-02",
+  "past days run newest first"
+);
+assert(
+  groupLedgerRows(monthRows, today, { sortByDate: true, dateDir: "asc" })[0].days.map((d) => d.date).join(",") === "2026-10-02,2026-10-05",
+  "past days run oldest first when sorting oldest first"
+);
+
+// Name and Amount sorts run across a whole section, not inside each day (review R1)
+const weekRows = [
+  { id: "small", date: "2026-10-19", type: "expense", amount: 4.75 },
+  { id: "mid", date: "2026-10-21", type: "expense", amount: 65 },
+  { id: "big", date: "2026-10-20", type: "expense", amount: 12345.67 },
+  { id: "pay", date: "2026-10-21", type: "income", amount: 2400 },
+];
+const byAmount = [...weekRows].sort((a, b) => b.amount - a.amount);
+const amountGroups = groupLedgerRows(byAmount, today, { sortByDate: false });
+assert(amountGroups.length === 1 && amountGroups[0].key === "week", "the rows all sit in This week");
+assert(amountGroups[0].days.length === 1 && amountGroups[0].days[0].date === null, "an amount sort shows one undated block, no day headers");
+assert(
+  amountGroups[0].days[0].rows.map((r) => r.id).join(",") === "big,pay,mid,small",
+  "largest amount first across the section, even when the rows are on different days"
+);
+assert(amountGroups[0].days[0].net === 2400 - 4.75 - 65 - 12345.67, "the undated block still carries its net");
+const byDateDays = groupLedgerRows(byAmount, today, { sortByDate: true });
+assert(byDateDays[0].days.length === 3, "a date sort keeps one block per day");
+
+// Row tags: Overdue, Due today, nothing for paid or upcoming rows
+assert(getLedgerRowTag({ date: "2026-10-22", is_paid: false }, today).label === "Overdue", "unpaid and past its date is Overdue");
+assert(getLedgerRowTag({ date: "2026-10-22", is_paid: false }, today).tone === "overdue", "Overdue is the red tone");
+assert(getLedgerRowTag({ date: "2026-10-23", is_paid: false }, today).label === "Due today", "unpaid and dated today is Due today");
+assert(getLedgerRowTag({ date: "2026-10-23", is_paid: false }, today).tone === "today", "Due today is the amber tone");
+assert(getLedgerRowTag({ date: "2026-10-24", is_paid: false }, today) === null, "upcoming rows get no tag");
+assert(getLedgerRowTag({ date: "2026-10-20", is_paid: true }, today) === null, "paid rows get no tag");
+assert(getLedgerRowTag({ date: "2026-10-22T00:00:00.000Z", type: "income", is_paid: false }, today).label === "Overdue", "a late paycheque is Overdue too, read by its date");
+// Around midnight in Toronto (EDT, UTC-4): the same bill goes from Due today to Overdue
+const bill = { date: "2026-10-24", is_paid: false };
+assert(getLedgerRowTag(bill, getTorontoTodayStr(new Date("2026-10-25T03:59:00Z"))).label === "Due today", "11:59 pm Oct 24 in Toronto: still Due today, though UTC is the 25th");
+assert(getLedgerRowTag(bill, getTorontoTodayStr(new Date("2026-10-25T04:01:00Z"))).label === "Overdue", "12:01 am Oct 25 in Toronto: Overdue");
+assert(getLedgerRowTag({ date: "2026-10-25", is_paid: false }, getTorontoTodayStr(new Date("2026-10-25T03:59:00Z"))) === null, "11:59 pm Oct 24: a bill for the 25th is still upcoming");
+// Winter (EST, UTC-5)
+assert(getLedgerRowTag({ date: "2026-12-01", is_paid: false }, getTorontoTodayStr(new Date("2026-12-02T04:30:00Z"))).label === "Due today", "11:30 pm Dec 1 in Toronto (EST): Due today");
+
+// Day header labels, today = Fri Oct 23 2026
+assert(formatDayLabel("2026-10-25", today) === "Sun, Oct 25", "a day reads like Sun, Oct 25");
+assert(formatDayLabel("2026-10-23", today) === "Today · Fri, Oct 23", "today says Today");
+assert(formatDayLabel("2026-10-22T00:00:00.000Z", today) === "Yesterday · Thu, Oct 22", "yesterday says Yesterday");
+assert(formatDayLabel("2026-10-24", today) === "Tomorrow · Sat, Oct 24", "tomorrow says Tomorrow");
+assert(formatDayLabel("2025-12-31", today) === "Wed, Dec 31, 2025", "another year shows the year");
+assert(formatDayLabel("", today) === "No date", "a missing date says No date");
+
+// Category icons
+assert(
+  EXPENSE_CATEGORIES.every((c) => getCategoryStyle(c, "expense") === CATEGORY_STYLES[c]),
+  "every expense category has its own icon"
+);
+assert(
+  EXPENSE_CATEGORIES.every((c) => CATEGORY_STYLES[c] !== DEFAULT_CATEGORY_STYLE),
+  "no expense category falls back to the default icon"
+);
+assert(getCategoryStyle("Savings Transfer", "expense").icon === "PiggyBank", "a goal contribution gets the piggy bank");
+assert(getCategoryStyle("Gardening", "expense") === DEFAULT_CATEGORY_STYLE, "an unknown category gets the default icon");
+assert(getCategoryStyle(undefined, "expense") === DEFAULT_CATEGORY_STYLE, "a missing category gets the default icon");
+assert(getCategoryStyle("toString", "expense") === DEFAULT_CATEGORY_STYLE, "object built-ins are not categories");
+assert(getCategoryStyle("Credit Card Payment", "transfer") === TRANSFER_STYLE, "transfers use the transfer icon whatever the category");
+assert(TRANSFER_STYLE.icon === "ArrowLeftRight", "the transfer icon is ⇄");
+assert(getCategoryStyle("Income", "income") === INCOME_STYLE, "income has its own icon");
+assert(getCategoryStyle("Bonus", "income") === INCOME_STYLE, "income with another category still uses the income icon");
 
 console.log("All ledger grouping tests passed.");

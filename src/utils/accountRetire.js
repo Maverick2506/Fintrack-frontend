@@ -142,3 +142,27 @@ export const getLedgerAccountChip = (row) => {
   if (!side) return null;
   return { ...side, label: side.archived ? `${side.name} (archived)` : side.name };
 };
+
+const ledgerSide = (name, type, archived) => {
+  if (!name) return null;
+  // There is one checking account, created as "Primary Checking"; the Ledger calls it Checking
+  const shown = type === "CHECKING" && name === "Primary Checking" ? "Checking" : name;
+  return { name: archived ? `${shown} (archived)` : shown, type };
+};
+
+/**
+ * The account part of a Ledger row's "Category · Account" line, as { from, to } where each side
+ * is { name, type } or null. Transfers show both sides ("Checking → Amex"), goal contributions
+ * saved as expenses show the goal, income shows where it landed, and purchases show the card or
+ * Checking they were paid from.
+ */
+export const getLedgerAccountLine = (row) => {
+  const from = ledgerSide(row?.fromAccount, row?.fromAccountType, row?.fromAccountArchived);
+  const to = ledgerSide(row?.toAccount, row?.toAccountType, row?.toAccountArchived);
+  if (row?.type === "income") return { from: to || from, to: null };
+  // A goal contribution saved as an expense reads "Savings Transfer · Goal": it comes from
+  // Checking, and "Checking → Goal" after the category leaves no room on a phone
+  if (row?.type !== "transfer" && from?.type === "CHECKING" && to) return { from: to, to: null };
+  if (from && to) return { from, to };
+  return { from: from || to, to: null };
+};
