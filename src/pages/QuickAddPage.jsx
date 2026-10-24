@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Zap,
@@ -9,6 +9,7 @@ import {
   Building,
   Tag,
   History,
+  Lightbulb,
   TrendingDown,
   TrendingUp,
   Sparkles,
@@ -18,6 +19,8 @@ import {
 import toast from "react-hot-toast";
 import dashboardService from "../services/dashboardService";
 import { parseQuickAdd } from "../utils/quickAddParser";
+import { buildExampleChips, cleanRecentChips } from "../utils/quickAddExamples";
+import { getTorontoTodayStr } from "../utils/dateUtils";
 import { formatCurrency } from "../utils/formatUtils";
 import { getClientRef } from "../utils/pendingSubmission";
 import {
@@ -102,20 +105,10 @@ const QuickAddPage = () => {
       .then((cards) => setCreditCards(cards || []))
       .catch((err) => console.error("Could not fetch cards:", err));
 
-    // Load recent quick-add entries from localStorage
+    // Load recent quick-add entries from localStorage (examples show only while there are none)
     try {
       const stored = localStorage.getItem(RECENT_KEY);
-      if (stored) {
-        setRecentChips(JSON.parse(stored));
-      } else {
-        setRecentChips([
-          "23.40 lunch visa",
-          "120 hydro due 11/05",
-          "+2100 paycheque",
-          "4.50 coffee",
-          "15.99 netflix amex",
-        ]);
-      }
+      if (stored) setRecentChips(cleanRecentChips(JSON.parse(stored)));
     } catch {
       // Ignore localStorage errors
     }
@@ -126,6 +119,8 @@ const QuickAddPage = () => {
   }, []);
 
   const parsed = parseQuickAdd(input, creditCards);
+  const exampleChips = useMemo(() => buildExampleChips(getTorontoTodayStr()), []);
+  const showExamples = recentChips.length === 0;
   const isLinkList = linkItems.length > 1;
 
   // Marks the current link entry saved or skipped and moves to the next one
@@ -328,7 +323,7 @@ const QuickAddPage = () => {
               id="quickInput"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="e.g. 23.40 lunch visa, 120 hydro due 11/05"
+              placeholder={`e.g. ${exampleChips[0]}, ${exampleChips[1]}`}
               className="w-full bg-transparent text-base sm:text-lg text-zinc-100 placeholder-zinc-600 focus:outline-none"
               autoComplete="off"
               autoFocus
@@ -423,7 +418,7 @@ const QuickAddPage = () => {
             <p className="font-medium text-zinc-400">💡 Natural language tips:</p>
             <ul className="list-disc list-inside space-y-0.5 text-zinc-500 text-[11px]">
               <li>Type <code className="text-zinc-300 font-mono">23.40 lunch visa</code> for a card purchase.</li>
-              <li>Type <code className="text-zinc-300 font-mono">120 hydro due 11/05</code> for an upcoming unpaid bill.</li>
+              <li>Type <code className="text-zinc-300 font-mono">{exampleChips[1]}</code> (or a date like 11/05) for an upcoming unpaid bill.</li>
               <li>Type <code className="text-zinc-300 font-mono">+2100 paycheque</code> to record income.</li>
               <li>Specify checking with <code className="text-zinc-300 font-mono">debit</code> or <code className="text-zinc-300 font-mono">checking</code>.</li>
             </ul>
@@ -456,19 +451,19 @@ const QuickAddPage = () => {
       </form>
 
       {/* Recent Chips (hidden during a link list, so a chip can't be saved as a link entry) */}
-      {recentChips.length > 0 && linkItems.length === 0 && (
+      {linkItems.length === 0 && (
         <div className="mt-8 pt-6 border-t border-white/[0.06]">
           <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium mb-3">
-            <History size={13} />
-            <span>Recent Quick Entries (Tap to repeat)</span>
+            {showExamples ? <Lightbulb size={13} /> : <History size={13} />}
+            <span>{showExamples ? "Examples (tap to try)" : "Recent Quick Entries (Tap to repeat)"}</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {recentChips.map((chip, idx) => (
+            {(showExamples ? exampleChips : recentChips).map((chip, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => handleChipClick(chip)}
-                className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/[0.06] text-xs text-zinc-300 hover:text-zinc-100 hover:border-white/20 transition-all cursor-pointer truncate max-w-full"
+                className="min-h-10 px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/[0.06] text-xs text-zinc-300 hover:text-zinc-100 hover:border-white/20 transition-all cursor-pointer truncate max-w-full"
               >
                 {chip}
               </button>

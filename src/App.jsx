@@ -16,6 +16,7 @@ const CreditCardPage = lazy(() => import("./pages/CreditCardPage"));
 const LedgerPage = lazy(() => import("./pages/LedgerPage"));
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const QuickAddPage = lazy(() => import("./pages/QuickAddPage"));
+const TrashPage = lazy(() => import("./pages/TrashPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 
 const PageFallback = () => (
@@ -97,6 +98,14 @@ function AppLayout() {
               }
             />
             <Route
+              path="/trash"
+              element={
+                <ProtectedRoute>
+                  <TrashPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/quick"
               element={
                 <ProtectedRoute>
@@ -116,6 +125,7 @@ function App() {
     <Router>
       <Toaster
         position="bottom-center"
+        containerClassName="fintrack-toaster"
         toastOptions={{ style: { background: "#333", color: "#fff" } }}
       />
       <AppLayout />

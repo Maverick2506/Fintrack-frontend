@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   X,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { logout } from "../../utils/auth";
@@ -46,6 +47,7 @@ const Navbar = () => {
     "/credit-cards",
     "/subscriptions",
     "/quick",
+    "/trash",
   ].includes(location.pathname);
 
   const handleLogout = () => {
@@ -207,7 +209,7 @@ const Navbar = () => {
             className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMoreOpen(false)}
           />
-          <div className="relative z-10 bg-zinc-950 border-t border-white/[0.1] rounded-t-2xl p-5 shadow-2xl space-y-4 max-w-lg w-full mx-auto">
+          <div className="relative z-10 bg-zinc-950 border-t border-white/[0.1] rounded-t-2xl p-5 shadow-2xl space-y-4 max-w-lg w-full mx-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
               <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 More Features
@@ -246,6 +248,12 @@ const Navbar = () => {
                   label: "Quick Add",
                   icon: Zap,
                   desc: "Natural language transaction entry",
+                },
+                {
+                  to: "/trash",
+                  label: "Trash",
+                  icon: Trash2,
+                  desc: "Deleted transactions, kept for 30 days",
                 },
               ].map((item) => {
                 const Icon = item.icon;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import {
   Search,
   Trash2,
@@ -22,6 +23,7 @@ import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import { formatCurrency, formatNumber } from "../utils/formatUtils";
 import AccountChip from "../components/Common/AccountChip";
 import SwipeableRow from "../components/Ledger/SwipeableRow";
+import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
 import useMediaQuery from "../hooks/useMediaQuery";
 import { getLedgerAccountChip } from "../utils/accountRetire";
 import { getTorontoTodayStr } from "../utils/dateUtils";
@@ -108,6 +110,12 @@ const LedgerPage = () => {
       .catch((err) => console.error("Failed to refresh ledger:", err));
   }, []);
 
+  // Undo (toast) or Trash restores rows: show them again
+  useEffect(() => {
+    window.addEventListener(TRANSACTIONS_RESTORED_EVENT, refreshRowsQuietly);
+    return () => window.removeEventListener(TRANSACTIONS_RESTORED_EVENT, refreshRowsQuietly);
+  }, [refreshRowsQuietly]);
+
   const handleMarkPaid = async (row) => {
     setSwipeOpen(null);
     try {
@@ -136,16 +144,31 @@ const LedgerPage = () => {
     }
   };
 
+  // Deletes one row; the toast offers Undo, so the swipe Delete skips the confirm step
+  const deleteRow = async (row) => {
+    await dashboardService.deleteBill(row.id);
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(row.id);
+      return next;
+    });
+  };
+
+  const handleSwipeDelete = async (row) => {
+    setSwipeOpen(null);
+    try {
+      await deleteRow(row);
+    } catch (err) {
+      // handleRequest already showed the error toast (e.g. 409 for an archived account)
+      console.error("Failed to delete transaction:", err);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await dashboardService.deleteBill(deleteTarget.id);
-      setRows((prev) => prev.filter((r) => r.id !== deleteTarget.id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(deleteTarget.id);
-        return next;
-      });
+      await deleteRow(deleteTarget);
       setDeleteTarget(null);
     } catch (err) {
       console.error("Failed to delete transaction:", err);
@@ -543,16 +566,26 @@ const LedgerPage = () => {
             Transaction Ledger
           </h1>
         </div>
-        <button
-          onClick={() => {
-            setEditingTx(null);
-            setIsTxModalOpen(true);
-          }}
-          className="btn-primary w-full sm:w-auto justify-center"
-        >
-          <Plus size={14} strokeWidth={2} />
-          <span>Add Transaction</span>
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Link
+            to="/trash"
+            className="btn-secondary h-10 px-3.5 shrink-0"
+            title="Deleted transactions, kept for 30 days"
+          >
+            <Trash2 size={14} />
+            <span>Trash</span>
+          </Link>
+          <button
+            onClick={() => {
+              setEditingTx(null);
+              setIsTxModalOpen(true);
+            }}
+            className="btn-primary h-10 flex-1 sm:flex-none justify-center"
+          >
+            <Plus size={14} strokeWidth={2} />
+            <span>Add Transaction</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary Bar (M3) */}
@@ -775,10 +808,7 @@ const LedgerPage = () => {
                             canMarkPaid={!row.is_paid}
                             markPaidLabel={row.type === "income" ? "Received" : "Mark paid"}
                             onMarkPaid={() => handleMarkPaid(row)}
-                            onDelete={() => {
-                              setSwipeOpen(null);
-                              setDeleteTarget(row);
-                            }}
+                            onDelete={() => handleSwipeDelete(row)}
                             onTap={() => {
                               setEditingTx(row);
                               setIsTxModalOpen(true);

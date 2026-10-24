@@ -4,6 +4,7 @@
  * Supported patterns:
  * - "23.40 lunch visa" -> amount: 23.40, name: "Lunch", card: Visa, category: "Food & Drink", date: today, is_paid: true
  * - "120 hydro due 11/05" -> amount: 120, name: "Hydro", category: "Essentials", date: "2026-11-05", is_paid: false
+ * - "120 hydro due fri" -> the next Friday after today, is_paid: false
  * - "+2100 paycheque" -> type: "income", amount: 2100, name: "Paycheque", category: "Income"
  * - "$45 dinner checking" -> amount: 45, name: "Dinner", account: "Primary Checking"
  */
@@ -160,6 +161,10 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
   const dueShortMatch = text.match(/\b(?:due|on)\s+(\d{1,2})[/-](\d{1,2})\b/i);
   const dueTomorrowMatch = text.match(/\b(?:due|on)\s+tomorrow\b/i);
   const dueTodayMatch = text.match(/\b(?:due|on)\s+today\b/i);
+  // "due fri" / "on friday": the next such weekday after today (a weekday that is today means next week)
+  const dueWeekdayMatch = text.match(
+    /\b(?:due|on)\s+(sun|mon|tue|wed|thu|fri|sat)(?:day|s|sday|nesday|rsday|urday|r|rs)?\b/i
+  );
 
   if (dueFullMatch) {
     date = dueFullMatch[1];
@@ -191,6 +196,18 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
     dateMatched = true;
     dateKey = "tomorrow";
     text = text.replace(dueTomorrowMatch[0], " ").trim();
+  } else if (dueWeekdayMatch) {
+    const target = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(
+      dueWeekdayMatch[1].toLowerCase()
+    );
+    const ahead = ((target - baseDate.getDay() + 7) % 7) || 7;
+    date = formatDateStr(
+      new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + ahead, 12)
+    );
+    is_paid = false;
+    dateMatched = true;
+    dateKey = date;
+    text = text.replace(dueWeekdayMatch[0], " ").trim();
   } else if (dueTodayMatch) {
     date = formatDateStr(baseDate);
     is_paid = true;

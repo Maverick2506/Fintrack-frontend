@@ -10,6 +10,7 @@ import NetWorthHistoryChart from "../components/Dashboard/NetWorthHistoryChart";
 import CategoryDetailModal from "../components/Modals/CategoryDetailModal";
 import { formatCurrency } from "../utils/formatUtils";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
+import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -112,6 +113,12 @@ const ReportsPage = () => {
   }, [selectedDate]);
 
   useEffect(() => { fetchReportData(); }, [fetchReportData]);
+
+  // An Undo after a delete brings rows back
+  useEffect(() => {
+    window.addEventListener(TRANSACTIONS_RESTORED_EVENT, fetchReportData);
+    return () => window.removeEventListener(TRANSACTIONS_RESTORED_EVENT, fetchReportData);
+  }, [fetchReportData]);
 
   const handleDateChange = (e) => {
     setSelectedDate((prev) => ({ ...prev, [e.target.name]: parseInt(e.target.value) }));

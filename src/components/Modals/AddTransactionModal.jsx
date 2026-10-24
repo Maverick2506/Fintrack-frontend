@@ -32,6 +32,11 @@ import {
   saveMayHaveLanded,
 } from "../../utils/pendingSubmission";
 import { EXPENSE_CATEGORIES } from "../../constants/categories.js";
+import {
+  mayEndSeries,
+  seriesEndConfirmMessage,
+  SERIES_END_FALLBACK_MESSAGE,
+} from "../../utils/undoDelete";
 
 const CATEGORY_CONFIG = [
   { name: "Essentials", icon: Home },
@@ -355,28 +360,6 @@ const AddTransactionModal = ({
       return;
     }
 
-    // Setting a recurring charge that has come due to One-time can end its series (B3):
-    // the backend then removes the series' upcoming unpaid charges, so confirm first.
-    const wasRecurring =
-      isEditing &&
-      existingTransaction?.recurrence &&
-      existingTransaction.recurrence !== "none";
-    const existingDate =
-      existingTransaction?.date ||
-      existingTransaction?.due_date ||
-      existingTransaction?.payment_date;
-    if (
-      wasRecurring &&
-      recurrence === "none" &&
-      existingDate &&
-      existingDate <= todayStr &&
-      !window.confirm(
-        "End this recurring series? If this is its current charge, the series stops here and its upcoming unpaid charges are removed."
-      )
-    ) {
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const isExpense = type === "expense";
@@ -430,6 +413,21 @@ const AddTransactionModal = ({
             recurrence,
           };
 
+      // Setting a recurring row to One-time can end its series (B3, R4): the backend then removes the
+      // series' upcoming unpaid charges. A dry run of the same save says whether it does and how
+      // much it removes, which covers a series that has not started yet too.
+      if (isEditing && mayEndSeries(existingTransaction, recurrence)) {
+        let confirmMessage;
+        try {
+          const preview = await dashboardService.previewTransactionUpdate(payload);
+          confirmMessage = seriesEndConfirmMessage(preview, type);
+        } catch (previewErr) {
+          // The server refused it (e.g. 409): the save below shows why. No answer at all: ask anyway.
+          confirmMessage = previewErr?.response ? null : SERIES_END_FALLBACK_MESSAGE;
+        }
+        if (confirmMessage && !window.confirm(confirmMessage)) return;
+      }
+
       if (!isEditing) {
         const { pending, clientRef } = getClientRefForKey(
           pendingRef.current,
@@ -446,7 +444,9 @@ const AddTransactionModal = ({
         const removed = saved.removedUpcomingCount || 0;
         toast.success(
           removed > 0
-            ? `Series ended. Removed ${removed} upcoming charge${removed === 1 ? "" : "s"}.`
+            ? `Series ended. Removed ${removed} upcoming charge${removed === 1 ? "" : "s"} (${formatCurrency(
+                saved.removedUpcomingTotal || 0
+              )}).`
             : "Series ended."
         );
       }
