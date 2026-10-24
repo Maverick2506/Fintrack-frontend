@@ -17,6 +17,7 @@ import {
   HandCoins,
   PiggyBank,
   Wallet,
+  CircleStop,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
@@ -24,6 +25,8 @@ import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
+import { canEndSeries } from "../utils/endSeries";
+import { confirmAndEndSeries } from "../services/endSeriesAction";
 import SwipeableRow from "../components/Ledger/SwipeableRow";
 import CategoryIcon from "../components/Ledger/CategoryIcon";
 import LedgerFilterSheet from "../components/Ledger/LedgerFilterSheet";
@@ -61,6 +64,15 @@ const UPCOMING_DAY_TOP = "top-[100px]";
 // Pointer screens: rows end with three 40 px action buttons (gap 12 px, row padding 16 px), so
 // headers pad their totals by the same 148 px to line up with the row amounts
 const POINTER_TOTALS_PAD = "pr-[148px]";
+
+// An account name of up to 16 characters ("Checking", "Amex Cobalt") counts as short
+const SHORT_ACCOUNT_NAME = 16;
+const accountClass = (from, to, which) => {
+  if (!to) return "min-w-0";
+  const fromShort = from.name.length <= SHORT_ACCOUNT_NAME;
+  if (which === "from") return fromShort ? "shrink-0" : "min-w-0 max-w-[50%]";
+  return fromShort ? "min-w-0" : "min-w-0 max-w-[50%]";
+};
 
 const AccountName = ({ side, className = "min-w-0" }) => {
   const Glyph = ACCOUNT_GLYPHS[side.type] || Wallet;
@@ -351,6 +363,21 @@ const LedgerPage = () => {
     setIsUpcomingOpen((open) => !open);
   };
 
+  // One selected row of a recurring series (income and transfers too) can end its series
+  const selectedSeriesRow =
+    selectedIds.size === 1
+      ? visibleRows.find((r) => selectedIds.has(r.id) && canEndSeries(r)) || null
+      : null;
+
+  // End series through the shared dialog (dry-run numbers, then confirm), from the bar or a ⋯ menu
+  const handleEndSeries = async (row) => {
+    const result = await confirmAndEndSeries(row);
+    if (result) {
+      exitSelection();
+      loadLedger();
+    }
+  };
+
   const allVisibleSelected =
     visibleRows.length > 0 && visibleRows.every((r) => selectedIds.has(r.id));
   const selectedRows = visibleRows.filter((r) => selectedIds.has(r.id));
@@ -504,13 +531,13 @@ const LedgerPage = () => {
                 {row.type !== "transfer" && (
                   <span aria-hidden="true" className="shrink-0">·</span>
                 )}
-                {/* With "from → to", the from side ("Checking") keeps its width up to 40% and
-                    the other side truncates first */}
-                <AccountName side={from} className={to ? "shrink-0 max-w-[40%]" : "min-w-0"} />
+                {/* With "from → to": a short from side ("Checking", a card) stays whole and the
+                    to side truncates; when both are long, each gets at most half the line */}
+                <AccountName side={from} className={accountClass(from, to, "from")} />
                 {to && (
                   <>
                     <span aria-hidden="true" className="shrink-0">→</span>
-                    <AccountName side={to} />
+                    <AccountName side={to} className={accountClass(from, to, "to")} />
                   </>
                 )}
               </>
@@ -566,6 +593,7 @@ const LedgerPage = () => {
               canMarkPaid={!row.is_paid}
               onMarkPaid={() => handleMarkPaid(row)}
               onDelete={() => setDeleteTarget(row)}
+              onEndSeries={canEndSeries(row) ? () => handleEndSeries(row) : undefined}
             />
           </div>
         )}
@@ -1003,23 +1031,37 @@ const LedgerPage = () => {
               <CheckCheck size={16} />
             </button>
             <span className="flex-1" />
+            {selectedSeriesRow && (
+              <button
+                type="button"
+                onClick={() => handleEndSeries(selectedSeriesRow)}
+                aria-label="End series"
+                title="End series"
+                className="h-10 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/[0.1] hover:bg-white/[0.05] text-rose-300 text-xs font-medium cursor-pointer"
+              >
+                <CircleStop size={14} />
+                <span className="hidden min-[420px]:inline">End series</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleBulkMarkPaid}
+              aria-label="Mark selected paid"
               disabled={selectedUnpaidCount === 0 || isBulkMarking}
               className="h-10 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/25 text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Check size={14} />
-              <span>Paid</span>
+              <span className={selectedSeriesRow ? "hidden min-[420px]:inline" : undefined}>Paid</span>
             </button>
             <button
               type="button"
               onClick={() => setIsBulkDeleteModalOpen(true)}
               disabled={selectedRows.length === 0}
+              aria-label="Delete selected"
               className="h-10 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/25 text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Trash2 size={14} />
-              <span>Delete</span>
+              <span className={selectedSeriesRow ? "hidden min-[420px]:inline" : undefined}>Delete</span>
             </button>
           </div>
         </div>

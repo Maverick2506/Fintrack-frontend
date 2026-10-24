@@ -1,22 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, MoreHorizontal, Trash2 } from "lucide-react";
+import { Check, CircleStop, MoreHorizontal, Trash2 } from "lucide-react";
 
 const MENU_WIDTH = 176;
-const MENU_HEIGHT = 96;
+const ITEM_HEIGHT = 40;
 
 /**
- * Always-visible ⋯ button on a pointer-screen Ledger row: Mark paid (or received) and Delete.
+ * Always-visible ⋯ button on a pointer-screen Ledger row: Mark paid (or received), End series
+ * (rows of a recurring series, when onEndSeries is given) and Delete.
  * The menu is fixed-positioned so the list's rounded, clipped panel can't cut it off; it opens
  * upwards near the bottom of the window and closes on a click outside, Esc, scroll or resize.
  */
-const RowActionsMenu = ({ rowName, isIncome, canMarkPaid, onMarkPaid, onDelete }) => {
-  const [pos, setPos] = useState(null); // { top, left } while open
+const RowActionsMenu = ({ rowName, isIncome, canMarkPaid, onMarkPaid, onDelete, onEndSeries }) => {
+  const [pos, setPos] = useState(null); // { top, left, anchorTop } while open
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
 
   useEffect(() => {
     if (!pos) return undefined;
     const close = () => setPos(null);
+    // Only a scroll that actually moves the row closes the menu (a late scroll event from
+    // bringing the row into view must not)
+    const onScroll = () => {
+      const top = buttonRef.current?.getBoundingClientRect().top;
+      if (top === undefined || Math.abs(top - pos.anchorTop) > 2) close();
+    };
     const onPointerDown = (e) => {
       if (!menuRef.current?.contains(e.target) && !buttonRef.current?.contains(e.target)) close();
     };
@@ -30,13 +37,13 @@ const RowActionsMenu = ({ rowName, isIncome, canMarkPaid, onMarkPaid, onDelete }
     };
     document.addEventListener("mousedown", onPointerDown);
     window.addEventListener("keydown", onKey, true);
-    window.addEventListener("scroll", close, true);
+    window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", close);
     menuRef.current?.querySelector("button:not(:disabled)")?.focus();
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
       window.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", close);
     };
   }, [pos]);
@@ -47,10 +54,12 @@ const RowActionsMenu = ({ rowName, isIncome, canMarkPaid, onMarkPaid, onDelete }
       return;
     }
     const r = buttonRef.current.getBoundingClientRect();
-    const opensUp = r.bottom + MENU_HEIGHT + 8 > window.innerHeight;
+    const menuHeight = (onEndSeries ? 3 : 2) * ITEM_HEIGHT + 10;
+    const opensUp = r.bottom + menuHeight + 8 > window.innerHeight;
     setPos({
-      top: opensUp ? r.top - MENU_HEIGHT - 4 : r.bottom + 4,
+      top: opensUp ? r.top - menuHeight - 4 : r.bottom + 4,
       left: Math.max(8, r.right - MENU_WIDTH),
+      anchorTop: r.top,
     });
   };
 
@@ -97,6 +106,17 @@ const RowActionsMenu = ({ rowName, isIncome, canMarkPaid, onMarkPaid, onDelete }
             <Check size={14} className="text-emerald-400" />
             {canMarkPaid ? paidLabel : isIncome ? "Already received" : "Already paid"}
           </button>
+          {onEndSeries && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => choose(onEndSeries)}
+              className={`${item} text-zinc-200 hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-none`}
+            >
+              <CircleStop size={14} className="text-rose-300" />
+              End series
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"

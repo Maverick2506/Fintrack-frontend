@@ -8,6 +8,8 @@ import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import EditSavingsGoalModal from "../components/Modals/EditSavingsGoalModal";
 import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import dashboardService from "../services/dashboardService";
+import { confirmAndEndSeries } from "../services/endSeriesAction";
+import { recurringContributionLine } from "../utils/endSeries";
 
 const getRegBadge = (type) => {
   switch (type) {
@@ -43,6 +45,17 @@ const SavingsPage = () => {
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState(null);
   const [activeGoal, setActiveGoal] = useState(null);
+
+  // Ends a goal's contribution series through the shared End series dialog
+  const handleEndContributionSeries = async (goal) => {
+    const c = goal.recurringContribution;
+    const result = await confirmAndEndSeries({
+      recurringGroupId: c.recurringGroupId,
+      name: c.title,
+      type: c.type,
+    });
+    if (result) fetchGoals();
+  };
 
   const fetchGoals = async () => {
     setLoading(true);
@@ -260,6 +273,24 @@ const SavingsPage = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* A running contribution series: "Recurring: $50.00 every week · End" */}
+                  {recurringContributionLine(goal.recurringContribution) && (
+                    <div className="mb-4 -mt-2 flex items-center gap-1 text-xs text-zinc-400 min-w-0">
+                      <span className="truncate tabular-nums">
+                        {recurringContributionLine(goal.recurringContribution)}
+                      </span>
+                      <span aria-hidden="true" className="text-zinc-600">·</span>
+                      <button
+                        type="button"
+                        onClick={() => handleEndContributionSeries(goal)}
+                        className="min-h-10 min-w-10 px-2 -my-2 shrink-0 text-rose-400 hover:text-rose-300 font-medium cursor-pointer"
+                        aria-label={`End recurring contribution to ${goal.name}`}
+                      >
+                        End
+                      </button>
+                    </div>
+                  )}
 
                   {/* Registered Account Contribution Room Tracker (Phase J) */}
                   {goal.registeredType && (
