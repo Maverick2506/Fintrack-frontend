@@ -6,6 +6,7 @@ import {
   getLedgerAccountLabel,
   getLedgerAccountChip,
   getLedgerAccountLine,
+  getLedgerAccountText,
 } from "./accountRetire.js";
 
 function assert(condition, message) {
@@ -147,36 +148,52 @@ assert(getLedgerAccountChip({ type: "transfer", fromAccount: "Primary Checking",
 
 
 // "Category · Account" line in the Ledger
-const names = (line) => [line.from?.name, line.to?.name].filter(Boolean).join(" → ");
+const checking = { fromAccount: "Primary Checking", fromAccountType: "CHECKING" };
+const toChecking = { toAccount: "Primary Checking", toAccountType: "CHECKING" };
+const longGoal = "Emergency Fund for Car Repairs";
 assert(
-  names(getLedgerAccountLine({ type: "transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Amex", toAccountType: "CREDIT_CARD" })) === "Checking → Amex",
-  "A card payment reads Checking → Amex"
+  getLedgerAccountText({ type: "transfer", ...checking, toAccount: longGoal, toAccountType: "SAVINGS_GOAL" }) === `To ${longGoal}`,
+  "A goal contribution reads To <goal>, without Checking"
 );
 assert(
-  getLedgerAccountLine({ type: "expense", fromAccount: "Visa", fromAccountType: "CREDIT_CARD" }).from.type === "CREDIT_CARD",
-  "A card purchase shows the card, typed so it gets the card glyph"
+  getLedgerAccountText({ type: "expense", category: "Savings Transfer", ...checking, toAccount: "Trip", toAccountType: "SAVINGS_GOAL" }) === "To Trip",
+  "A goal contribution saved as an expense reads To <goal> after the category"
 );
+const contributionLine = getLedgerAccountLine({ type: "transfer", ...checking, toAccount: "Trip", toAccountType: "SAVINGS_GOAL" });
 assert(
-  names(getLedgerAccountLine({ type: "expense", fromAccount: "Primary Checking", fromAccountType: "CHECKING" })) === "Checking",
-  "A checking purchase shows Checking"
-);
-assert(
-  names(getLedgerAccountLine({ type: "income", toAccount: "Primary Checking", toAccountType: "CHECKING" })) === "Checking",
-  "Income shows the account it landed in"
-);
-assert(
-  names(getLedgerAccountLine({ type: "expense", category: "Savings Transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Trip", toAccountType: "SAVINGS_GOAL" })) === "Trip",
-  "A goal contribution saved as an expense shows only its goal, after the category"
-);
-assert(
-  getLedgerAccountLine({ type: "expense", category: "Savings Transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Trip", toAccountType: "SAVINGS_GOAL" }).from.type === "SAVINGS_GOAL",
+  contributionLine.from.type === "SAVINGS_GOAL" && contributionLine.to === null && contributionLine.direction === "to",
   "the goal keeps its type, so it gets the piggy bank glyph"
 );
 assert(
-  names(getLedgerAccountLine({ type: "transfer", fromAccount: "Primary Checking", fromAccountType: "CHECKING", toAccount: "Visa", toAccountType: "CREDIT_CARD", toAccountArchived: true })) === "Checking → Visa (archived)",
+  getLedgerAccountText({ type: "transfer", fromAccount: longGoal, fromAccountType: "SAVINGS_GOAL", ...toChecking }) === `From ${longGoal}`,
+  "A withdrawal from a goal (Move back to Checking) reads From <goal>"
+);
+assert(
+  getLedgerAccountText({ type: "transfer", ...checking, toAccount: "Amex", toAccountType: "CREDIT_CARD" }) === "To Amex",
+  "A card payment reads To <card>"
+);
+assert(
+  getLedgerAccountText({ type: "transfer", ...checking, toAccount: "Car loan", toAccountType: "DEBT" }) === "To Car loan",
+  "A debt payment reads To <debt>"
+);
+const cardToCard = getLedgerAccountLine({ type: "transfer", fromAccount: "Amex", fromAccountType: "CREDIT_CARD", toAccount: "Visa", toAccountType: "CREDIT_CARD" });
+assert(
+  getLedgerAccountText({ type: "transfer", fromAccount: "Amex", fromAccountType: "CREDIT_CARD", toAccount: "Visa", toAccountType: "CREDIT_CARD" }) === "Amex → Visa" &&
+    cardToCard.direction === null && cardToCard.to.name === "Visa",
+  "Card → card keeps both sides: Amex → Visa"
+);
+assert(
+  getLedgerAccountText({ type: "expense", fromAccount: "Visa", fromAccountType: "CREDIT_CARD" }) === "Visa" &&
+    getLedgerAccountLine({ type: "expense", fromAccount: "Visa", fromAccountType: "CREDIT_CARD" }).from.type === "CREDIT_CARD",
+  "A card purchase shows the card, typed so it gets the card glyph"
+);
+assert(getLedgerAccountText({ type: "expense", ...checking }) === "Checking", "A checking purchase shows Checking");
+assert(getLedgerAccountText({ type: "income", ...toChecking }) === "Checking", "Income shows the account it landed in");
+assert(
+  getLedgerAccountText({ type: "transfer", ...checking, toAccount: "Visa", toAccountType: "CREDIT_CARD", toAccountArchived: true }) === "To Visa (archived)",
   "An archived card keeps its name with (archived)"
 );
 const noAccounts = getLedgerAccountLine({ type: "expense" });
-assert(noAccounts.from === null && noAccounts.to === null, "A row without accounts shows no account");
+assert(noAccounts.from === null && noAccounts.to === null && getLedgerAccountText({ type: "expense" }) === "", "A row without accounts shows no account");
 
 console.log("All account archive tests passed.");

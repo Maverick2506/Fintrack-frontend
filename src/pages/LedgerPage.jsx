@@ -65,7 +65,7 @@ const UPCOMING_DAY_TOP = "top-[100px]";
 // headers pad their totals by the same 148 px to line up with the row amounts
 const POINTER_TOTALS_PAD = "pr-[148px]";
 
-// An account name of up to 16 characters ("Checking", "Amex Cobalt") counts as short
+// An account name of up to 16 characters ("Amex Cobalt") counts as short
 const SHORT_ACCOUNT_NAME = 16;
 const accountClass = (from, to, which) => {
   if (!to) return "min-w-0";
@@ -488,7 +488,7 @@ const LedgerPage = () => {
   const renderRowContent = (row, isUpcoming, showDate) => {
     const isSelected = selectedIds.has(row.id);
     const tag = getLedgerRowTag(row, todayStr);
-    const { from, to } = getLedgerAccountLine(row);
+    const { from, to, direction } = getLedgerAccountLine(row);
     const dim = isUpcoming && !isSelected ? "opacity-75" : "";
     return (
       <div
@@ -519,7 +519,8 @@ const LedgerPage = () => {
               </span>
             )}
           </div>
-          {/* "Category · Account"; a transfer reads "Checking → Amex", its ⇄ icon already says payment */}
+          {/* "Category · Account"; a transfer reads "To Amex" / "From Trip" (or "Amex → Visa" between
+              two non-Checking accounts), its ⇄ icon already says payment */}
           <div className="flex items-center gap-1 mt-0.5 text-xs text-zinc-500 min-w-0">
             {row.type !== "transfer" && (
               // The category keeps up to half the line and the account truncates first, so the
@@ -533,8 +534,11 @@ const LedgerPage = () => {
                 {row.type !== "transfer" && (
                   <span aria-hidden="true" className="shrink-0">·</span>
                 )}
-                {/* With "from → to": a short from side ("Checking", a card) stays whole and the
-                    to side truncates; when both are long, each gets at most half the line */}
+                {direction && (
+                  <span className="shrink-0">{direction === "to" ? "To" : "From"}</span>
+                )}
+                {/* With "from → to": a short from side (a card) stays whole and the to side
+                    truncates; when both are long, each gets at most half the line */}
                 <AccountName side={from} className={accountClass(from, to, "from")} />
                 {to && (
                   <>

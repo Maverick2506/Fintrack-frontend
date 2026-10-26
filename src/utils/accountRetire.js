@@ -151,18 +151,30 @@ const ledgerSide = (name, type, archived) => {
 };
 
 /**
- * The account part of a Ledger row's "Category · Account" line, as { from, to } where each side
- * is { name, type } or null. Transfers show both sides ("Checking → Amex"), goal contributions
- * saved as expenses show the goal, income shows where it landed, and purchases show the card or
- * Checking they were paid from.
+ * The account part of a Ledger row's "Category · Account" line, as { from, to, direction } where
+ * from and to are { name, type } or null. Checking is the home account, so a transfer to or from
+ * it names only the other account with a direction: "To Amex" when money leaves Checking (card,
+ * debt and goal payments, goal contributions saved as expenses), "From Trip" when it comes back
+ * (goal withdrawals, Move back to Checking). Only a transfer between two other accounts shows
+ * both sides ("Amex → Visa"). Income shows where it landed, and purchases the card or Checking
+ * they were paid from.
  */
 export const getLedgerAccountLine = (row) => {
   const from = ledgerSide(row?.fromAccount, row?.fromAccountType, row?.fromAccountArchived);
   const to = ledgerSide(row?.toAccount, row?.toAccountType, row?.toAccountArchived);
-  if (row?.type === "income") return { from: to || from, to: null };
-  // A goal contribution saved as an expense reads "Savings Transfer · Goal": it comes from
-  // Checking, and "Checking → Goal" after the category leaves no room on a phone
-  if (row?.type !== "transfer" && from?.type === "CHECKING" && to) return { from: to, to: null };
-  if (from && to) return { from, to };
-  return { from: from || to, to: null };
+  if (row?.type === "income") return { from: to || from, to: null, direction: null };
+  if (from && to) {
+    if (from.type === "CHECKING" && to.type !== "CHECKING") return { from: to, to: null, direction: "to" };
+    if (to.type === "CHECKING" && from.type !== "CHECKING") return { from, to: null, direction: "from" };
+    return { from, to, direction: null };
+  }
+  return { from: from || to, to: null, direction: null };
+};
+
+/** The account line as plain text, e.g. "To Amex", "From Trip", "Amex → Visa", "Checking". */
+export const getLedgerAccountText = (row) => {
+  const { from, to, direction } = getLedgerAccountLine(row);
+  if (!from) return "";
+  if (direction) return `${direction === "to" ? "To" : "From"} ${from.name}`;
+  return to ? `${from.name} → ${to.name}` : from.name;
 };
