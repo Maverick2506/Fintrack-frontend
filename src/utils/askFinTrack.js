@@ -21,11 +21,34 @@ export const isAskFinTrackOpen = () => isOpen;
 const isMessage = (m) =>
   m && (m.role === "user" || m.role === "model") && typeof m.text === "string";
 
+export const MAX_PROPOSALS = 5;
+
+/**
+ * Drafts from the proposeTransaction tool, shown as "Review & save" cards. Anything that isn't a
+ * { quickAddText, summary } pair of strings is dropped (they come from the server or sessionStorage).
+ */
+export const cleanProposals = (list) =>
+  (Array.isArray(list) ? list : [])
+    .filter((p) => p && typeof p.quickAddText === "string" && p.quickAddText.trim())
+    .slice(0, MAX_PROPOSALS)
+    .map((p) => ({
+      quickAddText: p.quickAddText.trim().slice(0, 200),
+      summary: typeof p.summary === "string" ? p.summary.slice(0, 300) : "",
+    }));
+
+const withCleanProposals = (m) => {
+  const proposals = cleanProposals(m.proposals);
+  const { proposals: _dropped, ...rest } = m;
+  return proposals.length ? { ...rest, proposals } : rest;
+};
+
 /** The conversation kept for this tab, or [] when there is none or it cannot be read. */
 export const loadAskHistory = (storage) => {
   try {
     const parsed = JSON.parse(storage?.getItem(ASK_HISTORY_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed.filter(isMessage).slice(-ASK_HISTORY_MAX) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter(isMessage).slice(-ASK_HISTORY_MAX).map(withCleanProposals)
+      : [];
   } catch {
     return [];
   }

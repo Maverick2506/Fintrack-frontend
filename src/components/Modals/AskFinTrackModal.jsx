@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   X,
   Sparkles,
@@ -9,10 +11,15 @@ import {
   TrendingDown,
   CreditCard,
   ShieldCheck,
+  ArrowRight,
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import useEscapeClose from "../../hooks/useEscapeClose";
-import { loadAskHistory, saveAskHistory } from "../../utils/askFinTrack";
+import { loadAskHistory, saveAskHistory, cleanProposals } from "../../utils/askFinTrack";
+import { buildQuickAddLink } from "../../utils/quickAddLink";
+import { formatNumber } from "../../utils/formatUtils";
+
+const AI_USAGE_KEY = ["ai-usage"];
 
 const SUGGESTED_PROMPTS = [
   {
@@ -78,6 +85,16 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Today's AI requests against the daily cap, and tokens used
+  const { data: usage } = useQuery({
+    queryKey: AI_USAGE_KEY,
+    queryFn: () => dashboardService.fetchAiUsage(),
+    enabled: isOpen,
+    staleTime: 30 * 1000,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -116,10 +133,12 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
 
       const res = await dashboardService.chatAdvisor(textToSend, apiHistory);
       const replyText = res?.reply || "I didn't receive a response. Please try again.";
+      // Drafted transactions: shown as cards that open Quick Add; the chat never saves anything
+      const proposals = cleanProposals(res?.proposals);
 
       setMessages((prev) => [
         ...prev,
-        { role: "model", text: replyText },
+        { role: "model", text: replyText, ...(proposals.length ? { proposals } : {}) },
       ]);
     } catch (err) {
       const errMsg =
@@ -135,7 +154,13 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
       ]);
     } finally {
       setIsLoading(false);
+      queryClient.invalidateQueries({ queryKey: AI_USAGE_KEY });
     }
+  };
+
+  const handleReview = (proposal) => {
+    navigate(buildQuickAddLink(proposal.quickAddText));
+    onClose();
   };
 
   const handleClear = () => {
@@ -250,6 +275,31 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
                 >
                   {m.role === "user" ? m.text : renderMarkdown(m.text)}
                 </div>
+                {m.role === "model" &&
+                  m.proposals?.map((p, pIdx) => (
+                    <div
+                      key={pIdx}
+                      className="mt-2 w-full max-w-[88%] rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3 text-xs"
+                    >
+                      <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">
+                        Draft · not saved
+                      </p>
+                      {p.summary && (
+                        <p className="mt-1 text-zinc-200 leading-relaxed break-words">{p.summary}</p>
+                      )}
+                      <p className="mt-1.5 font-mono text-[11px] text-zinc-400 break-all">
+                        {p.quickAddText}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleReview(p)}
+                        className="mt-2.5 w-full min-h-[40px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span>Review &amp; save</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  ))}
                 <span className="text-[10px] text-zinc-600 mt-1 px-1">
                   {m.role === "user" ? "You" : "FinTrack Advisor"}
                 </span>
@@ -296,6 +346,12 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
           <p className="text-[10px] text-center text-zinc-600">
             This chat is kept until you close the tab or sign out.
           </p>
+          {usage && (
+            <p className="text-[10px] text-center text-zinc-600">
+              Today: {usage.calls} of {usage.cap} AI requests ·{" "}
+              {formatNumber(usage.totalTokens, { maximumFractionDigits: 0 })} tokens
+            </p>
+          )}
         </div>
       </div>
     </div>

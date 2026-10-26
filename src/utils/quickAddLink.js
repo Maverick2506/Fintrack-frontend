@@ -18,6 +18,17 @@ export const parseQuickAddTextParam = (search) => {
     .slice(0, MAX_LINK_LINES);
 };
 
+// "/quick?text=12.50%20lunch%20visa": the Quick Add page with the text filled in, never saved
+export const buildQuickAddLink = (text) => {
+  const lines = String(text || "")
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim().slice(0, MAX_LINE_LENGTH))
+    .filter(Boolean)
+    .slice(0, MAX_LINK_LINES);
+  if (!lines.length) return "/quick";
+  return `/quick?${new URLSearchParams({ [TEXT_PARAM]: lines.join("\n") }).toString()}`;
+};
+
 // The same query string without the text parameter ("" when nothing is left)
 export const withoutTextParam = (search) => {
   const params = new URLSearchParams(search || "");

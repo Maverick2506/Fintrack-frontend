@@ -275,12 +275,19 @@ const dashboardService = {
     return handleRequest(
       api.post("/categorize-expense", { name }),
       null,
-      false
+      false,
+      // Over the daily AI cap, suggestions just stop; no toast on every keystroke
+      (error) => error.response?.status !== 429
     );
   },
 
   chatAdvisor: async (message, history = []) => {
     return api.post("/chat-advisor", { message, history }).then((res) => res.data);
+  },
+
+  // Today's AI requests (against the daily cap) and tokens
+  fetchAiUsage: async () => {
+    return api.get("/settings/ai-usage").then((res) => res.data);
   },
 
   fetchHealth: async () => {
