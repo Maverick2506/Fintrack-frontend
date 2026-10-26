@@ -7,6 +7,7 @@ import {
   getLedgerAccountChip,
   getLedgerAccountLine,
   getLedgerAccountText,
+  ledgerRowMatchesSearch,
 } from "./accountRetire.js";
 
 function assert(condition, message) {
@@ -195,5 +196,16 @@ assert(
 );
 const noAccounts = getLedgerAccountLine({ type: "expense" });
 assert(noAccounts.from === null && noAccounts.to === null && getLedgerAccountText({ type: "expense" }) === "", "A row without accounts shows no account");
+
+// Ledger search: Checking still finds rows that no longer show it
+const cardPayment = { type: "transfer", name: "Payment for Amex", category: "Credit Card Payment", ...checking, toAccount: "Amex", toAccountType: "CREDIT_CARD" };
+const goalWithdrawal = { type: "transfer", name: "Move back to Checking", fromAccount: "Trip", fromAccountType: "SAVINGS_GOAL", ...toChecking };
+const cardToCardRow = { type: "transfer", name: "Balance transfer", fromAccount: "Amex", fromAccountType: "CREDIT_CARD", toAccount: "Visa", toAccountType: "CREDIT_CARD" };
+assert(ledgerRowMatchesSearch(cardPayment, "checking"), "Searching Checking finds a card payment that reads To Amex");
+assert(ledgerRowMatchesSearch({ ...goalWithdrawal, name: "Trip refund" }, "Checking"), "Searching Checking finds a goal withdrawal that reads From Trip");
+assert(ledgerRowMatchesSearch(cardPayment, "primary checking"), "The full account name matches too");
+assert(!ledgerRowMatchesSearch(cardToCardRow, "checking"), "Card → card does not match Checking");
+assert(ledgerRowMatchesSearch(cardToCardRow, "visa") && ledgerRowMatchesSearch(cardPayment, "to amex"), "Account names and the shown label match");
+assert(ledgerRowMatchesSearch(cardPayment, "") && !ledgerRowMatchesSearch(cardPayment, "groceries"), "Empty search matches; unrelated text does not");
 
 console.log("All account archive tests passed.");

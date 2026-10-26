@@ -34,7 +34,7 @@ import RowActionsMenu from "../components/Ledger/RowActionsMenu";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
 import useMediaQuery from "../hooks/useMediaQuery";
 import useEscapeClose from "../hooks/useEscapeClose";
-import { getLedgerAccountLine } from "../utils/accountRetire";
+import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 import {
   groupLedgerRows,
@@ -297,16 +297,8 @@ const LedgerPage = () => {
       data = data.filter((r) => r.category === categoryFilter);
     if (monthFilter !== "all")
       data = data.filter((r) => String(r.date).startsWith(monthFilter));
-    if (search) {
-      // Account names count too (card, debt, goal, Checking), since they show on the row
-      const q = search.toLowerCase();
-      data = data.filter((r) => {
-        const { from, to } = getLedgerAccountLine(r);
-        return [r.name, r.category, from?.name, to?.name].some(
-          (text) => text && text.toLowerCase().includes(q)
-        );
-      });
-    }
+    // Account names count too (card, debt, goal and Checking, even when the row shows "To Amex")
+    if (search) data = data.filter((r) => ledgerRowMatchesSearch(r, search));
     return [...data].sort((a, b) => {
       let va = a[sortKey],
         vb = b[sortKey];

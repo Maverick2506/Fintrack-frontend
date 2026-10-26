@@ -178,3 +178,20 @@ export const getLedgerAccountText = (row) => {
   if (direction) return `${direction === "to" ? "To" : "From"} ${from.name}`;
   return to ? `${from.name} → ${to.name}` : from.name;
 };
+
+/**
+ * True when a Ledger row matches the search text: its name, category or either account. Checking
+ * counts even when the row names only the other side ("To Amex"), so "checking" finds payments.
+ */
+export const ledgerRowMatchesSearch = (row, query) => {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return true;
+  const sides = [
+    ledgerSide(row?.fromAccount, row?.fromAccountType, row?.fromAccountArchived),
+    ledgerSide(row?.toAccount, row?.toAccountType, row?.toAccountArchived),
+  ];
+  const texts = [row?.name, row?.category, row?.fromAccount, row?.toAccount, getLedgerAccountText(row)];
+  return [...texts, ...sides.map((side) => side?.name)].some(
+    (text) => text && String(text).toLowerCase().includes(q)
+  );
+};
