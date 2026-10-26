@@ -1046,6 +1046,8 @@ const LedgerPage = () => {
                 className="h-10 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/[0.1] hover:bg-white/[0.05] text-rose-300 text-xs font-medium cursor-pointer"
               >
                 <CircleStop size={14} />
+                {/* The stop icon alone is hard to read, so narrow phones keep a short "End" */}
+                <span className="min-[420px]:hidden">End</span>
                 <span className="hidden min-[420px]:inline">End series</span>
               </button>
             )}
