@@ -117,7 +117,8 @@ const NOISE = new Set(["pos", "purchase", "payment", "debit", "credit", "interac
 
 /**
  * A starting point for "Make a rule from this": the first two merchant words of a bank description,
- * in lower case, without store numbers or reference codes. "TIM HORTONS #0001" -> "tim hortons".
+ * in lower case, without store numbers, reference codes or words under 3 letters (a rule for "td"
+ * would also catch "LTD"). "TIM HORTONS #0001" -> "tim hortons".
  */
 export const suggestRuleMatch = (title) => {
   const words = String(title || "")
@@ -125,8 +126,11 @@ export const suggestRuleMatch = (title) => {
     .replace(/[*#]/g, " ")
     .split(/\s+/)
     .map((w) => w.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ""))
-    .filter((w) => w && /^[a-z][a-z'&.-]*$/.test(w) && !NOISE.has(w));
-  return words.slice(0, 2).join(" ") || String(title || "").trim().toLowerCase().slice(0, 40);
+    .filter((w) => w.length >= 3 && /^[a-z][a-z'&.-]*$/.test(w));
+  const merchant = words.filter((w) => !NOISE.has(w));
+  // Only terminal words ("VISA PAYMENT"): keep them rather than the whole line with its numbers
+  const picked = (merchant.length ? merchant : words).slice(0, 2).join(" ");
+  return picked || String(title || "").trim().toLowerCase().slice(0, 40);
 };
 
 /** Label for a column choice: its name and the first value under it, e.g. "Description 1 · TIM HORTONS" */

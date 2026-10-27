@@ -71,14 +71,19 @@ const ReviewPage = () => {
         <ArrowLeft size={14} />
         <span>Ledger</span>
       </Link>
-      <div className="flex items-center gap-2 mt-1">
-        <Inbox size={18} className="text-zinc-400" />
-        <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">Review new</h1>
+      <div className="flex items-center justify-between gap-3 mt-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <Inbox size={18} className="text-zinc-400 shrink-0" />
+          <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">Review new</h1>
+        </div>
+        <Link to="/rules" className="btn-secondary h-10 px-3 shrink-0">
+          <Wand2 size={14} />
+          <span>Rules</span>
+        </Link>
       </div>
       <p className="text-xs text-zinc-500 mt-1 mb-6">
         Rows from your bank imports. They already count in your balances and the Ledger; confirm
-        each once it looks right. <Link to="/rules" className="text-zinc-300 underline underline-offset-2">Rules</Link>{" "}
-        set categories for next time.
+        each once it looks right. Rules set categories for next time.
       </p>
 
       {isLoading ? (
@@ -195,7 +200,7 @@ const ReviewPage = () => {
         onClose={() => setRuleFor(null)}
         initial={ruleFor?.initial}
         sampleTitle={ruleFor?.row?.name}
-        accounts={accounts}
+        accounts={accounts.filter((a) => a.type === "CREDIT_CARD")}
         onSaved={(saved) => applyNewRule(saved)}
       />
     </div>

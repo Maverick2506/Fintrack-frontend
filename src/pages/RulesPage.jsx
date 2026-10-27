@@ -129,7 +129,7 @@ const RulesPage = () => {
         isOpen={Boolean(editing)}
         onClose={() => setEditing(null)}
         initial={editing}
-        accounts={accounts}
+        accounts={accounts.filter((a) => a.type === "CREDIT_CARD")}
       />
       <ConfirmDeleteModal
         isOpen={Boolean(deleting)}

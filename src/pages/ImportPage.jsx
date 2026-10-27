@@ -73,7 +73,7 @@ const ImportPage = () => {
       setEdits({});
       setShowSkipped(false);
       // A guessed mapping is worth a look; a saved one stays folded away
-      setMappingOpen(data.mappingSource === "suggested");
+      setMappingOpen(data.mappingSource === "suggested" || data.mappingSource === "savedDidNotFit");
     } catch (err) {
       const body = err?.response?.data;
       setError(body?.error || "Could not read the file.");
@@ -135,7 +135,8 @@ const ImportPage = () => {
     try {
       const res = await dashboardService.commitImport({
         accountId,
-        mapping,
+        // The mapping these rows were read with, not unpreviewed edits in the Columns form
+        mapping: preview.mapping,
         rows: buildCommitRows(preview.rows, edits),
       });
       setResult(res);
@@ -185,7 +186,7 @@ const ImportPage = () => {
             <div className="min-w-0">
               <p className="text-sm font-medium text-zinc-100">Imported</p>
               <p className="text-xs text-zinc-400 mt-0.5">
-                {result.created} added · {result.matched} bills marked paid · {result.skipped} skipped
+                {result.created} added · {result.matched} matched to rows already in the app · {result.skipped} skipped
               </p>
             </div>
           </div>
@@ -286,6 +287,12 @@ const ImportPage = () => {
               {mappingOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </span>
           </button>
+          {preview?.mappingSource === "savedDidNotFit" && (
+            <p className="text-[11px] text-amber-300/90 mb-2">
+              The columns saved from your last import didn't fit this file, so these are a fresh guess. Check them;
+              they're saved when you import.
+            </p>
+          )}
           {mappingOpen && (
             <div className="glass-panel p-3 sm:p-4 space-y-3">
               <label className="flex items-center gap-3 min-h-10 cursor-pointer">
@@ -451,7 +458,7 @@ const ImportPage = () => {
           <h2 className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider mb-2">4. Preview</h2>
           <div className="grid grid-cols-3 gap-2 mb-3">
             {[
-              { label: "Matched", value: counts.matched, hint: "bills marked paid", tone: "text-emerald-300" },
+              { label: "Matched", value: counts.matched, hint: "already in the app", tone: "text-emerald-300" },
               { label: "New", value: counts.new, hint: "will be added", tone: "text-sky-300" },
               { label: "Skipped", value: counts.skipped, hint: "not imported", tone: "text-zinc-300" },
             ].map((c) => (
@@ -490,7 +497,7 @@ const ImportPage = () => {
               const outcome = rowOutcome(row, edit);
               const badge = STATUS_BADGES[outcome];
               const isOut = row.direction === "out";
-              const canPickCategory = outcome === "new" && isOut;
+              const canPickCategory = outcome === "new" && isOut && !row.toCard;
               return (
                 <li key={row.line} className={`px-3 py-2.5 ${outcome === "skip" ? "opacity-60" : ""}`}>
                   <div className="flex items-start gap-3">
@@ -515,8 +522,13 @@ const ImportPage = () => {
 
                   {row.status === "match" && (
                     <p className={`text-[11px] mt-1 ${edit.unmatch ? "text-zinc-500 line-through" : "text-emerald-300/90"}`}>
-                      Marks “{row.match.title}” ({formatShortDate(row.match.date)}) paid
+                      {row.match.alreadyRecorded
+                        ? `Same payment as “${row.match.title}” (${formatShortDate(row.match.date)}), already recorded`
+                        : `Marks “${row.match.title}” (${formatShortDate(row.match.date)}) paid`}
                     </p>
+                  )}
+                  {outcome === "new" && row.toCard && (
+                    <p className="text-[11px] mt-1 text-zinc-400">Card payment to {row.toCard.name}, not spending</p>
                   )}
 
                   {row.status !== "duplicate" && (

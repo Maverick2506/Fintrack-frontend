@@ -9,8 +9,8 @@ const selectClass =
 
 /**
  * Add or edit a rule: titles containing `match` get this category and/or account.
- * initial: { id?, match, category, accountId, priority }. accounts: checking and cards
- * (GET /import/accounts). onSaved gets the saved rule.
+ * initial: { id?, match, category, accountId, priority }. accounts: the cards a rule can pick
+ * (anything without a card is already on Checking). onSaved gets the saved rule.
  */
 const RuleFormModal = ({ isOpen, onClose, initial, accounts = [], onSaved, sampleTitle }) => {
   const [match, setMatch] = useState("");
@@ -109,6 +109,9 @@ const RuleFormModal = ({ isOpen, onClose, initial, accounts = [], onSaved, sampl
           />
           <span className="block text-[11px] text-zinc-500 mt-1">
             Upper and lower case don't matter.
+            {trimmed.length > 0 && trimmed.length < 3 && (
+              <span className="text-amber-300/90"> Very short text matches many titles.</span>
+            )}
             {sampleMatches === false && (
               <span className="text-amber-300/90"> “{sampleTitle}” doesn't contain this.</span>
             )}
@@ -126,7 +129,7 @@ const RuleFormModal = ({ isOpen, onClose, initial, accounts = [], onSaved, sampl
             </select>
           </label>
           <label className="block min-w-0">
-            <span className="block text-xs text-zinc-300 mb-1.5">Paid with</span>
+            <span className="block text-xs text-zinc-300 mb-1.5">Paid with card</span>
             <select className={selectClass} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
               <option value="">Don't change</option>
               {accounts.map((a) => (

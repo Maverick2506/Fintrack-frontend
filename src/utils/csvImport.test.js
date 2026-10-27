@@ -71,8 +71,9 @@ assert(applyRulesToQuickAdd(qaIncome, rules, cards, "2026-04-15") === qaIncome, 
 
 assert(suggestRuleMatch("TIM HORTONS #0001") === "tim hortons", "rule text from a bank description drops the store number");
 assert(suggestRuleMatch("POS PURCHASE GROCERY MART 0042 TORONTO") === "grocery mart", "terminal words are dropped");
-assert(suggestRuleMatch("SQ *COFFEE BAR") === "sq coffee", "punctuation is dropped");
+assert(suggestRuleMatch("SQ *COFFEE BAR") === "coffee bar", "punctuation and the 2-letter SQ prefix are dropped");
 assert(suggestRuleMatch("7-11") === "7-11", "falls back to the title when no word is left");
+assert(suggestRuleMatch("TD VISA PAYMENT 31793") === "visa payment", "words under 3 letters are left out (\"td\" would match LTD)");
 
 assert(columnOptionLabel(["Date", "Description"], [["Date", "Description"], ["9/1/2026", "TIM"]], true, 1) === "Description · TIM", "column label shows the first value");
 assert(columnOptionLabel(["Column 1"], [["9/1/2026"]], false, 0) === "Column 1 · 9/1/2026", "no header: Column N and its value");
