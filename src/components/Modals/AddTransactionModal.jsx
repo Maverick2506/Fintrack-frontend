@@ -41,6 +41,7 @@ import {
   oneTimeEditToast,
   SERIES_END_FALLBACK_MESSAGE,
 } from "../../utils/undoDelete";
+import { getTorontoTodayStr, addDaysToDateStr } from "../../utils/dateUtils";
 
 const CATEGORY_CONFIG = [
   { name: "Essentials", icon: Home },
@@ -61,22 +62,8 @@ const RECURRENCE_OPTIONS = [
   { value: "yearly", label: "Yearly", sub: "Once a year" },
 ];
 
-const getLocalTodayStr = () => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-};
-
-const getPastDateStr = (daysAgo) => {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
+// "Today" and "1-2 days ago" are Toronto days, whatever time zone the device is in
+const getPastDateStr = (daysAgo) => addDaysToDateStr(getTorontoTodayStr(), -daysAgo);
 
 const AddTransactionModal = ({
   isOpen,
@@ -85,7 +72,7 @@ const AddTransactionModal = ({
   onDelete,
   existingTransaction,
 }) => {
-  const todayStr = getLocalTodayStr();
+  const todayStr = getTorontoTodayStr();
   const [amount, setAmount] = useState("");
   const [name, setName] = useState("");
   const [type, setType] = useState("expense");

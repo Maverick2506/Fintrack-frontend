@@ -47,9 +47,10 @@ assert(getClientRef(a.pending, parse("  7 coffee  "), makeId).clientRef === a.cl
 assert(getClientRef(a.pending, parse("7.00 Coffee"), makeId).clientRef === a.clientRef, "\"7\" vs \"7.00\" and letter case are the same entry");
 
 console.log("\n--- Test 5: Retrying after midnight is still the same save ---");
-// The parser's "today" is the device's local day
-const beforeMidnight = new Date(2026, 9, 22, 23, 55);
-const afterMidnight = new Date(2026, 9, 23, 0, 5);
+// The parser's "today" is Toronto's day; here the phone is in London, where both moments are Oct 23
+process.env.TZ = "Europe/London";
+const beforeMidnight = new Date("2026-10-23T03:55:00Z"); // Oct 22, 23:55 Toronto
+const afterMidnight = new Date("2026-10-23T04:05:00Z"); // Oct 23, 00:05 Toronto
 const late = getClientRef(null, parse("4.50 coffee", beforeMidnight), makeId);
 assert(parse("4.50 coffee", beforeMidnight).date !== parse("4.50 coffee", afterMidnight).date, "Test setup: the two times fall on different days");
 assert(getClientRef(late.pending, parse("4.50 coffee", afterMidnight), makeId).clientRef === late.clientRef, "Entry with no date typed keeps its clientRef across midnight");
