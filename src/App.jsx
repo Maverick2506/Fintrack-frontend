@@ -17,6 +17,9 @@ const LedgerPage = lazy(() => import("./pages/LedgerPage"));
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage"));
 const QuickAddPage = lazy(() => import("./pages/QuickAddPage"));
 const TrashPage = lazy(() => import("./pages/TrashPage"));
+const ImportPage = lazy(() => import("./pages/ImportPage"));
+const ReviewPage = lazy(() => import("./pages/ReviewPage"));
+const RulesPage = lazy(() => import("./pages/RulesPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 
 const PageFallback = () => (
@@ -102,6 +105,30 @@ function AppLayout() {
               element={
                 <ProtectedRoute>
                   <TrashPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/import"
+              element={
+                <ProtectedRoute>
+                  <ImportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/review"
+              element={
+                <ProtectedRoute>
+                  <ReviewPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rules"
+              element={
+                <ProtectedRoute>
+                  <RulesPage />
                 </ProtectedRoute>
               }
             />

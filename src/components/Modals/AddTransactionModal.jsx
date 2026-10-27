@@ -83,7 +83,7 @@ const AddTransactionModal = ({
   const [manualPaidOverride, setManualPaidOverride] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [hasManuallySelectedCategory, setHasManuallySelectedCategory] = useState(false);
-  const [suggestedSource, setSuggestedSource] = useState(null); // "history" | "ai" | null
+  const [suggestedSource, setSuggestedSource] = useState(null); // "rule" | "history" | "ai" | null
   const [recurrence, setRecurrence] = useState("none");
   const [selectedCard, setSelectedCard] = useState("");
   const [selectedTargetAccount, setSelectedTargetAccount] = useState("");
@@ -98,6 +98,8 @@ const AddTransactionModal = ({
   // Keeps the same clientRef when the same new transaction is retried (e.g. after a timeout
   // during a cold start), so the server returns the save that already landed instead of a duplicate
   const pendingRef = useRef(null);
+  // Set once the user picks how it was paid, so a rule's card no longer replaces their choice
+  const cardPickedRef = useRef(false);
 
   const { data: creditCards = [] } = useQuery({
     queryKey: ["creditCards"],
@@ -120,6 +122,7 @@ const AddTransactionModal = ({
   useEffect(() => {
     if (isOpen) {
       pendingRef.current = null;
+      cardPickedRef.current = false;
       setOpenDropdown(null);
       setManualPaidOverride(false);
       setManualAlreadyInBalanceOverride(false);
@@ -255,6 +258,16 @@ const AddTransactionModal = ({
         ) {
           setCategory(res.category);
           setSuggestedSource(res.source || "ai");
+          // A rule can also say which card pays for it
+          if (
+            res.source === "rule" &&
+            res.accountId &&
+            !cardPickedRef.current &&
+            !selectedTargetAccount &&
+            creditCards.some((c) => c.id === res.accountId)
+          ) {
+            setSelectedCard(res.accountId);
+          }
         }
       } catch (err) {
         console.error("Debounced categorize error:", err);
@@ -267,6 +280,8 @@ const AddTransactionModal = ({
       isMounted = false;
       clearTimeout(timer);
     };
+    // creditCards and selectedTargetAccount are read when the suggestion lands, not reasons to ask again
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, type, isOpen, isEditing, hasManuallySelectedCategory]);
 
   const handleSuggestCategory = async () => {
@@ -636,6 +651,11 @@ const AddTransactionModal = ({
                     <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                       Category
                     </span>
+                    {suggestedSource === "rule" && (
+                      <span className="text-[10px] text-violet-300 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20 font-medium">
+                        From your rule
+                      </span>
+                    )}
                     {suggestedSource === "history" && (
                       <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-medium">
                         Matched from history
@@ -989,6 +1009,7 @@ const AddTransactionModal = ({
                       <button
                         type="button"
                         onClick={() => {
+                          cardPickedRef.current = true;
                           setSelectedCard("");
                           setOpenDropdown(null);
                         }}
@@ -1027,6 +1048,7 @@ const AddTransactionModal = ({
                               key={card.id}
                               type="button"
                               onClick={() => {
+                                cardPickedRef.current = true;
                                 setSelectedCard(card.id);
                                 setOpenDropdown(null);
                                 if (!manualAlreadyInBalanceOverride && dueDate < todayStr) {
