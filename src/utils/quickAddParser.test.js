@@ -127,6 +127,12 @@ onPhoneIn("Europe/London", () => {
   assert.strictEqual(parseAt("50 rent due sat", fridayEvening).date, "2026-10-31", '[PASS] "due sat" is tomorrow in Toronto, Oct 31');
   assert.strictEqual(parseAt("80 phone due thursday", fridayEvening).date, "2026-11-05", '[PASS] "due thursday" is Nov 5');
 });
+// Fri Oct 30, 00:30 in Toronto is still Thursday evening in Vancouver
+const fridayJustAfterMidnight = new Date("2026-10-30T04:30:00Z");
+onPhoneIn("America/Vancouver", () => {
+  assert.strictEqual(fridayJustAfterMidnight.getDay(), 4, "[setup] the phone in Vancouver still shows Thursday");
+  assert.strictEqual(parseAt("120 hydro due fri", fridayJustAfterMidnight).date, "2026-11-06", '[PASS] Vancouver, Fri 00:30 Toronto: "due fri" is next Friday, Nov 6');
+});
 
 console.log("\n--- Test 11: \"due 01/05\" in late December rolls to next year ---");
 const newYearsEve = new Date("2027-01-01T04:30:00Z"); // Thu Dec 31 2026, 23:30 Toronto

@@ -167,7 +167,7 @@ export const parseQuickAdd = (input = "", creditCards = [], today = new Date()) 
   let date = todayStr;
   let is_paid = true;
   let dateMatched = false;
-  // Stable label for the date as typed: "today"/"tomorrow" stay relative, typed dates are absolute
+  // Stable label for the date as typed: "today"/"tomorrow"/weekdays stay relative, typed dates are absolute
   let dateKey = "today";
 
   // Patterns: "due YYYY-MM-DD", "due MM/DD", "due MM-DD", "due tomorrow", "due today", "on MM/DD"
@@ -211,7 +211,8 @@ export const parseQuickAdd = (input = "", creditCards = [], today = new Date()) 
     date = addDaysToDateStr(todayStr, ahead);
     is_paid = false;
     dateMatched = true;
-    dateKey = date;
+    // Keyed by the weekday, so "due fri" retried just after midnight on Friday is still the same save
+    dateKey = `due ${WEEKDAYS[target]}`;
     text = text.replace(dueWeekdayMatch[0], " ").trim();
   } else if (dueTodayMatch) {
     date = todayStr;

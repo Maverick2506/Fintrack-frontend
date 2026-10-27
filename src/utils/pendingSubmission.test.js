@@ -48,6 +48,7 @@ assert(getClientRef(a.pending, parse("7.00 Coffee"), makeId).clientRef === a.cli
 
 console.log("\n--- Test 5: Retrying after midnight is still the same save ---");
 // The parser's "today" is Toronto's day; here the phone is in London, where both moments are Oct 23
+const savedTZ = process.env.TZ;
 process.env.TZ = "Europe/London";
 const beforeMidnight = new Date("2026-10-23T03:55:00Z"); // Oct 22, 23:55 Toronto
 const afterMidnight = new Date("2026-10-23T04:05:00Z"); // Oct 23, 00:05 Toronto
@@ -60,6 +61,15 @@ for (const text of ["120 hydro due today", "120 hydro due tomorrow"]) {
 }
 const due = getClientRef(null, parse("120 hydro due 11/05", beforeMidnight), makeId);
 assert(getClientRef(due.pending, parse("120 hydro due 11/06", beforeMidnight), makeId).clientRef !== due.clientRef, "A different typed due date is a different save");
+// Thu Oct 29, 23:55 -> Fri Oct 30, 00:05 Toronto: "due fri" moves from Oct 30 to Nov 6, but it is the same save
+const thuNight = new Date("2026-10-30T03:55:00Z");
+const friMorning = new Date("2026-10-30T04:05:00Z");
+assert(parse("120 hydro due fri", thuNight).date === "2026-10-30" && parse("120 hydro due fri", friMorning).date === "2026-11-06", "Test setup: \"due fri\" is Oct 30 before midnight and Nov 6 after");
+const fri = getClientRef(null, parse("120 hydro due fri", thuNight), makeId);
+assert(getClientRef(fri.pending, parse("120 hydro due friday", friMorning), makeId).clientRef === fri.clientRef, "\"due fri\" keeps its clientRef across Thursday midnight");
+assert(getClientRef(fri.pending, parse("120 hydro due sat", thuNight), makeId).clientRef !== fri.clientRef, "A different weekday is a different save");
+if (savedTZ === undefined) delete process.env.TZ;
+else process.env.TZ = savedTZ;
 
 console.log("\n--- Test 6: Add Transaction keys on its own payload ---");
 const payload = (name, amount) => JSON.stringify({ name, amount, due_date: "2026-10-23" });

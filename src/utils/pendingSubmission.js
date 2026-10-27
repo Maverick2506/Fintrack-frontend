@@ -11,7 +11,7 @@
  *
  * "Same entry" is judged on the parsed fields, not the raw text, so "7 coffee" retyped as
  * "7.00 Coffee " still counts as the same save. Relative dates (no date typed, "due today",
- * "due tomorrow") are keyed by the word, not the day, so a retry after midnight is still the same save
+ * "due tomorrow", "due fri") are keyed by the word, not the day, so a retry after midnight is still the same save
  * (the server keeps the date of the first save). Typed dates like "due 11/05" are keyed by the date.
  */
 
