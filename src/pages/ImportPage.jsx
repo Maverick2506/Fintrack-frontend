@@ -228,7 +228,13 @@ const ImportPage = () => {
         <SyncStatementModal
           account={{ ...result.account, balance: result.balance }}
           onClose={() => setSyncing(false)}
-          onSynced={() => setResult((prev) => (prev ? { ...prev, synced: true } : prev))}
+          onSynced={(synced) =>
+            setResult((prev) =>
+              prev
+                ? { ...prev, synced: true, balance: typeof synced?.balance === "number" ? synced.balance : prev.balance }
+                : prev
+            )
+          }
         />
       )}
 
