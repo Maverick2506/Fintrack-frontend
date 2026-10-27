@@ -346,7 +346,7 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
           <p className="text-[10px] text-center text-zinc-600">
             This chat is kept until you close the tab or sign out.
           </p>
-          {usage && (
+          {Number.isFinite(usage?.calls) && Number.isFinite(usage?.cap) && (
             <p className="text-[10px] text-center text-zinc-600">
               Today: {usage.calls} of {usage.cap} AI requests ·{" "}
               {formatNumber(usage.totalTokens, { maximumFractionDigits: 0 })} tokens
