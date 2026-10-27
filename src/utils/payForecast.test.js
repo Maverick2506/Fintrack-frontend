@@ -2,6 +2,9 @@
 import {
   NO_INCOME_NOTE,
   describeNextPay,
+  describePayOverride,
+  noIncomeNote,
+  payNameOptionLabel,
   parsePlanningAmount,
   validateExpectedPay,
 } from "./payForecast.js";
@@ -35,6 +38,32 @@ assert(expected.text === "Next pay ~$1,000 · Oct 31", `Expected pay is approxim
 assert(describeNextPay({ incomeSource: "none", planningAmount: null, typicalAmount: null, nextPayday: null }).kind === "none", "No income -> the note with Set Expected pay");
 assert(describeNextPay({ incomeSource: "recurring", planningAmount: null, nextPayday: null }) === null, "No payday in the horizon -> no line");
 assert(NO_INCOME_NOTE === "No income in your forecast — log your paycheques or set Expected pay", "The note matches the digest");
+
+// A chosen pay name that isn't regular pay is ignored for now
+const ignored = { title: "amazon refund", label: "Amazon Refund", reason: "1 entry" };
+assert(
+  describePayOverride({ incomeSource: "estimated", payOverrideIgnored: ignored, paySeries: { label: "Acme Payroll" } }) ===
+    "'Amazon Refund' doesn't look like regular pay — using 'Acme Payroll' instead",
+  "Ignored override names the detected pay used instead"
+);
+assert(
+  describePayOverride({ incomeSource: "expected-pay", payOverrideIgnored: ignored, paySeries: null }) ===
+    "'Amazon Refund' doesn't look like regular pay — ignored for now",
+  "Ignored override with no detected series says it's ignored"
+);
+assert(describePayOverride({ incomeSource: "estimated", payOverrideIgnored: null }) === null, "No line while the override is valid or unset");
+assert(describePayOverride({ incomeSource: "none", payOverrideIgnored: ignored }) === null, "With no income the note carries the reason instead");
+assert(
+  noIncomeNote({ incomeSource: "none", payOverrideIgnored: ignored }) ===
+    "No income in your forecast — 'Amazon Refund' doesn't look like regular pay (1 entry). Log your paycheques or set Expected pay",
+  "No-income note names the override's problem, like the digest"
+);
+assert(noIncomeNote({ incomeSource: "none", payOverrideIgnored: null }) === NO_INCOME_NOTE, "Plain note without an override");
+assert(
+  payNameOptionLabel({ label: "Acme Payroll", count: 8, cadence: "bi-weekly" }) === "Acme Payroll · 8 entries · every 2 weeks" &&
+    payNameOptionLabel({ label: "Side Gig", count: 3, cadence: "monthly" }) === "Side Gig · 3 entries · every month",
+  "Picker options read 'N entries · every <cadence>'"
+);
 
 // Amount parsing
 assert(parsePlanningAmount("$1,234.50") === 1234.5, "Parses $1,234.50");

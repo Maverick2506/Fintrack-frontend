@@ -5,7 +5,7 @@ import dashboardService from "../../services/dashboardService";
 import useEscapeClose from "../../hooks/useEscapeClose";
 import { formatCurrency, formatShortDate } from "../../utils/formatUtils";
 import { getTorontoTodayStr } from "../../utils/dateUtils";
-import { PAY_CADENCES, validateExpectedPay } from "../../utils/payForecast";
+import { PAY_CADENCES, payNameOptionLabel, validateExpectedPay } from "../../utils/payForecast";
 
 const cadenceLabel = (value) => PAY_CADENCES.find((c) => c.value === value)?.label.toLowerCase() || value;
 
@@ -143,7 +143,15 @@ const ExpectedPayModal = ({ onClose }) => {
               </p>
             )}
 
-            {pay?.incomeNames?.length > 0 && (
+            {pay?.payOverrideIgnored && (
+              <p className="text-xs text-amber-200/90 bg-amber-500/[0.06] border border-amber-500/20 rounded-xl px-3 py-2.5 mb-4">
+                <span className="break-words">&apos;{pay.payOverrideIgnored.label}&apos;</span> doesn&apos;t look like regular pay (
+                {pay.payOverrideIgnored.reason}), so {series ? <>&apos;{series.label}&apos; is used</> : "it's ignored"} for now. Your
+                choice is kept and applies again once it has regular paycheques.
+              </p>
+            )}
+
+            {(pay?.incomeNames?.length > 0 || pay?.payTitle) && (
               <div className="mb-4">
                 <label htmlFor="pay-title" className="block text-xs text-zinc-300 mb-1.5">
                   Your pay is
@@ -155,12 +163,15 @@ const ExpectedPayModal = ({ onClose }) => {
                   disabled={saving}
                   className="w-full min-h-11 bg-zinc-950 border border-white/10 rounded-xl px-3 text-base sm:text-sm text-zinc-100 focus:outline-none focus:border-white/25"
                 >
-                  <option value="">Detect automatically</option>
+                  <option value="">Automatic</option>
                   {pay.incomeNames.map((n) => (
                     <option key={n.title} value={n.title}>
-                      {n.label} · {n.count} in 120 days
+                      {payNameOptionLabel(n)}
                     </option>
                   ))}
+                  {pay.payOverrideIgnored && pay.payTitle === pay.payOverrideIgnored.title && (
+                    <option value={pay.payTitle}>{pay.payOverrideIgnored.label} · not regular pay yet</option>
+                  )}
                 </select>
               </div>
             )}

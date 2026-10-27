@@ -1,8 +1,9 @@
 import { CalendarClock } from "lucide-react";
-import { NO_INCOME_NOTE, describeNextPay } from "../../utils/payForecast";
+import { describeNextPay, describePayOverride, noIncomeNote } from "../../utils/payForecast";
 
 // Under Safe to Spend: the next paycheque the forecast plans with, or, with no income in the
-// forecast, the note and a "Set Expected pay" button. Both open the Expected pay sheet.
+// forecast, the note and a "Set Expected pay" button. Both open the Expected pay sheet. A chosen pay
+// name that isn't regular pay gets its own line with "Change".
 const NextPayLine = ({ forecast, onOpen }) => {
   const line = describeNextPay(forecast);
   if (!line) return null;
@@ -10,7 +11,7 @@ const NextPayLine = ({ forecast, onOpen }) => {
   if (line.kind === "none") {
     return (
       <div className="mt-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2">
-        <p className="text-[11px] text-amber-200/90">{NO_INCOME_NOTE}</p>
+        <p className="text-[11px] text-amber-200/90">{noIncomeNote(forecast)}</p>
         <button
           type="button"
           onClick={onOpen}
@@ -23,7 +24,8 @@ const NextPayLine = ({ forecast, onOpen }) => {
     );
   }
 
-  return (
+  const override = describePayOverride(forecast);
+  const payButton = (
     <button
       type="button"
       onClick={onOpen}
@@ -33,6 +35,23 @@ const NextPayLine = ({ forecast, onOpen }) => {
       <CalendarClock size={12} className="flex-shrink-0 text-zinc-500" />
       <span className="min-w-0">{line.text}</span>
     </button>
+  );
+  if (!override) return payButton;
+
+  return (
+    <>
+      <p className="mt-2 text-[11px] text-amber-200/90">
+        <span className="break-words">{override}</span> ·{" "}
+        <button
+          type="button"
+          onClick={onOpen}
+          className="inline-flex items-center min-h-10 -my-3 font-medium text-amber-100 hover:text-white underline underline-offset-2 cursor-pointer"
+        >
+          Change
+        </button>
+      </p>
+      {payButton}
+    </>
   );
 };
 

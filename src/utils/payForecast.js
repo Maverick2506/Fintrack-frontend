@@ -12,6 +12,8 @@ export const PAY_CADENCES = [
   { value: "monthly", label: "Monthly" },
 ];
 
+const CADENCE_EVERY = { weekly: "every week", "bi-weekly": "every 2 weeks", monthly: "every month" };
+
 const MAX_PLANNING_AMOUNT = 1000000;
 const money = (n) => formatCurrency(n, { maximumFractionDigits: 0 });
 
@@ -34,6 +36,31 @@ export const describeNextPay = (forecast) => {
   const approx = forecast.incomeSource === "recurring" ? "" : "~";
   return { kind: "pay", text: `Next pay ${approx}${money(planningAmount)} · ${date}` };
 };
+
+/**
+ * The no-income note, naming a chosen pay name that's ignored because it isn't regular pay.
+ * Same wording as the morning digest.
+ */
+export const noIncomeNote = (forecast) => {
+  const ignored = forecast?.payOverrideIgnored;
+  if (!ignored) return NO_INCOME_NOTE;
+  return `No income in your forecast — '${ignored.label}' doesn't look like regular pay (${ignored.reason}). Log your paycheques or set Expected pay`;
+};
+
+/**
+ * "'Amazon Refund' doesn't look like regular pay — using 'Acme Payroll' instead" while the chosen
+ * pay name is ignored (it applies again once it forms a series); null otherwise or with no income.
+ */
+export const describePayOverride = (forecast) => {
+  const ignored = forecast?.payOverrideIgnored;
+  if (!ignored || forecast.incomeSource === "none") return null;
+  const using = forecast.paySeries ? `using '${forecast.paySeries.label}' instead` : "ignored for now";
+  return `'${ignored.label}' doesn't look like regular pay — ${using}`;
+};
+
+/** A pay name in the "Your pay is" picker: "Acme Payroll · 8 entries · every 2 weeks" */
+export const payNameOptionLabel = (name) =>
+  `${name.label} · ${name.count} ${name.count === 1 ? "entry" : "entries"} · ${CADENCE_EVERY[name.cadence] || name.cadence}`;
 
 /** "$1,234.50", "1234.5" -> 1234.5; anything else -> null */
 export const parsePlanningAmount = (raw) => {
