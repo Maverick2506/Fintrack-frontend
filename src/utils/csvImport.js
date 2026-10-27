@@ -38,17 +38,54 @@ export const rowOutcome = (row, edit = {}) => {
   return "new";
 };
 
+/**
+ * What importing a row does to the account's balance (what's owed, on a card), after the user's
+ * edits. Rows dated on or before the balance anchor are history and change nothing; so does a link to
+ * a payment the other statement already recorded, unless it's unmatched and added as a new row.
+ */
+export const rowBalanceEffect = (row, edit = {}, accountType) => {
+  const outcome = rowOutcome(row, edit);
+  if (outcome === "skip" || row.history) return 0;
+  if (outcome === "match") return row.balanceEffect || 0;
+  const raises = accountType === "CHECKING" ? row.direction === "in" : row.direction === "out";
+  return raises ? row.amount : -row.amount;
+};
+
 /** Counts after the user's edits, for the Import button and summary */
-export const countOutcomes = (rows, edits = {}) => {
-  const counts = { matched: 0, new: 0, skipped: 0 };
+export const countOutcomes = (rows, edits = {}, accountType) => {
+  const counts = { matched: 0, new: 0, skipped: 0, history: 0, balanceChanging: 0 };
   for (const row of rows || []) {
     const outcome = rowOutcome(row, edits[row.line]);
     if (outcome === "skip") counts.skipped++;
     else if (outcome === "match") counts.matched++;
     else counts.new++;
+    if (outcome !== "skip" && row.history) counts.history++;
+    if (rowBalanceEffect(row, edits[row.line], accountType) !== 0) counts.balanceChanging++;
   }
   return counts;
 };
+
+/** The account's balance once the rows the user keeps are imported, from the preview's balanceNow */
+export const balanceAfterImport = (preview, edits = {}) => {
+  if (!preview || typeof preview.balanceNow !== "number") return null;
+  const type = preview.account?.type;
+  const total = (preview.rows || []).reduce((sum, row) => sum + rowBalanceEffect(row, edits[row.line], type), 0);
+  return Math.round((preview.balanceNow + total) * 100) / 100;
+};
+
+/** "2 rows are history (on or before Feb 28) · 5 change the balance" */
+export const historyLine = (counts, anchorLabel) => {
+  if (!counts) return "";
+  const parts = [];
+  if (counts.history) {
+    parts.push(`${counts.history} ${counts.history === 1 ? "row is" : "rows are"} history${anchorLabel ? ` (on or before ${anchorLabel})` : ""}`);
+  }
+  parts.push(`${counts.balanceChanging} change${counts.balanceChanging === 1 ? "s" : ""} the balance`);
+  return parts.join(" · ");
+};
+
+/** A refund is saved as negative spending: an expense with a negative amount */
+export const isRefundRow = (row) => row?.type === "expense" && parseFloat(row.amount) < 0;
 
 /**
  * The commit body's rows: every preview row in file order (the server re-checks each one), with the

@@ -466,6 +466,14 @@ const LedgerPage = () => {
         </span>
       );
     }
+    if (row.amount < 0) {
+      // A refund: negative spending
+      return (
+        <span className="text-emerald-400" title="Refund">
+          +{formatCurrency(Math.abs(row.amount))}
+        </span>
+      );
+    }
     return <span className="text-zinc-100">{formatCurrency(-Math.abs(row.amount))}</span>;
   };
 

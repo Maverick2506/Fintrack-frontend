@@ -144,7 +144,8 @@ const AddTransactionModal = ({
           existingTransaction.baseAmount !== undefined
             ? existingTransaction.baseAmount
             : existingTransaction.amount;
-        setAmount(initialAmount);
+        // A refund is stored as negative spending; the form edits its size and the server keeps the sign
+        setAmount(parseFloat(initialAmount) < 0 ? String(Math.abs(parseFloat(initialAmount))) : initialAmount);
         setCategory(existingTransaction.category || "Other");
         setHasManuallySelectedCategory(true);
         setSuggestedSource(null);
@@ -605,6 +606,9 @@ const AddTransactionModal = ({
                 }`}
               />
             </div>
+            {type === "expense" && parseFloat(existingTransaction?.amount) < 0 && (
+              <p className="text-[11px] text-emerald-300/90 mt-1">Refund: lowers this category's spending by this amount</p>
+            )}
 
             <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
               <input

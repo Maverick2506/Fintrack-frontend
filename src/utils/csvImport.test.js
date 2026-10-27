@@ -4,6 +4,10 @@ import {
   isMappingComplete,
   rowOutcome,
   countOutcomes,
+  rowBalanceEffect,
+  balanceAfterImport,
+  historyLine,
+  isRefundRow,
   buildCommitRows,
   applyRules,
   applyRulesToQuickAdd,
@@ -45,6 +49,29 @@ assert(rowOutcome(rows[0]) === "match" && rowOutcome(rows[0], edits[2]) === "new
 assert(rowOutcome(rows[3], { skip: false }) === "skip", "a duplicate is always skipped");
 const c = countOutcomes(rows, edits);
 assert(c.matched === 0 && c.new === 2 && c.skipped === 2, "counts follow the edits");
+// Balance after import: history rows and links to an already-recorded payment change nothing
+const cardPreview = {
+  account: { type: "CREDIT_CARD" },
+  balanceNow: 400,
+  rows: [
+    { line: 2, status: "new", direction: "out", amount: 80, history: true, balanceEffect: 0 },
+    { line: 3, status: "new", direction: "in", amount: 30, history: false, balanceEffect: -30, refund: true },
+    { line: 4, status: "new", direction: "out", amount: 12.5, history: false, balanceEffect: 12.5 },
+    { line: 5, status: "match", direction: "in", amount: 200, history: false, balanceEffect: 0, match: { alreadyRecorded: true } },
+    { line: 6, status: "duplicate", direction: "out", amount: 9, history: false, balanceEffect: 0 },
+  ],
+};
+assert(balanceAfterImport(cardPreview) === 382.5, "card owes 400 + 12.50 - 30 refund; the history row and the linked payment change nothing");
+assert(balanceAfterImport(cardPreview, { 4: { skip: true } }) === 370, "a skipped row leaves the balance alone");
+assert(balanceAfterImport(cardPreview, { 5: { unmatch: true } }) === 182.5, "an unmatched payment is added as new and lowers what's owed");
+assert(rowBalanceEffect({ status: "new", direction: "in", amount: 50 }, {}, "CHECKING") === 50, "money in raises Checking");
+const cardCounts = countOutcomes(cardPreview.rows, {}, "CREDIT_CARD");
+assert(cardCounts.history === 1 && cardCounts.balanceChanging === 2, "counts history rows and rows that change the balance");
+assert(historyLine(cardCounts, "Feb 28") === "1 row is history (on or before Feb 28) · 2 change the balance", "history line");
+assert(historyLine({ history: 0, balanceChanging: 1 }) === "1 changes the balance", "no history: only the balance count");
+assert(balanceAfterImport({ rows: [] }) === null, "no balance from the server, no figure");
+assert(isRefundRow({ type: "expense", amount: -20 }) && !isRefundRow({ type: "expense", amount: 20 }), "a refund is an expense with a negative amount");
+
 const commit = buildCommitRows(rows, edits);
 assert(commit.length === 4, "every row is sent, in file order");
 assert(commit[0].matchId === null && !("matchId" in commit[1]), "matchId: null only on an unmatched match");
@@ -64,6 +91,22 @@ const qa = applyRulesToQuickAdd(parseQuickAdd("12 uber eats", cards, today), [{ 
 assert(qa.category === "Food & Drink" && qa.creditCardId === "card-1" && qa.applyToBalance === true && qa.ruleApplied, "Quick Add: a rule fills the category and card the text left out");
 const qaTyped = applyRulesToQuickAdd(parseQuickAdd("12 uber eats checking", cards, today), [{ match: "uber eats", category: "Food & Drink", accountId: "card-1", priority: 1 }], cards, "2026-04-15");
 assert(qaTyped.category === "Food & Drink" && qaTyped.creditCardId === null, "Quick Add: the rule beats the built-in keyword (uber = Transportation); a typed account beats the rule");
+// Precedence: typed account > rules > built-in Quick Add keywords > Gemini
+const twoCards = [{ id: "card-1", name: "Visa Infinite" }, { id: "card-amex", name: "Amex Cobalt" }];
+const qaLunch = applyRulesToQuickAdd(
+  parseQuickAdd("12.50 lunch visa", twoCards, today),
+  [{ match: "lunch", category: null, accountId: "card-amex", priority: 1 }],
+  twoCards,
+  "2026-04-15"
+);
+assert(qaLunch.creditCardId === "card-1" && qaLunch.amount === 12.5, "Quick Add: \"12.50 lunch visa\" with a rule lunch -> Amex lands on the typed Visa");
+const qaLunchRule = applyRulesToQuickAdd(
+  parseQuickAdd("12.50 lunch", twoCards, today),
+  [{ match: "lunch", category: null, accountId: "card-amex", priority: 1 }],
+  twoCards,
+  "2026-04-15"
+);
+assert(qaLunchRule.creditCardId === "card-amex" && qaLunchRule.category === "Food & Drink", "Quick Add: with no card typed, the rule's Amex is used; the keyword category stays");
 const qaNoRule = applyRulesToQuickAdd(parseQuickAdd("12 uber", cards, today), [{ match: "lyft", category: "Other", priority: 1 }], cards, "2026-04-15");
 assert(qaNoRule.category === "Transportation" && !qaNoRule.ruleApplied, "Quick Add: no matching rule keeps the keyword category");
 const qaIncome = parseQuickAdd("+100 uber refund", cards, today);

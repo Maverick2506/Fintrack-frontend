@@ -60,7 +60,13 @@ const ReviewPage = () => {
   };
 
   const amountText = (row) =>
-    row.type === "income" ? `+${formatCurrency(row.amount)}` : row.type === "transfer" ? `⇄ ${formatCurrency(row.amount)}` : `-${formatCurrency(row.amount)}`;
+    row.type === "income"
+      ? `+${formatCurrency(row.amount)}`
+      : row.type === "transfer"
+      ? `⇄ ${formatCurrency(row.amount)}`
+      : row.amount < 0
+      ? `+${formatCurrency(Math.abs(row.amount))}`
+      : `-${formatCurrency(row.amount)}`;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-24">
@@ -133,13 +139,15 @@ const ReviewPage = () => {
                       <p className="text-sm text-zinc-100 break-words line-clamp-2">{row.name}</p>
                       <div className="flex flex-wrap items-center gap-1.5 mt-0.5 min-w-0">
                         <span className="text-[11px] text-zinc-500 tabular-nums">{formatShortDate(row.date)}</span>
-                        <span className="text-[11px] text-zinc-500">· {row.category}</span>
+                        <span className="text-[11px] text-zinc-500">
+                          · {row.amount < 0 ? `Refund, ${row.category}` : row.category}
+                        </span>
                         {chip && <AccountChip type={chip.type} label={chip.label} className="max-w-[60%]" />}
                       </div>
                     </div>
                     <span
                       className={`text-sm font-medium tabular-nums whitespace-nowrap shrink-0 ${
-                        row.type === "income" ? "text-emerald-400" : row.type === "transfer" ? "text-zinc-400" : "text-zinc-200"
+                        row.type === "income" || row.amount < 0 ? "text-emerald-400" : row.type === "transfer" ? "text-zinc-400" : "text-zinc-200"
                       }`}
                     >
                       {amountText(row)}

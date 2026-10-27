@@ -15,8 +15,11 @@ import {
   Link2,
   Link2Off,
   RotateCcw,
+  RefreshCw,
+  History,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
+import SyncStatementModal from "../components/Modals/SyncStatementModal";
 import { EXPENSE_CATEGORIES } from "../constants/categories.js";
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import {
@@ -25,6 +28,8 @@ import {
   isMappingComplete,
   rowOutcome,
   countOutcomes,
+  balanceAfterImport,
+  historyLine,
   buildCommitRows,
   columnOptionLabel,
 } from "../utils/csvImport";
@@ -40,6 +45,9 @@ const STATUS_BADGES = {
 const selectClass =
   "w-full min-w-0 h-10 bg-zinc-950 border border-white/[0.08] rounded-lg px-2.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500";
 
+// A refund can take any spending category, or Refund (negative spending on its own)
+const REFUND_CATEGORIES = [...EXPENSE_CATEGORIES, "Refund"];
+
 // Bank or card CSV import: pick the account, upload, check the columns, review the preview, import.
 const ImportPage = () => {
   const [accountId, setAccountId] = useState("");
@@ -54,6 +62,7 @@ const ImportPage = () => {
   const [error, setError] = useState(null);
   const [errorColumns, setErrorColumns] = useState(null);
   const [result, setResult] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   const { data: accounts = [], isLoading: accountsLoading, isError: accountsError, refetch: refetchAccounts } = useQuery({
     queryKey: ["importAccounts"],
@@ -120,7 +129,8 @@ const ImportPage = () => {
   const setEdit = (line, patch) =>
     setEdits((prev) => ({ ...prev, [line]: { ...(prev[line] || {}), ...patch } }));
 
-  const counts = useMemo(() => countOutcomes(preview?.rows, edits), [preview, edits]);
+  const counts = useMemo(() => countOutcomes(preview?.rows, edits, preview?.account?.type), [preview, edits]);
+  const balanceAfter = useMemo(() => balanceAfterImport(preview, edits), [preview, edits]);
   const toImport = counts.matched + counts.new;
   const visibleRows = useMemo(
     () => (preview?.rows || []).filter((r) => showSkipped || r.status !== "duplicate"),
@@ -139,7 +149,7 @@ const ImportPage = () => {
         mapping: preview.mapping,
         rows: buildCommitRows(preview.rows, edits),
       });
-      setResult(res);
+      setResult({ ...res, account: preview.account });
       setPreview(null);
       setFile(null);
       window.scrollTo({ top: 0 });
@@ -187,16 +197,39 @@ const ImportPage = () => {
               <p className="text-sm font-medium text-zinc-100">Imported</p>
               <p className="text-xs text-zinc-400 mt-0.5">
                 {result.created} added · {result.matched} matched to rows already in the app · {result.skipped} skipped
+                {result.history > 0 && ` · ${result.history} saved as history`}
               </p>
+              {typeof result.balance === "number" && (
+                <p className="text-xs text-zinc-300 mt-1">
+                  {result.account?.type === "CREDIT_CARD" ? "Owed on" : "Balance of"} {result.account?.name}:{" "}
+                  <span className="font-medium tabular-nums">{formatCurrency(result.balance)}</span>
+                  {result.synced ? " · synced with your statement" : ". Check it against your statement."}
+                </p>
+              )}
             </div>
           </div>
-          {result.created > 0 && (
-            <Link to="/review" className="btn-primary h-10 w-full sm:w-auto mt-3">
-              <Inbox size={14} />
-              <span>Review {result.created} new</span>
-            </Link>
-          )}
+          <div className="flex flex-col sm:flex-row gap-2 mt-3">
+            {result.created > 0 && (
+              <Link to="/review" className="btn-primary h-10 w-full sm:w-auto">
+                <Inbox size={14} />
+                <span>Review {result.created} new</span>
+              </Link>
+            )}
+            {typeof result.balance === "number" && !result.synced && (
+              <button type="button" onClick={() => setSyncing(true)} className="btn-secondary h-10 w-full sm:w-auto">
+                <RefreshCw size={14} />
+                <span>Sync with statement</span>
+              </button>
+            )}
+          </div>
         </div>
+      )}
+      {syncing && result?.account && (
+        <SyncStatementModal
+          account={{ ...result.account, balance: result.balance }}
+          onClose={() => setSyncing(false)}
+          onSynced={() => setResult((prev) => (prev ? { ...prev, synced: true } : prev))}
+        />
       )}
 
       {/* 1. Account */}
@@ -261,7 +294,8 @@ const ImportPage = () => {
             <input type="file" accept=".csv,text/csv" onChange={onFileChosen} className="sr-only" />
           </label>
           <p className="text-[11px] text-zinc-500 mt-2">
-            Imported rows change {account?.name || "the account"}'s balance, as if you added them by hand.
+            Rows newer than the last time you set or synced {account?.name || "this account"}'s balance change it.
+            Older rows are saved as history: the balance already includes them.
           </p>
         </section>
       )}
@@ -469,6 +503,19 @@ const ImportPage = () => {
               </div>
             ))}
           </div>
+          <div className="glass-panel px-3 py-2.5 mb-3 space-y-1">
+            <p className="text-[11px] text-zinc-400">
+              {historyLine(counts, preview.anchorDate ? formatShortDate(preview.anchorDate) : null)}
+            </p>
+            {balanceAfter !== null && (
+              <p className="text-sm text-zinc-200">
+                {preview.account?.type === "CREDIT_CARD" ? "Owed after import" : "Balance after import"}:{" "}
+                <span className="font-semibold tabular-nums">{formatCurrency(balanceAfter)}</span>
+                <span className="text-[11px] text-zinc-500"> (now {formatCurrency(preview.balanceNow)})</span>
+              </p>
+            )}
+            <p className="text-[11px] text-zinc-500">Once it's in, you can sync with your statement if it doesn't match.</p>
+          </div>
           {preview.invalid?.length > 0 && (
             <p className="text-[11px] text-amber-300/90 mb-3">
               {preview.invalid.length} line{preview.invalid.length === 1 ? "" : "s"} couldn't be read and won't be imported
@@ -497,7 +544,8 @@ const ImportPage = () => {
               const outcome = rowOutcome(row, edit);
               const badge = STATUS_BADGES[outcome];
               const isOut = row.direction === "out";
-              const canPickCategory = outcome === "new" && isOut && !row.toCard;
+              const canPickCategory = outcome === "new" && (isOut || row.refund) && !row.toCard;
+              const categoryOptions = row.refund ? REFUND_CATEGORIES : EXPENSE_CATEGORIES;
               return (
                 <li key={row.line} className={`px-3 py-2.5 ${outcome === "skip" ? "opacity-60" : ""}`}>
                   <div className="flex items-start gap-3">
@@ -508,6 +556,15 @@ const ImportPage = () => {
                         <span className={`text-[10px] font-medium border px-1.5 py-0.5 rounded ${badge.className}`}>
                           {row.status === "duplicate" ? (row.inTrash ? "In Trash" : "Already imported") : badge.label}
                         </span>
+                        {row.history && outcome !== "skip" && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] font-medium border px-1.5 py-0.5 rounded text-zinc-400 bg-white/[0.04] border-white/[0.08]"
+                            title="Already in the balance: saved without changing it"
+                          >
+                            <History size={10} />
+                            History
+                          </span>
+                        )}
                       </div>
                     </div>
                     <span
@@ -528,7 +585,16 @@ const ImportPage = () => {
                     </p>
                   )}
                   {outcome === "new" && row.toCard && (
-                    <p className="text-[11px] mt-1 text-zinc-400">Card payment to {row.toCard.name}, not spending</p>
+                    <p className="text-[11px] mt-1 text-zinc-400">
+                      {row.toCard.type === "DEBT" ? "Debt" : "Card"} payment to {row.toCard.name}, not spending
+                    </p>
+                  )}
+                  {outcome === "new" && row.refund && (
+                    <p className="text-[11px] mt-1 text-zinc-400">
+                      {row.refundOf
+                        ? `Refund of “${row.refundOf.title}” (${formatShortDate(row.refundOf.date)}): lowers its category's spending`
+                        : "Refund: lowers spending in the category below"}
+                    </p>
                   )}
 
                   {row.status !== "duplicate" && (
@@ -540,7 +606,7 @@ const ImportPage = () => {
                           value={edit.category || row.category || "Other"}
                           onChange={(e) => setEdit(row.line, { category: e.target.value })}
                         >
-                          {EXPENSE_CATEGORIES.map((c) => (
+                          {categoryOptions.map((c) => (
                             <option key={c} value={c}>{c}</option>
                           ))}
                         </select>
