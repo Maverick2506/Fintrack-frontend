@@ -1,5 +1,7 @@
 import assert from "node:assert";
 import { parseQuickAdd } from "./quickAddParser.js";
+import { getTorontoTodayStr } from "./dateUtils.js";
+/* global process */
 
 console.log("==================================================");
 console.log("   QUICK-ADD NATURAL LANGUAGE PARSER UNIT TESTS   ");
@@ -83,6 +85,67 @@ const decToday = new Date("2026-12-20T12:00:00Z");
 const t8 = parseQuickAdd("90 hydro due 1/15", mockCards, decToday);
 assert.strictEqual(t8.date, "2027-01-15", "[PASS] Advances year to 2027 instead of past 2026-01-15");
 assert.strictEqual(t8.is_paid, false, "[PASS] Flagged as unpaid future bill");
+
+// --- Test 9: "today" is Toronto's day, whatever time zone the phone is in ---
+// Node applies a new TZ as soon as it is set, so each block below runs "on a phone" in that zone.
+const originalTZ = process.env.TZ;
+const onPhoneIn = (tz, fn) => {
+  process.env.TZ = tz;
+  try {
+    fn();
+  } finally {
+    if (originalTZ === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTZ;
+  }
+};
+// What Quick Add does: parse with Toronto's day at that moment
+const parseAt = (text, moment) => parseQuickAdd(text, mockCards, getTorontoTodayStr(moment));
+
+console.log("\n--- Test 9: 23:30 in Toronto, phone in Vancouver or London ---");
+const lateEvening = new Date("2026-10-27T03:30:00Z"); // Mon Oct 26, 23:30 Toronto
+for (const [tz, phoneDay] of [["America/Vancouver", 26], ["Europe/London", 27]]) {
+  onPhoneIn(tz, () => {
+    assert.strictEqual(lateEvening.getDate(), phoneDay, `[setup] the phone in ${tz} shows Oct ${phoneDay}`);
+    assert.strictEqual(parseAt("4.50 coffee", lateEvening).date, "2026-10-26", `[PASS] ${tz}: no date typed -> Toronto's Oct 26`);
+    assert.strictEqual(parseQuickAdd("4.50 coffee", mockCards, lateEvening).date, "2026-10-26", `[PASS] ${tz}: a moment passed in is read as Toronto's day`);
+    const today = parseAt("4.50 coffee due today", lateEvening);
+    assert.ok(today.date === "2026-10-26" && today.is_paid, `[PASS] ${tz}: "due today" -> Oct 26, paid`);
+    const tomorrow = parseAt("85 internet due tomorrow", lateEvening);
+    assert.ok(tomorrow.date === "2026-10-27" && !tomorrow.is_paid, `[PASS] ${tz}: "due tomorrow" -> Oct 27, unpaid`);
+    assert.strictEqual(parseAt("120 hydro due 11/05", lateEvening).date, "2026-11-05", `[PASS] ${tz}: "due 11/05" -> 2026-11-05`);
+    // A card charge dated Toronto's today still counts toward the card balance
+    assert.strictEqual(parseAt("35 uber visa", lateEvening).applyToBalance, true, `[PASS] ${tz}: today's card charge applies to the balance`);
+  });
+}
+
+console.log("\n--- Test 10: \"due fri\" on a Friday evening in Toronto ---");
+const fridayEvening = new Date("2026-10-31T01:00:00Z"); // Fri Oct 30, 21:00 Toronto (Sat in London)
+onPhoneIn("Europe/London", () => {
+  assert.strictEqual(fridayEvening.getDay(), 6, "[setup] the phone in London already shows Saturday");
+  const fri = parseAt("120 hydro due fri", fridayEvening);
+  assert.ok(fri.date === "2026-11-06" && !fri.is_paid, '[PASS] "due fri" on a Friday is next Friday, Nov 6');
+  assert.strictEqual(parseAt("50 rent due sat", fridayEvening).date, "2026-10-31", '[PASS] "due sat" is tomorrow in Toronto, Oct 31');
+  assert.strictEqual(parseAt("80 phone due thursday", fridayEvening).date, "2026-11-05", '[PASS] "due thursday" is Nov 5');
+});
+// Fri Oct 30, 00:30 in Toronto is still Thursday evening in Vancouver
+const fridayJustAfterMidnight = new Date("2026-10-30T04:30:00Z");
+onPhoneIn("America/Vancouver", () => {
+  assert.strictEqual(fridayJustAfterMidnight.getDay(), 4, "[setup] the phone in Vancouver still shows Thursday");
+  assert.strictEqual(parseAt("120 hydro due fri", fridayJustAfterMidnight).date, "2026-11-06", '[PASS] Vancouver, Fri 00:30 Toronto: "due fri" is next Friday, Nov 6');
+});
+
+console.log("\n--- Test 11: \"due 01/05\" in late December rolls to next year ---");
+const newYearsEve = new Date("2027-01-01T04:30:00Z"); // Thu Dec 31 2026, 23:30 Toronto
+onPhoneIn("Europe/London", () => {
+  assert.strictEqual(newYearsEve.getFullYear(), 2027, "[setup] the phone in London is already in 2027");
+  const jan = parseAt("90 hydro due 01/05", newYearsEve);
+  assert.ok(jan.date === "2027-01-05" && !jan.is_paid, '[PASS] "due 01/05" -> 2027-01-05, unpaid');
+  const dec = parseAt("40 gift due 12/31", newYearsEve);
+  assert.ok(dec.date === "2026-12-31" && dec.is_paid, '[PASS] "due 12/31" is Toronto\'s today, not next December');
+});
+onPhoneIn("America/Vancouver", () => {
+  assert.strictEqual(parseAt("90 hydro due 1/5", new Date("2026-12-20T17:00:00Z")).date, "2027-01-05", "[PASS] Vancouver, Dec 20: 1/5 -> 2027");
+});
 
 console.log("\n==================================================");
 console.log("   ALL QUICK-ADD PARSER TESTS PASSED              ");

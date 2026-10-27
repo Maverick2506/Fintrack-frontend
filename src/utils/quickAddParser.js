@@ -10,6 +10,7 @@
  */
 
 import { ALL_CATEGORIES, EXPENSE_CATEGORIES } from "../constants/categories.js";
+import { getTorontoTodayStr, addDaysToDateStr } from "./dateUtils.js";
 
 const CATEGORY_KEYWORDS = {
   "Food & Drink": [
@@ -105,14 +106,27 @@ const CATEGORY_KEYWORDS = {
   ],
 };
 
-const formatDateStr = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Calendar-day arithmetic on YYYY-MM-DD strings (noon UTC), so the device's time zone never matters
+const dayNumber = (dateStr) => {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return Date.UTC(y, m - 1, d, 12) / DAY_MS;
+};
+const weekdayOf = (dateStr) => new Date(dayNumber(dateStr) * DAY_MS).getUTCDay();
+
+/**
+ * "today" for Quick Add is Toronto's day, like the rest of the app. today can be a YYYY-MM-DD string
+ * or a moment in time (Date), which is turned into the Toronto day at that moment.
+ */
+const toTodayStr = (today) => {
+  if (typeof today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(today)) return today;
+  return getTorontoTodayStr(today instanceof Date ? today : new Date());
 };
 
-export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date()) => {
+export const parseQuickAdd = (input = "", creditCards = [], today = new Date()) => {
+  const todayStr = toTodayStr(today);
   let text = input.trim();
   if (!text) {
     return {
@@ -122,7 +136,7 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
       category: "Other",
       creditCardId: null,
       accountName: "Primary Checking",
-      date: formatDateStr(baseDate),
+      date: todayStr,
       dateKey: "today",
       is_paid: true,
       recurrence: "none",
@@ -150,10 +164,10 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
   }
 
   // 3. Extract Due Date / Payment Date
-  let date = formatDateStr(baseDate);
+  let date = todayStr;
   let is_paid = true;
   let dateMatched = false;
-  // Stable label for the date as typed: "today"/"tomorrow" stay relative, typed dates are absolute
+  // Stable label for the date as typed: "today"/"tomorrow"/weekdays stay relative, typed dates are absolute
   let dateKey = "today";
 
   // Patterns: "due YYYY-MM-DD", "due MM/DD", "due MM-DD", "due tomorrow", "due today", "on MM/DD"
@@ -168,48 +182,40 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
 
   if (dueFullMatch) {
     date = dueFullMatch[1];
-    is_paid = date <= formatDateStr(baseDate);
+    is_paid = date <= todayStr;
     dateMatched = true;
     dateKey = date;
     text = text.replace(dueFullMatch[0], " ").trim();
   } else if (dueShortMatch) {
-    let year = baseDate.getFullYear();
-    const monthNum = parseInt(dueShortMatch[1], 10);
-    const dayNum = parseInt(dueShortMatch[2], 10);
+    let year = Number(todayStr.slice(0, 4));
+    const month = String(parseInt(dueShortMatch[1], 10)).padStart(2, "0");
+    const day = String(parseInt(dueShortMatch[2], 10)).padStart(2, "0");
     // If the candidate date is more than 60 days in the past (e.g. due 1/05 in December), use next year
-    const candidateDate = new Date(year, monthNum - 1, dayNum);
-    const diffMs = baseDate.getTime() - candidateDate.getTime();
-    if (diffMs > 60 * 24 * 60 * 60 * 1000) {
+    if (dayNumber(todayStr) - dayNumber(`${year}-${month}-${day}`) > 60) {
       year += 1;
     }
-    const month = String(monthNum).padStart(2, "0");
-    const day = String(dayNum).padStart(2, "0");
     date = `${year}-${month}-${day}`;
-    is_paid = date <= formatDateStr(baseDate);
+    is_paid = date <= todayStr;
     dateMatched = true;
     dateKey = date;
     text = text.replace(dueShortMatch[0], " ").trim();
   } else if (dueTomorrowMatch) {
-    const tomorrow = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);
-    date = formatDateStr(tomorrow);
+    date = addDaysToDateStr(todayStr, 1);
     is_paid = false;
     dateMatched = true;
     dateKey = "tomorrow";
     text = text.replace(dueTomorrowMatch[0], " ").trim();
   } else if (dueWeekdayMatch) {
-    const target = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(
-      dueWeekdayMatch[1].toLowerCase()
-    );
-    const ahead = ((target - baseDate.getDay() + 7) % 7) || 7;
-    date = formatDateStr(
-      new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + ahead, 12)
-    );
+    const target = WEEKDAYS.indexOf(dueWeekdayMatch[1].toLowerCase());
+    const ahead = ((target - weekdayOf(todayStr) + 7) % 7) || 7;
+    date = addDaysToDateStr(todayStr, ahead);
     is_paid = false;
     dateMatched = true;
-    dateKey = date;
+    // Keyed by the weekday, so "due fri" retried just after midnight on Friday is still the same save
+    dateKey = `due ${WEEKDAYS[target]}`;
     text = text.replace(dueWeekdayMatch[0], " ").trim();
   } else if (dueTodayMatch) {
-    date = formatDateStr(baseDate);
+    date = todayStr;
     is_paid = true;
     dateMatched = true;
     dateKey = "today";
@@ -288,9 +294,7 @@ export const parseQuickAdd = (input = "", creditCards = [], baseDate = new Date(
   // Default applyToBalance: true for card charges dated today or 1-2 days ago (Phase D default)
   let applyToBalance = false;
   if (creditCardId && type === "expense") {
-    const candidate = new Date(date + "T12:00:00Z");
-    const todayZoned = new Date(formatDateStr(baseDate) + "T12:00:00Z");
-    const diffDays = Math.round((todayZoned - candidate) / (1000 * 60 * 60 * 24));
+    const diffDays = dayNumber(todayStr) - dayNumber(date);
     applyToBalance = diffDays >= 0 && diffDays <= 2;
   }
 

@@ -118,7 +118,8 @@ const QuickAddPage = () => {
     }
   }, []);
 
-  const parsed = parseQuickAdd(input, creditCards);
+  // Toronto's day, like the rest of the app, whatever time zone the phone is in
+  const parsed = parseQuickAdd(input, creditCards, getTorontoTodayStr());
   const exampleChips = useMemo(() => buildExampleChips(getTorontoTodayStr()), []);
   const showExamples = recentChips.length === 0;
   const isLinkList = linkItems.length > 1;
