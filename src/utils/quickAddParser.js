@@ -136,6 +136,7 @@ export const parseQuickAdd = (input = "", creditCards = [], today = new Date()) 
       category: "Other",
       creditCardId: null,
       accountName: "Primary Checking",
+      accountMentioned: false,
       date: todayStr,
       dateKey: "today",
       is_paid: true,
@@ -231,8 +232,11 @@ export const parseQuickAdd = (input = "", creditCards = [], today = new Date()) 
   // 4. Fuzzy Match Paying Account
   let creditCardId = null;
   let accountName = "Primary Checking";
+  // Whether the text named an account (checking or a card); rules may only pick one when it didn't
+  let accountMentioned = false;
 
   if (/\b(checking|chequing|debit|bank)\b/i.test(text)) {
+    accountMentioned = true;
     accountName = "Primary Checking";
     creditCardId = null;
     text = text.replace(/\b(checking|chequing|debit|bank)\b/i, " ").trim();
@@ -259,6 +263,7 @@ export const parseQuickAdd = (input = "", creditCards = [], today = new Date()) 
         if (regex.test(text)) {
           creditCardId = card.id;
           accountName = card.name;
+          accountMentioned = true;
           text = text.replace(regex, " ").trim();
           found = true;
           break;
@@ -304,6 +309,7 @@ export const parseQuickAdd = (input = "", creditCards = [], today = new Date()) 
     amount,
     category: detectedCategory,
     creditCardId,
+    accountMentioned,
     accountName,
     date,
     dateKey,

@@ -34,11 +34,12 @@ const SyncStatementModal = ({ account, onClose, onSynced }) => {
     if (!preview.canSave || saving) return;
     setSaving(true);
     try {
-      await dashboardService.reconcileAccount(
+      const synced = await dashboardService.reconcileAccount(
         account.id,
         buildReconcilePayload({ actualRaw, reason, allowInterest: preview.allowInterest })
       );
-      onSynced?.();
+      // { balance, previousBalance, difference, ... } from the server
+      onSynced?.(synced);
       onClose();
     } catch {
       // The request helper already showed the error; keep the sheet open to retry

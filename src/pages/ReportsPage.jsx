@@ -100,7 +100,8 @@ const ReportsPage = () => {
         dashboardService.fetchTrends(selectedDate.year, selectedDate.month),
       ]);
       setReportData(dashboardRes);
-      setSpendingData(dashboardRes?.spendingSummary || []);
+      // A category that only holds refunds nets below zero: it lowers total spending but has no slice or budget row
+      setSpendingData((dashboardRes?.spendingSummary || []).filter((c) => c.value > 0));
       setMonthlyExpenses(expensesRes || []);
       setTrendsData(trendsRes || []);
     } catch (err) {

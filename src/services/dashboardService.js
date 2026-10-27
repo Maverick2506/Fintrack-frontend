@@ -503,6 +503,61 @@ const dashboardService = {
       "Forecast buffer updated!"
     );
   },
+  // Bank CSV import. Preview saves nothing, so it skips handleRequest and its refresh.
+  fetchImportAccounts: async () => {
+    return api.get("/import/accounts").then((res) => res.data);
+  },
+
+  previewImport: async ({ accountId, file, mapping }) => {
+    const form = new FormData();
+    form.append("accountId", accountId);
+    if (mapping) form.append("mapping", JSON.stringify(mapping));
+    form.append("file", file);
+    return api.post("/import/preview", form).then((res) => res.data);
+  },
+
+  commitImport: async ({ accountId, mapping, rows }) => {
+    // The page shows its own summary and error
+    return handleRequest(api.post("/import/commit", { accountId, mapping, rows }), null, true, false);
+  },
+
+  fetchReviewInbox: async () => {
+    return api.get("/import/review").then((res) => res.data);
+  },
+
+  confirmReviewed: async (ids) => {
+    return handleRequest(
+      api.post("/import/review/confirm", { ids }),
+      ids.length === 1 ? "Confirmed" : `Confirmed ${ids.length}`
+    );
+  },
+
+  // Sets the category on several rows (e.g. the Review rows a new rule matches), one refresh at the end
+  setCategoryOnRows: async (ids, category) => {
+    const requests = ids.reduce(
+      (chain, id) => chain.then(() => api.put(`/expenses/${id}`, { category })),
+      Promise.resolve()
+    );
+    return handleRequest(requests.then(() => ({ data: { updated: ids.length } })), null);
+  },
+
+  // Category and account rules
+  fetchRules: async () => {
+    return api.get("/rules").then((res) => res.data);
+  },
+
+  saveRule: async (rule) => {
+    const { id, ...body } = rule;
+    return handleRequest(
+      id ? api.put(`/rules/${id}`, body) : api.post("/rules", body),
+      id ? "Rule updated" : "Rule added"
+    );
+  },
+
+  deleteRule: async (id) => {
+    return handleRequest(api.delete(`/rules/${id}`), "Rule deleted");
+  },
+
   fetchNetWorthHistory: async (months = 12) => {
     return api.get(`/net-worth-history?months=${months}`).then((res) => res.data);
   },

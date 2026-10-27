@@ -114,7 +114,8 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
                     isUpcoming ? "text-zinc-400" : "text-zinc-200"
                   }`}
                 >
-                  -{formatCurrency(Math.abs(parseFloat(transaction.amount) || 0))}
+                  {parseFloat(transaction.amount) < 0 ? "+" : "-"}
+                  {formatCurrency(Math.abs(parseFloat(transaction.amount) || 0))}
                 </span>
               </div>
               <div className="w-8 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">

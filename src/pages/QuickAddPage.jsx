@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   Zap,
   ArrowRight,
@@ -19,6 +20,7 @@ import {
 import toast from "react-hot-toast";
 import dashboardService from "../services/dashboardService";
 import { parseQuickAdd } from "../utils/quickAddParser";
+import { applyRulesToQuickAdd } from "../utils/csvImport";
 import { buildExampleChips, cleanRecentChips } from "../utils/quickAddExamples";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 import { formatCurrency } from "../utils/formatUtils";
@@ -118,8 +120,17 @@ const QuickAddPage = () => {
     }
   }, []);
 
+  // Your rules set the category, and the card when the text names none
+  const { data: rules = [] } = useQuery({
+    queryKey: ["rules"],
+    queryFn: () => dashboardService.fetchRules(),
+    staleTime: 60000,
+  });
+
   // Toronto's day, like the rest of the app, whatever time zone the phone is in
-  const parsed = parseQuickAdd(input, creditCards, getTorontoTodayStr());
+  const todayStr = getTorontoTodayStr();
+  const typed = parseQuickAdd(input, creditCards, todayStr);
+  const parsed = applyRulesToQuickAdd(typed, rules, creditCards, todayStr);
   const exampleChips = useMemo(() => buildExampleChips(getTorontoTodayStr()), []);
   const showExamples = recentChips.length === 0;
   const isLinkList = linkItems.length > 1;
@@ -172,7 +183,8 @@ const QuickAddPage = () => {
 
     setIsSubmitting(true);
     const entry = input.trim();
-    const { pending, clientRef } = getClientRef(pendingRef.current, parsed, () =>
+    // Keyed on the text as typed, so rules arriving between a timed-out save and its retry keep the clientRef
+    const { pending, clientRef } = getClientRef(pendingRef.current, typed, () =>
       crypto.randomUUID()
     );
     pendingRef.current = pending;
@@ -387,7 +399,7 @@ const QuickAddPage = () => {
             <div className="flex flex-wrap gap-2 text-[11px] pt-2 border-t border-white/[0.06]">
               {/* Category */}
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 border border-white/[0.06] text-zinc-300">
-                <Tag size={11} className="text-zinc-500" />
+                <Tag size={11} className={parsed.ruleApplied ? "text-violet-300" : "text-zinc-500"} />
                 {parsed.category}
               </span>
 
