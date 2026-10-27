@@ -458,14 +458,14 @@ const ImportPage = () => {
           <h2 className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider mb-2">4. Preview</h2>
           <div className="grid grid-cols-3 gap-2 mb-3">
             {[
-              { label: "Matched", value: counts.matched, hint: "already in the app", tone: "text-emerald-300" },
+              { label: "Matched", value: counts.matched, hint: "already in app", tone: "text-emerald-300" },
               { label: "New", value: counts.new, hint: "will be added", tone: "text-sky-300" },
               { label: "Skipped", value: counts.skipped, hint: "not imported", tone: "text-zinc-300" },
             ].map((c) => (
               <div key={c.label} className="glass-panel px-3 py-2 min-w-0">
                 <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{c.label}</p>
                 <p className={`text-lg font-semibold tabular-nums ${c.tone}`}>{c.value}</p>
-                <p className="text-[10px] text-zinc-500 truncate">{c.hint}</p>
+                <p className="text-[10px] leading-tight text-zinc-500">{c.hint}</p>
               </div>
             ))}
           </div>
