@@ -497,6 +497,27 @@ const dashboardService = {
     );
   },
 
+  // Pay for the forecast: the detected pay series, income names and Expected pay (read, so no handleRequest)
+  fetchPaySettings: async () => {
+    return api.get("/settings/pay").then((res) => res.data);
+  },
+
+  updateExpectedPay: async ({ nextDate, cadence, amount }) => {
+    return handleRequest(
+      api.put("/settings/expected-pay", { nextDate, cadence, amount }),
+      "Expected pay saved"
+    );
+  },
+
+  clearExpectedPay: async () => {
+    return handleRequest(api.delete("/settings/expected-pay"), "Expected pay removed");
+  },
+
+  // title: an income name from fetchPaySettings().incomeNames, or null to detect the pay automatically
+  updatePayTitle: async (title) => {
+    return handleRequest(api.put("/settings/pay-title", { title }), "Pay updated");
+  },
+
   updateForecastBuffer: async (buffer) => {
     return handleRequest(
       api.put("/settings/forecast-buffer", { buffer }),
