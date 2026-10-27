@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, PiggyBank, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import { getTorontoYearMonth } from "../../utils/dateUtils";
 
 const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   const [name, setName] = useState("");
@@ -9,7 +10,7 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   const [targetDate, setTargetDate] = useState("");
   const [registeredType, setRegisteredType] = useState("");
   const [contributionRoom, setContributionRoom] = useState("");
-  const [roomYear, setRoomYear] = useState(new Date().getFullYear().toString());
+  const [roomYear, setRoomYear] = useState(getTorontoYearMonth().year.toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -20,7 +21,7 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
       setCurrentAmount(goal.current_amount ?? "");
       setTargetDate(
         goal.target_date
-          ? new Date(goal.target_date).toISOString().slice(0, 10)
+          ? String(goal.target_date).slice(0, 10)
           : ""
       );
       setRegisteredType(goal.registeredType || "");
@@ -32,7 +33,7 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
       setRoomYear(
         goal.roomYear
           ? goal.roomYear.toString()
-          : new Date().getFullYear().toString()
+          : getTorontoYearMonth().year.toString()
       );
     }
   }, [goal]);

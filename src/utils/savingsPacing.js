@@ -1,4 +1,5 @@
 import { formatCurrency, formatShortDate } from "./formatUtils.js";
+import { getTorontoTodayDate } from "./dateUtils.js";
 
 /**
  * Calculates savings goal pacing, required contribution per month and per paycheque,
@@ -6,13 +7,13 @@ import { formatCurrency, formatShortDate } from "./formatUtils.js";
  *
  * @param {object} goal
  * @param {string} [paychequeCadence="bi-weekly"]
- * @param {Date} [today=new Date()]
+ * @param {Date} [today=getTorontoTodayDate()] months are counted from Toronto's day
  * @returns {object}
  */
 export function calculatePacing(
   goal,
   paychequeCadence = "bi-weekly",
-  today = new Date()
+  today = getTorontoTodayDate()
 ) {
   if (!goal) return null;
 

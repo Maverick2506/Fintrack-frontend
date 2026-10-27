@@ -9,6 +9,7 @@ import SpendingTrendsChart from "../components/Dashboard/SpendingTrendsChart";
 import NetWorthHistoryChart from "../components/Dashboard/NetWorthHistoryChart";
 import CategoryDetailModal from "../components/Modals/CategoryDetailModal";
 import { formatCurrency } from "../utils/formatUtils";
+import { getTorontoYearMonth } from "../utils/dateUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
@@ -24,10 +25,8 @@ const ReportsPage = () => {
   const [loadError, setLoadError] = useState(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [activeExpenseId, setActiveExpenseId] = useState(null);
-  const [selectedDate, setSelectedDate] = useState({
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
-  });
+  // Starts on Toronto's month, whatever the device's time zone
+  const [selectedDate, setSelectedDate] = useState(() => getTorontoYearMonth());
   const [isCategoryModalOpen, setCategoryModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
   const [categoryTransactions, setCategoryTransactions] = useState([]);
@@ -66,7 +65,7 @@ const ReportsPage = () => {
     return savingsGoals.filter((g) => Boolean(g.registeredType));
   }, [savingsGoals]);
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = getTorontoYearMonth().year;
   const availableYears = useMemo(() => {
     const start = 2023;
     const end = Math.max(currentYear + 2, 2027);

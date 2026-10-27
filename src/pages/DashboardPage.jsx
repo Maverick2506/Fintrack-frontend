@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { logout } from "../utils/auth";
+import { getTorontoYearMonth } from "../utils/dateUtils";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import UpcomingBills from "../components/Dashboard/UpcomingBills";
@@ -28,12 +29,13 @@ import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
-  const now = new Date();
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-12
+  // "This month" is Toronto's month, whatever the device's time zone
+  const now = getTorontoYearMonth();
+  const [selectedYear, setSelectedYear] = useState(now.year);
+  const [selectedMonth, setSelectedMonth] = useState(now.month); // 1-12
 
   const isCurrentMonth =
-    selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+    selectedYear === now.year && selectedMonth === now.month;
   const selectedDate = new Date(selectedYear, selectedMonth - 1, 1);
 
   const handlePrevMonth = () => {
@@ -55,8 +57,8 @@ const DashboardPage = () => {
   };
 
   const handleResetMonth = () => {
-    setSelectedYear(now.getFullYear());
-    setSelectedMonth(now.getMonth() + 1);
+    setSelectedYear(now.year);
+    setSelectedMonth(now.month);
   };
 
   const {
