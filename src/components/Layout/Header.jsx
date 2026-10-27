@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { getTorontoTodayDate } from "../../utils/dateUtils";
 
 const Header = ({
   onAddTransaction,
@@ -9,7 +10,7 @@ const Header = ({
   onResetMonth,
   isCurrentMonth,
 }) => {
-  const displayDate = selectedDate || new Date();
+  const displayDate = selectedDate || getTorontoTodayDate();
   const month = displayDate.toLocaleString("default", { month: "long" });
   const year = displayDate.getFullYear();
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Calendar, Repeat, Landmark, AlertCircle } from "lucide-react";
-import { getLocalTodayStr } from "../../utils/dateUtils";
+import { getTorontoTodayStr } from "../../utils/dateUtils";
 import dashboardService from "../../services/dashboardService";
 
 const FREQUENCIES = [
@@ -17,7 +17,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
   const [interestRate, setInterestRate] = useState("");
   const [autoPay, setAutoPay] = useState(false);
   const [nextDueDate, setNextDueDate] = useState(
-    getLocalTodayStr()
+    getTorontoTodayStr()
   );
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,7 +69,7 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
       setMonthlyPayment("");
       setInterestRate("");
       setAutoPay(false);
-      setNextDueDate(getLocalTodayStr());
+      setNextDueDate(getTorontoTodayStr());
       setError(null);
       setPaymentFrequency("monthly");
 

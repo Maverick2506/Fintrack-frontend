@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, PiggyBank, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import { getTorontoYearMonth } from "../../utils/dateUtils";
 
 const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const [name, setName] = useState("");
@@ -9,7 +10,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const [targetDate, setTargetDate] = useState("");
   const [registeredType, setRegisteredType] = useState("");
   const [contributionRoom, setContributionRoom] = useState("");
-  const [roomYear, setRoomYear] = useState(new Date().getFullYear().toString());
+  const [roomYear, setRoomYear] = useState(getTorontoYearMonth().year.toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -50,7 +51,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
       setTargetDate("");
       setRegisteredType("");
       setContributionRoom("");
-      setRoomYear(new Date().getFullYear().toString());
+      setRoomYear(getTorontoYearMonth().year.toString());
       onClose();
       refreshData();
     } catch (err) {

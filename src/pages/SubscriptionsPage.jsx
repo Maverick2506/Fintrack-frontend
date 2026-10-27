@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import { formatCurrency } from "../utils/formatUtils";
+import { getTorontoTodayStr } from "../utils/dateUtils";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
@@ -75,7 +76,7 @@ const SubscriptionsPage = () => {
           name: sub.name,
           amount: sub.latestAmount,
           category: sub.category,
-          date: sub.nextDate || new Date().toISOString().slice(0, 10),
+          date: sub.nextDate || getTorontoTodayStr(),
           recurrence: sub.cadence,
           isTaxExclusive: sub.isTaxExclusive,
           taxRate: sub.taxRate,
@@ -91,7 +92,7 @@ const SubscriptionsPage = () => {
         name: sub.name,
         amount: sub.latestAmount,
         category: sub.category,
-        date: sub.nextDate || new Date().toISOString().slice(0, 10),
+        date: sub.nextDate || getTorontoTodayStr(),
         recurrence: sub.cadence,
         isTaxExclusive: sub.isTaxExclusive,
         taxRate: sub.taxRate,

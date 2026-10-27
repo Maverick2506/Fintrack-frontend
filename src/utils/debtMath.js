@@ -1,6 +1,7 @@
 /**
  * Pure functions for debt payoff math, simulation, and comparison.
  */
+import { getTorontoTodayDate } from "./dateUtils.js";
 
 /**
  * Normalizes payment amount to monthly equivalent based on frequency.
@@ -99,14 +100,14 @@ export function formatDateStr(date) {
  * @param {Array<object>} rawDebts
  * @param {number} [extraPerMonth=0]
  * @param {"avalanche"|"snowball"} [strategy="avalanche"]
- * @param {Date} [baseDate=new Date()]
+ * @param {Date} [baseDate=getTorontoTodayDate()] months are counted from Toronto's day
  * @returns {object}
  */
 export function simulate(
   rawDebts = [],
   extraPerMonth = 0,
   strategy = "avalanche",
-  baseDate = new Date()
+  baseDate = getTorontoTodayDate()
 ) {
   const extra = Math.max(0, parseFloat(extraPerMonth) || 0);
 

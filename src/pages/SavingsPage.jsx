@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, PiggyBank, Calendar } from "lucide-react";
 import { calculatePacing } from "../utils/savingsPacing";
 import { formatCurrency } from "../utils/formatUtils";
+import { getTorontoYearMonth } from "../utils/dateUtils";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
@@ -297,7 +298,7 @@ const SavingsPage = () => {
                     <div className="mb-4 p-3 rounded-xl bg-zinc-950/70 border border-white/[0.06] text-xs space-y-2">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="font-medium text-zinc-400">
-                          {goal.registeredType} Room ({goal.roomYear || new Date().getFullYear()})
+                          {goal.registeredType} Room ({goal.roomYear || getTorontoYearMonth().year})
                         </span>
                         {goal.contributionRoom !== null && goal.contributionRoom !== undefined ? (
                           <span className="text-zinc-200 tabular-nums">
