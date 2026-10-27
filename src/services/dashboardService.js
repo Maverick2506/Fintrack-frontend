@@ -1,4 +1,5 @@
 import axios from "axios";
+import { isAiCapError } from "../utils/aiUsage";
 import toast from "react-hot-toast";
 import { getToken, isLoggedIn, logout } from "../utils/auth";
 import { queryClient } from "../utils/queryClient";
@@ -275,12 +276,23 @@ const dashboardService = {
     return handleRequest(
       api.post("/categorize-expense", { name }),
       null,
-      false
+      false,
+      // Over the daily AI cap, suggestions just stop; no toast on every keystroke
+      (error) => !isAiCapError(error)
     );
   },
 
   chatAdvisor: async (message, history = []) => {
     return api.post("/chat-advisor", { message, history }).then((res) => res.data);
+  },
+
+  // Today's AI requests (against the daily cap) and tokens
+  fetchAiUsage: async () => {
+    return api.get("/settings/ai-usage").then((res) => res.data);
+  },
+
+  setAiDailyCap: async (cap) => {
+    return handleRequest(api.put("/settings/ai-daily-cap", { cap }), "Daily AI limit updated");
   },
 
   fetchHealth: async () => {

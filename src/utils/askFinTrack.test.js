@@ -1,5 +1,12 @@
 /* global process */
-import { loadAskHistory, saveAskHistory, ASK_HISTORY_KEY, ASK_HISTORY_MAX } from "./askFinTrack.js";
+import {
+  loadAskHistory,
+  saveAskHistory,
+  cleanProposals,
+  ASK_HISTORY_KEY,
+  ASK_HISTORY_MAX,
+  MAX_PROPOSALS,
+} from "./askFinTrack.js";
 
 function assert(condition, message) {
   if (condition) {
@@ -52,5 +59,31 @@ assert(loadAskHistory(throwing).length === 0, "blocked storage reads as an empty
 saveAskHistory(throwing, chat);
 assert(true, "a full or blocked storage does not break saving");
 assert(loadAskHistory(undefined).length === 0, "no storage at all reads as an empty chat");
+
+// Drafted transactions ("Review & save" cards) are kept with their message (AI1)
+const draftChat = [
+  { role: "user", text: "add 12.50 lunch visa" },
+  {
+    role: "model",
+    text: "Drafted it.",
+    proposals: [{ quickAddText: "12.50 lunch visa", summary: "Expense: Lunch. Not saved yet." }],
+  },
+];
+const draftStorage = memoryStorage();
+saveAskHistory(draftStorage, draftChat);
+const draftBack = loadAskHistory(draftStorage);
+assert(
+  draftBack[1].proposals?.length === 1 && draftBack[1].proposals[0].quickAddText === "12.50 lunch visa",
+  "a drafted transaction card survives closing the panel"
+);
+draftStorage.setItem(
+  ASK_HISTORY_KEY,
+  JSON.stringify([{ role: "model", text: "x", proposals: [{ quickAddText: 5 }, null, { quickAddText: "  " }, "junk"] }])
+);
+assert(!("proposals" in loadAskHistory(draftStorage)[0]), "broken drafts in storage are dropped, the message is kept");
+assert(cleanProposals(undefined).length === 0 && cleanProposals("x").length === 0, "no drafts reads as none");
+const many = Array.from({ length: 9 }, (_, i) => ({ quickAddText: `${i + 1} coffee` }));
+const cleaned = cleanProposals(many);
+assert(cleaned.length === MAX_PROPOSALS && cleaned[0].summary === "", "at most five drafts, a missing summary is blank");
 
 console.log("All Ask FinTrack history tests passed.");

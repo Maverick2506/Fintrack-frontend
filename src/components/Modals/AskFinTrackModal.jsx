@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   X,
   Sparkles,
@@ -9,10 +11,16 @@ import {
   TrendingDown,
   CreditCard,
   ShieldCheck,
+  ArrowRight,
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import useEscapeClose from "../../hooks/useEscapeClose";
-import { loadAskHistory, saveAskHistory } from "../../utils/askFinTrack";
+import { loadAskHistory, saveAskHistory, cleanProposals } from "../../utils/askFinTrack";
+import { buildQuickAddLink } from "../../utils/quickAddLink";
+import { formatNumber } from "../../utils/formatUtils";
+import { formatAiUsage, parseAiCapInput, MAX_AI_DAILY_CAP } from "../../utils/aiUsage";
+
+const AI_USAGE_KEY = ["ai-usage"];
 
 const SUGGESTED_PROMPTS = [
   {
@@ -78,6 +86,18 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const [capDraft, setCapDraft] = useState(null);
+  const [isSavingCap, setIsSavingCap] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Today's AI requests against the daily cap, and tokens used
+  const { data: usage } = useQuery({
+    queryKey: AI_USAGE_KEY,
+    queryFn: () => dashboardService.fetchAiUsage(),
+    enabled: isOpen,
+    staleTime: 30 * 1000,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -116,10 +136,12 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
 
       const res = await dashboardService.chatAdvisor(textToSend, apiHistory);
       const replyText = res?.reply || "I didn't receive a response. Please try again.";
+      // Drafted transactions: shown as cards that open Quick Add; the chat never saves anything
+      const proposals = cleanProposals(res?.proposals);
 
       setMessages((prev) => [
         ...prev,
-        { role: "model", text: replyText },
+        { role: "model", text: replyText, ...(proposals.length ? { proposals } : {}) },
       ]);
     } catch (err) {
       const errMsg =
@@ -135,7 +157,29 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
       ]);
     } finally {
       setIsLoading(false);
+      queryClient.invalidateQueries({ queryKey: AI_USAGE_KEY });
     }
+  };
+
+  const usageText = formatAiUsage(usage, formatNumber);
+  const capValue = capDraft === null ? null : parseAiCapInput(capDraft);
+
+  const handleSaveCap = async () => {
+    if (capValue === null || isSavingCap) return;
+    setIsSavingCap(true);
+    try {
+      await dashboardService.setAiDailyCap(capValue);
+      setCapDraft(null);
+    } catch {
+      // handleRequest already showed the error
+    } finally {
+      setIsSavingCap(false);
+    }
+  };
+
+  const handleReview = (proposal) => {
+    navigate(buildQuickAddLink(proposal.quickAddText));
+    onClose();
   };
 
   const handleClear = () => {
@@ -250,6 +294,31 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
                 >
                   {m.role === "user" ? m.text : renderMarkdown(m.text)}
                 </div>
+                {m.role === "model" &&
+                  m.proposals?.map((p, pIdx) => (
+                    <div
+                      key={pIdx}
+                      className="mt-2 w-full max-w-[88%] rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3 text-xs"
+                    >
+                      <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">
+                        Draft · not saved
+                      </p>
+                      {p.summary && (
+                        <p className="mt-1 text-zinc-200 leading-relaxed break-words">{p.summary}</p>
+                      )}
+                      <p className="mt-1.5 font-mono text-[11px] text-zinc-400 break-all">
+                        {p.quickAddText}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleReview(p)}
+                        className="mt-2.5 w-full min-h-[40px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span>Review &amp; save</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  ))}
                 <span className="text-[10px] text-zinc-600 mt-1 px-1">
                   {m.role === "user" ? "You" : "FinTrack Advisor"}
                 </span>
@@ -296,6 +365,59 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
           <p className="text-[10px] text-center text-zinc-600">
             This chat is kept until you close the tab or sign out.
           </p>
+          {usageText && capDraft === null && (
+            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-600">
+              <span>{usageText}</span>
+              <button
+                type="button"
+                onClick={() => setCapDraft(String(usage.cap))}
+                className="min-h-[40px] px-2 text-zinc-400 hover:text-zinc-200 underline underline-offset-2 cursor-pointer"
+              >
+                Change limit
+              </button>
+            </div>
+          )}
+          {capDraft !== null && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveCap();
+              }}
+              className="flex items-center gap-2"
+            >
+              <label htmlFor="ai-daily-cap" className="text-[11px] text-zinc-400 shrink-0">
+                AI requests per day
+              </label>
+              <input
+                id="ai-daily-cap"
+                type="text"
+                inputMode="numeric"
+                value={capDraft}
+                onChange={(e) => setCapDraft(e.target.value)}
+                aria-invalid={capValue === null}
+                className="w-0 flex-1 min-w-0 h-10 bg-zinc-950 border border-white/10 rounded-lg px-2.5 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500/50"
+              />
+              <button
+                type="submit"
+                disabled={capValue === null || isSavingCap}
+                className="h-10 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold disabled:opacity-40 cursor-pointer"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setCapDraft(null)}
+                className="h-10 px-2 text-xs text-zinc-400 hover:text-zinc-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+          {capDraft !== null && capValue === null && (
+            <p className="text-[10px] text-amber-400">
+              Enter a whole number from 0 to {formatNumber(MAX_AI_DAILY_CAP, { maximumFractionDigits: 0 })}.
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import {
   getSafeNextPath,
   buildLoginPath,
   restoreLinkList,
+  buildQuickAddLink,
   MAX_LINK_LINES,
 } from "./quickAddLink.js";
 
@@ -79,5 +80,17 @@ assert(
   same(restoreLinkList(JSON.stringify({ items: [{ text: "a", status: "weird" }, 5, { text: "  " }] })), { items: [{ text: "a", status: "pending" }], index: 0 }),
   "Unknown statuses become pending and junk entries are dropped"
 );
+
+// Ask FinTrack's "Review & save" opens Quick Add with the drafted text (AI1)
+assert(buildQuickAddLink("12.50 lunch visa") === "/quick?text=12.50+lunch+visa", "A draft becomes a /quick?text= link");
+assert(
+  same(parseQuickAddTextParam(buildQuickAddLink("120 hydro due 2026-11-05").slice("/quick".length)), ["120 hydro due 2026-11-05"]),
+  "The link reads back as the same Quick Add text"
+);
+assert(
+  same(parseQuickAddTextParam(buildQuickAddLink("+2100 paycheque & bonus\n4.50 coffee").slice(6)), ["+2100 paycheque & bonus", "4.50 coffee"]),
+  "'+' and '&' survive the link and each line stays its own entry"
+);
+assert(buildQuickAddLink("   ") === "/quick" && buildQuickAddLink(undefined) === "/quick", "An empty draft opens plain Quick Add");
 
 console.log("\nAll Quick Add link tests passed.");
