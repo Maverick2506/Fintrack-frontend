@@ -704,7 +704,7 @@ const ImportPage = () => {
       {preview && (
         <div className="fixed inset-x-4 bottom-[76px] md:bottom-6 z-30 max-w-lg mx-auto">
           <div className="flex items-center gap-3 bg-zinc-900/95 backdrop-blur-md border border-white/[0.12] rounded-2xl p-2 pl-4 shadow-2xl">
-            <p className="flex-1 min-w-0 text-xs text-zinc-300 truncate">{importCountsLine(counts)}</p>
+            <p className="flex-1 min-w-0 text-[11px] leading-snug text-zinc-300 line-clamp-2">{importCountsLine(counts)}</p>
             <button
               type="button"
               onClick={commit}
