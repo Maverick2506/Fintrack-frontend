@@ -30,6 +30,8 @@ import {
   countOutcomes,
   balanceAfterImport,
   historyLine,
+  IMPORT_GROUPS,
+  rowGroup,
   buildCommitRows,
   columnOptionLabel,
 } from "../utils/csvImport";
@@ -496,11 +498,12 @@ const ImportPage = () => {
       {preview && (
         <section>
           <h2 className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider mb-2">4. Preview</h2>
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
             {[
-              { label: "Matched", value: counts.matched, hint: "already in app", tone: "text-emerald-300" },
+              { label: "Already recorded", value: counts.recorded, hint: "nothing added", tone: "text-emerald-300" },
+              { label: "Bill marked paid", value: counts.paid, hint: "no duplicate", tone: "text-emerald-300" },
+              { label: "Possible match", value: counts.possible, hint: "you choose", tone: "text-amber-300" },
               { label: "New", value: counts.new, hint: "will be added", tone: "text-sky-300" },
-              { label: "Skipped", value: counts.skipped, hint: "not imported", tone: "text-zinc-300" },
             ].map((c) => (
               <div key={c.label} className="glass-panel px-3 py-2 min-w-0">
                 <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{c.label}</p>
@@ -541,110 +544,160 @@ const ImportPage = () => {
             </button>
           )}
 
-          <ul className="glass-panel divide-y divide-white/[0.04] overflow-hidden">
-            {visibleRows.length === 0 && (
-              <li className="p-6 text-center text-sm text-zinc-400">Everything in this file was imported before.</li>
-            )}
-            {visibleRows.map((row) => {
-              const edit = edits[row.line] || {};
-              const outcome = rowOutcome(row, edit);
-              const badge = STATUS_BADGES[outcome];
-              const isOut = row.direction === "out";
-              const canPickCategory = outcome === "new" && (isOut || row.refund) && !row.toCard;
-              const categoryOptions = row.refund ? REFUND_CATEGORIES : EXPENSE_CATEGORIES;
+          {visibleRows.length === 0 && (
+            <div className="glass-panel p-6 text-center text-sm text-zinc-400">Everything in this file was imported before.</div>
+          )}
+          <div className="space-y-4">
+            {IMPORT_GROUPS.map((group) => {
+              // A row skipped by hand stays in its group; only rows imported before are in Skipped
+              const groupRows = visibleRows.filter((r) => rowGroup(r, { ...(edits[r.line] || {}), skip: false }) === group.key);
+              if (groupRows.length === 0) return null;
               return (
-                <li key={row.line} className={`px-3 py-2.5 ${outcome === "skip" ? "opacity-60" : ""}`}>
-                  <div className="flex items-start gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-zinc-100 break-words line-clamp-2">{row.description}</p>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                        <span className="text-[11px] text-zinc-500 tabular-nums">{formatShortDate(row.date)}</span>
-                        <span className={`text-[10px] font-medium border px-1.5 py-0.5 rounded ${badge.className}`}>
-                          {row.status === "duplicate" ? (row.inTrash ? "In Trash" : "Already imported") : badge.label}
-                        </span>
-                        {row.history && outcome !== "skip" && (
-                          <span
-                            className="inline-flex items-center gap-1 text-[10px] font-medium border px-1.5 py-0.5 rounded text-zinc-400 bg-white/[0.04] border-white/[0.08]"
-                            title="Already in the balance: saved without changing it"
-                          >
-                            <History size={10} />
-                            History
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span
-                      className={`text-sm font-medium tabular-nums whitespace-nowrap shrink-0 ${
-                        isOut ? "text-zinc-200" : "text-emerald-400"
-                      }`}
-                    >
-                      {isOut ? "-" : "+"}
-                      {formatCurrency(row.amount)}
-                    </span>
-                  </div>
-
-                  {row.status === "match" && (
-                    <p className={`text-[11px] mt-1 ${edit.unmatch ? "text-zinc-500 line-through" : "text-emerald-300/90"}`}>
-                      {row.match.alreadyRecorded
-                        ? `Same payment as “${row.match.title}” (${formatShortDate(row.match.date)}), already recorded`
-                        : `Marks “${row.match.title}” (${formatShortDate(row.match.date)}) paid`}
-                    </p>
-                  )}
-                  {outcome === "new" && row.toCard && (
-                    <p className="text-[11px] mt-1 text-zinc-400">
-                      {row.toCard.type === "DEBT" ? "Debt" : "Card"} payment to {row.toCard.name}, not spending
-                    </p>
-                  )}
-                  {outcome === "new" && row.refund && (
-                    <p className="text-[11px] mt-1 text-zinc-400">
-                      {row.refundOf
-                        ? `Refund of “${row.refundOf.title}” (${formatShortDate(row.refundOf.date)}): lowers its category's spending`
-                        : "Refund: lowers spending in the category below"}
-                    </p>
-                  )}
-
-                  {row.status !== "duplicate" && (
-                    <div className="flex items-center gap-2 mt-2">
-                      {canPickCategory ? (
-                        <select
-                          aria-label={`Category for ${row.description}`}
-                          className={`${selectClass} flex-1`}
-                          value={edit.category || row.category || "Other"}
-                          onChange={(e) => setEdit(row.line, { category: e.target.value })}
-                        >
-                          {categoryOptions.map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="flex-1 min-w-0 text-[11px] text-zinc-500 truncate">
-                          {outcome === "new" ? row.category : outcome === "match" ? row.match.category : ""}
-                        </span>
-                      )}
-                      {row.status === "match" && !edit.skip && (
-                        <button
-                          type="button"
-                          onClick={() => setEdit(row.line, { unmatch: !edit.unmatch })}
-                          className="btn-secondary h-10 px-2.5 shrink-0"
-                          title={edit.unmatch ? "Mark the bill paid instead" : "Add as a new row; the bill stays unpaid"}
-                        >
-                          {edit.unmatch ? <Link2 size={13} /> : <Link2Off size={13} />}
-                          <span>{edit.unmatch ? "Match" : "Unmatch"}</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setEdit(row.line, { skip: !edit.skip })}
-                        className="btn-secondary h-10 px-2.5 shrink-0"
-                      >
-                        <span>{edit.skip ? "Include" : "Skip"}</span>
-                      </button>
-                    </div>
-                  )}
-                </li>
+                <div key={group.key}>
+                  <h3 className="text-xs font-medium text-zinc-300 mb-1.5">
+                    {group.label} <span className="text-zinc-500 tabular-nums">· {groupRows.length}</span>
+                  </h3>
+                  <ul className="glass-panel divide-y divide-white/[0.04] overflow-hidden">
+                    {groupRows.map((row) => {
+                      const edit = edits[row.line] || {};
+                      const outcome = rowOutcome(row, edit);
+                      const badge = STATUS_BADGES[outcome];
+                      const isOut = row.direction === "out";
+                      const canPickCategory = outcome === "new" && (isOut || row.refund) && !row.toCard;
+                      const categoryOptions = row.refund ? REFUND_CATEGORIES : EXPENSE_CATEGORIES;
+                      return (
+                        <li key={row.line} className={`px-3 py-2.5 ${outcome === "skip" ? "opacity-60" : ""}`}>
+                          <div className="flex items-start gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-zinc-100 break-words line-clamp-2">{row.description}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span className="text-[11px] text-zinc-500 tabular-nums">{formatShortDate(row.date)}</span>
+                                <span className={`text-[10px] font-medium border px-1.5 py-0.5 rounded ${badge.className}`}>
+                                  {row.status === "duplicate" ? (row.inTrash ? "In Trash" : "Already imported") : badge.label}
+                                </span>
+                                {row.history && outcome !== "skip" && (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-medium border px-1.5 py-0.5 rounded text-zinc-400 bg-white/[0.04] border-white/[0.08]"
+                                    title="Already in the balance: saved without changing it"
+                                  >
+                                    <History size={10} />
+                                    History
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span
+                              className={`text-sm font-medium tabular-nums whitespace-nowrap shrink-0 ${
+                                isOut ? "text-zinc-200" : "text-emerald-400"
+                              }`}
+                            >
+                              {isOut ? "-" : "+"}
+                              {formatCurrency(row.amount)}
+                            </span>
+                          </div>
+        
+                          {row.status === "match" && (
+                            <p className={`text-[11px] mt-1 ${edit.unmatch ? "text-zinc-500 line-through" : "text-emerald-300/90"}`}>
+                              {row.match.alreadyRecorded
+                                ? `Already in the app as “${row.match.title}” (${formatShortDate(row.match.date)}): nothing is added`
+                                : `Marks “${row.match.title}” (${formatShortDate(row.match.date)}) paid`}
+                            </p>
+                          )}
+                          {row.possible && outcome !== "skip" && (
+                            <div className="mt-1.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-2">
+                              <p className="text-[11px] text-amber-200/90">
+                                Maybe “{row.possible.title}” ({formatShortDate(row.possible.date)}, {formatCurrency(row.possible.amount)})
+                                {row.possible.reason === "tip" ? " with a tip" : ", in another currency"}. Same purchase?
+                              </p>
+                              <div className="grid grid-cols-2 gap-2 mt-1.5">
+                                {[
+                                  { label: "Same", same: true },
+                                  { label: "Different", same: false },
+                                ].map((choice) => {
+                                  const selected = Boolean(edit.same) === choice.same;
+                                  return (
+                                    <button
+                                      key={choice.label}
+                                      type="button"
+                                      aria-pressed={selected}
+                                      onClick={() => setEdit(row.line, { same: choice.same })}
+                                      className={`h-10 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                                        selected
+                                          ? "border-white/25 bg-white/[0.08] text-zinc-100"
+                                          : "border-white/[0.08] text-zinc-400 hover:border-white/[0.15]"
+                                      }`}
+                                    >
+                                      {choice.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-[10px] text-zinc-500 mt-1">
+                                {edit.same
+                                  ? `Nothing is added; “${row.possible.title}” takes the bank's ${formatCurrency(row.amount)}.`
+                                  : "Added as a new row; the one in the app stays as it is."}
+                              </p>
+                            </div>
+                          )}
+                          {outcome === "new" && row.toCard && (
+                            <p className="text-[11px] mt-1 text-zinc-400">
+                              {row.toCard.type === "DEBT" ? "Debt" : "Card"} payment to {row.toCard.name}, not spending
+                            </p>
+                          )}
+                          {outcome === "new" && row.refund && (
+                            <p className="text-[11px] mt-1 text-zinc-400">
+                              {row.refundOf
+                                ? `Refund of “${row.refundOf.title}” (${formatShortDate(row.refundOf.date)}): lowers its category's spending`
+                                : "Refund: lowers spending in the category below"}
+                            </p>
+                          )}
+        
+                          {row.status !== "duplicate" && (
+                            <div className="flex items-center gap-2 mt-2">
+                              {canPickCategory ? (
+                                <select
+                                  aria-label={`Category for ${row.description}`}
+                                  className={`${selectClass} flex-1`}
+                                  value={edit.category || row.category || "Other"}
+                                  onChange={(e) => setEdit(row.line, { category: e.target.value })}
+                                >
+                                  {categoryOptions.map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className="flex-1 min-w-0 text-[11px] text-zinc-500 truncate">
+                                  {outcome === "new" ? row.category : outcome === "match" ? (row.match || row.possible)?.category : ""}
+                                </span>
+                              )}
+                              {row.status === "match" && !edit.skip && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEdit(row.line, { unmatch: !edit.unmatch })}
+                                  className="btn-secondary h-10 px-2.5 shrink-0"
+                                  title={edit.unmatch ? "Mark the bill paid instead" : "Add as a new row; the bill stays unpaid"}
+                                >
+                                  {edit.unmatch ? <Link2 size={13} /> : <Link2Off size={13} />}
+                                  <span>{edit.unmatch ? "Match" : "Unmatch"}</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setEdit(row.line, { skip: !edit.skip })}
+                                className="btn-secondary h-10 px-2.5 shrink-0"
+                              >
+                                <span>{edit.skip ? "Include" : "Skip"}</span>
+                              </button>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               );
             })}
-          </ul>
+          </div>
         </section>
       )}
 

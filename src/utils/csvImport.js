@@ -10,11 +10,14 @@ export const IMPORT_DATE_FORMATS = [
   { value: "MMM DD, YYYY", label: "Sep 30, 2026" },
 ];
 
-/** "3 matched · 5 new · 2 skipped", leaving out zeros except new */
+/** "2 already recorded · 1 bill paid · 5 new · 2 skipped", leaving out zeros except new */
 export const importCountsLine = (counts) => {
   if (!counts) return "";
   const parts = [];
-  if (counts.matched) parts.push(`${counts.matched} matched`);
+  if (counts.recorded) parts.push(`${counts.recorded} already recorded`);
+  if (counts.paid) parts.push(`${counts.paid} bill${counts.paid === 1 ? "" : "s"} paid`);
+  if (counts.same) parts.push(`${counts.same} same as in the app`);
+  if (counts.matched && !counts.recorded && !counts.paid && !counts.same) parts.push(`${counts.matched} matched`);
   parts.push(`${counts.new || 0} new`);
   if (counts.skipped) parts.push(`${counts.skipped} skipped`);
   return parts.join(" · ");
@@ -35,6 +38,27 @@ export const isMappingComplete = (m) => {
 export const rowOutcome = (row, edit = {}) => {
   if (row.status === "duplicate" || edit.skip) return "skip";
   if (row.status === "match" && !edit.unmatch) return "match";
+  // "Same" on a possible match links the row already in the app
+  if (row.possible && edit.same) return "match";
+  return "new";
+};
+
+/**
+ * The preview group a row shows in: "recorded" (already in the app, nothing created), "paid" (marks a
+ * bill paid), "possible" (the user says Same or Different), "new", or "skip". A possible match stays in
+ * its group whichever the user picks, so the choice stays visible.
+ */
+export const IMPORT_GROUPS = [
+  { key: "recorded", label: "Already recorded" },
+  { key: "paid", label: "Bill marked paid" },
+  { key: "possible", label: "Possible match" },
+  { key: "new", label: "New" },
+  { key: "skip", label: "Skipped" },
+];
+export const rowGroup = (row, edit = {}) => {
+  if (row.status === "duplicate" || edit.skip) return "skip";
+  if (row.possible) return "possible";
+  if (row.status === "match" && !edit.unmatch) return row.match?.kind === "paid" ? "paid" : "recorded";
   return "new";
 };
 
@@ -46,19 +70,31 @@ export const rowOutcome = (row, edit = {}) => {
 export const rowBalanceEffect = (row, edit = {}, accountType) => {
   const outcome = rowOutcome(row, edit);
   if (outcome === "skip" || row.history) return 0;
-  if (outcome === "match") return row.balanceEffect || 0;
   const raises = accountType === "CHECKING" ? row.direction === "in" : row.direction === "out";
+  // "Same": the app row takes the bank's amount, so only the difference (a tip) moves the balance
+  if (row.possible && edit.same) {
+    const diff = Math.round((row.amount - row.possible.amount) * 100) / 100;
+    return raises ? diff : -diff;
+  }
+  if (outcome === "match") return row.balanceEffect || 0;
   return raises ? row.amount : -row.amount;
 };
 
 /** Counts after the user's edits, for the Import button and summary */
 export const countOutcomes = (rows, edits = {}, accountType) => {
-  const counts = { matched: 0, new: 0, skipped: 0, history: 0, balanceChanging: 0 };
+  const counts = { matched: 0, new: 0, skipped: 0, recorded: 0, paid: 0, possible: 0, same: 0, history: 0, balanceChanging: 0 };
   for (const row of rows || []) {
     const outcome = rowOutcome(row, edits[row.line]);
+    const group = rowGroup(row, edits[row.line]);
     if (outcome === "skip") counts.skipped++;
     else if (outcome === "match") counts.matched++;
     else counts.new++;
+    if (group === "possible") counts.possible++;
+    if (outcome === "match") {
+      if (group === "paid") counts.paid++;
+      else if (group === "possible") counts.same++;
+      else counts.recorded++;
+    }
     if (outcome !== "skip" && row.history) counts.history++;
     if (rowBalanceEffect(row, edits[row.line], accountType) !== 0) counts.balanceChanging++;
   }
@@ -104,6 +140,7 @@ export const buildCommitRows = (rows, edits = {}) =>
       skip: Boolean(edit.skip),
     };
     if (row.status === "match" && edit.unmatch) out.matchId = null;
+    if (row.possible && edit.same) out.linkId = row.possible.id;
     return out;
   });
 

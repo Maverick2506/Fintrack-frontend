@@ -5,6 +5,7 @@ import {
   rowOutcome,
   countOutcomes,
   rowBalanceEffect,
+  rowGroup,
   balanceAfterImport,
   historyLine,
   isRefundRow,
@@ -30,6 +31,10 @@ console.log("   CSV IMPORT AND RULES UNIT TESTS                ");
 console.log("==================================================");
 
 assert(importCountsLine({ matched: 2, new: 5, skipped: 1 }) === "2 matched · 5 new · 1 skipped", "counts line lists each count");
+assert(
+  importCountsLine({ matched: 3, recorded: 2, paid: 1, new: 5, skipped: 1 }) === "2 already recorded · 1 bill paid · 5 new · 1 skipped",
+  "counts line names already-recorded rows and bills paid"
+);
 assert(importCountsLine({ matched: 0, new: 0, skipped: 8 }) === "0 new · 8 skipped", "zeros left out, except new");
 
 const tdMap = { hasHeader: false, date: 0, description: [1], debit: 2, credit: 3, dateFormat: "MM/DD/YYYY" };
@@ -71,6 +76,20 @@ assert(historyLine(cardCounts, "Feb 28") === "1 row is history (on or before Feb
 assert(historyLine({ history: 0, balanceChanging: 1 }) === "1 changes the balance", "no history: only the balance count");
 assert(balanceAfterImport({ rows: [] }) === null, "no balance from the server, no figure");
 assert(isRefundRow({ type: "expense", amount: -20 }) && !isRefundRow({ type: "expense", amount: 20 }), "a refund is an expense with a negative amount");
+
+// Groups and Same / Different on a possible match
+const possibleRow = { line: 9, status: "new", direction: "out", amount: 30, possible: { id: "app-1", amount: 25, reason: "tip" } };
+assert(rowGroup(possibleRow) === "possible" && rowOutcome(possibleRow) === "new", "a possible match is new until the user says Same");
+assert(rowOutcome(possibleRow, { same: true }) === "match" && rowGroup(possibleRow, { same: true }) === "possible", "Same links it; it stays in its group");
+assert(rowBalanceEffect(possibleRow, { same: true }, "CHECKING") === -5, "Same on a $5 tip moves Checking by the tip only");
+assert(buildCommitRows([possibleRow], { 9: { same: true } })[0].linkId === "app-1" && !("linkId" in buildCommitRows([possibleRow])[0]), "linkId only on Same");
+assert(rowGroup({ status: "match", match: { kind: "paid" } }) === "paid" && rowGroup({ status: "match", match: { kind: "recorded" } }) === "recorded", "bill paid vs already recorded");
+const grouped = countOutcomes(
+  [possibleRow, { line: 1, status: "match", match: { kind: "recorded" } }, { line: 2, status: "match", match: { kind: "paid" } }],
+  { 9: { same: true } }
+);
+assert(grouped.recorded === 1 && grouped.same === 1 && grouped.paid === 1 && grouped.possible === 1 && grouped.new === 0, "counts per group follow Same");
+assert(importCountsLine(grouped) === "1 already recorded · 1 bill paid · 1 same as in the app · 0 new", "counts line names rows marked Same");
 
 const commit = buildCommitRows(rows, edits);
 assert(commit.length === 4, "every row is sent, in file order");
