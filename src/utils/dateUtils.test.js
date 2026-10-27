@@ -4,6 +4,7 @@ import {
   getTorontoYearMonth,
   getTorontoTodayDate,
   addDaysToDateStr,
+  dueDateOnOpen,
 } from "./dateUtils.js";
 import { simulate } from "./debtMath.js";
 import { calculatePacing } from "./savingsPacing.js";
@@ -86,5 +87,50 @@ for (const tz of PHONES) {
     assert(pace.monthsLeft === 2 && pace.requiredPerMonth === 500, `${tz}: 2 months left to Dec 15, $500/month (got ${pace.monthsLeft})`);
   });
 }
+
+console.log("\n--- Test 5: no date passed in, the clock frozen at 23:30 Toronto on Oct 31 ---");
+// A Date whose no-argument constructor and Date.now() return a fixed instant; dates built from values stay real
+const RealDate = Date;
+const freezeClockAt = (instant, fn) => {
+  const fixed = instant.getTime();
+  class FrozenDate extends RealDate {
+    constructor(...args) {
+      if (args.length === 0) super(fixed);
+      else super(...args);
+    }
+    static now() {
+      return fixed;
+    }
+  }
+  globalThis.Date = FrozenDate;
+  try {
+    fn();
+  } finally {
+    globalThis.Date = RealDate;
+  }
+};
+for (const tz of PHONES) {
+  onPhoneIn(tz, () => {
+    freezeClockAt(halloweenNight, () => {
+      assert(getTorontoTodayStr() === "2026-10-31", `${tz}: [setup] the frozen clock reads Oct 31 in Toronto`);
+      const sim = simulate([debt], 0);
+      assert(sim.chartSeries[0].date === "2026-10-31", `${tz}: payoff chart starts on Oct 31 (got ${sim.chartSeries[0].date})`);
+      assert(sim.debtFreeDate === "2027-01-31", `${tz}: debt-free Jan 31 2027 (got ${sim.debtFreeDate})`);
+      const pace = calculatePacing(goal, "bi-weekly");
+      assert(pace.monthsLeft === 2 && pace.requiredPerMonth === 500, `${tz}: 2 months left to Dec 15, $500/month (got ${pace.monthsLeft})`);
+    });
+  });
+}
+assert(Date === RealDate, "the real Date is back after the frozen clock");
+
+console.log("\n--- Test 6: debt form's due date when the dialog opens ---");
+// Page loaded on Oct 31 in Toronto, dialog opened after midnight on Nov 1
+const openedToday = getTorontoTodayStr(justAfterMidnight);
+assert(dueDateOnOpen({ today: openedToday }) === "2026-11-01", "Add Debt: nothing entered -> today at open, Nov 1");
+assert(dueDateOnOpen({ entered: null, today: openedToday }) === "2026-11-01", "Add Debt: a stale default from before midnight is not kept");
+assert(dueDateOnOpen({ entered: "2026-11-15", today: openedToday }) === "2026-11-15", "Add Debt: a date the user entered stays");
+assert(dueDateOnOpen({ saved: "2026-11-20", today: openedToday }) === "2026-11-20", "Edit Debt: the saved date wins over today");
+assert(dueDateOnOpen({ entered: "2026-11-15", saved: "2026-11-20", today: openedToday }) === "2026-11-15", "Edit Debt: a date the user entered wins over the saved one");
+assert(dueDateOnOpen({ entered: "", saved: null, today: openedToday }) === "2026-11-01", "Edit Debt: no saved date and a cleared field -> today");
 
 if (failed > 0) process.exit(1);

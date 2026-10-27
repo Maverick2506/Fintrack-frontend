@@ -22,6 +22,12 @@ export const getTorontoTodayDate = (now = new Date()) => {
   return new Date(y, m - 1, d, 12);
 };
 
+/**
+ * The due date a form shows when it opens: a date the user already entered wins,
+ * then the saved date, then Toronto's today (worked out at open, not when the page loaded).
+ */
+export const dueDateOnOpen = ({ entered, saved, today }) => entered || saved || today;
+
 /** Adds whole days to a YYYY-MM-DD string. */
 export const addDaysToDateStr = (dateStr, days) => {
   const [y, m, d] = String(dateStr).slice(0, 10).split("-").map(Number);
