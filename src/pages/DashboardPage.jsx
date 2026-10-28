@@ -25,6 +25,8 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
+import NextPayLine from "../components/Dashboard/NextPayLine";
+import ExpectedPayModal from "../components/Modals/ExpectedPayModal";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
@@ -172,6 +174,7 @@ const DashboardPage = () => {
     toEdit: null,
   });
   const [syncingChecking, setSyncingChecking] = useState(false);
+  const [editingExpectedPay, setEditingExpectedPay] = useState(false);
   const [advice, setAdvice] = useState(
     () => localStorage.getItem("fintrack_advice") || ""
   );
@@ -403,6 +406,7 @@ const DashboardPage = () => {
                 Low {formatCurrency(forecastLowestBalance, { maximumFractionDigits: 0 })} · {formatShortDate(forecast?.lowestPoint?.date)}
               </div>
             </div>
+            <NextPayLine forecast={forecast} onOpen={() => setEditingExpectedPay(true)} />
           </div>
 
           {/* 2x2 Compact Metric Grid (~70px cards) */}
@@ -489,6 +493,7 @@ const DashboardPage = () => {
                   ? `until ${formatShortDate(forecast.nextPayday)} (${isNextPaydayEstimated ? "est. payday" : "payday"})`
                   : "for next 60 days"}
               </p>
+              <NextPayLine forecast={forecast} onOpen={() => setEditingExpectedPay(true)} />
             </div>
 
             <div className="mt-2.5 pt-2 border-t border-white/[0.06] text-[11px] text-zinc-500 truncate">
@@ -756,6 +761,7 @@ const DashboardPage = () => {
         isOpen={modals.geminiModal}
         onClose={() => closeModal("geminiModal")}
       />
+      {editingExpectedPay && <ExpectedPayModal onClose={() => setEditingExpectedPay(false)} />}
       {syncingChecking && dashboardData?.checkingAccount?.id && (
         <SyncStatementModal
           account={{
