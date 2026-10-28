@@ -37,7 +37,7 @@ const NotesTagsField = ({ notes, onNotesChange, tags, onTagsChange }) => {
     <div className="bg-zinc-950/60 border border-white/[0.07] rounded-xl px-3 py-2.5 space-y-2.5">
       <div>
         <label
-          htmlFor="txTags"
+          htmlFor={tags.length < MAX_TAGS ? "txTags" : undefined}
           className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1.5"
         >
           <Tag size={11} />

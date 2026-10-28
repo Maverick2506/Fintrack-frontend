@@ -340,6 +340,9 @@ const LedgerPage = () => {
   }, [rows]);
 
   const availableTags = useMemo(() => collectTags(rows), [rows]);
+  // A tag whose last row was deleted stays in the list while it is the filter, so the select shows it
+  const tagOptions =
+    tagFilter === "all" || availableTags.includes(tagFilter) ? availableTags : [...availableTags, tagFilter];
 
   const availableMonths = useMemo(() => {
     const set = new Set(
@@ -965,7 +968,7 @@ const LedgerPage = () => {
                 className={inlineSelect}
               >
                 <option value="all">All Tags</option>
-                {availableTags.map((t) => (
+                {tagOptions.map((t) => (
                   <option key={t} value={t}>
                     #{t}
                   </option>
@@ -1205,7 +1208,7 @@ const LedgerPage = () => {
         setCategoryFilter={setCategoryFilter}
         monthFilter={monthFilter}
         setMonthFilter={setMonthFilter}
-        tags={availableTags}
+        tags={tagOptions}
         tagFilter={tagFilter}
         setTagFilter={setTagFilter}
         sortKey={sortKey}

@@ -119,33 +119,33 @@ const ForecastChartCard = ({
     <div>
       {/* Mobile Collapsible Header (M5, n1, n2), with the Calendar beside it */}
       <div className="sm:hidden flex items-stretch gap-2">
-      <button
-        type="button"
-        onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-        className="glass-panel px-4 py-3 flex-1 min-w-0 flex items-center justify-between text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2">
-          <TrendingUp size={15} className="text-emerald-400" />
-          <span>60-Day Cashflow Forecast</span>
-        </div>
-        <div className="flex items-center gap-1 text-zinc-400">
-          <span className="text-[11px] font-medium text-emerald-400">
-            {isMobileExpanded ? "Hide" : "Open"}
-          </span>
-          <ChevronDown
-            size={14}
-            className={`transition-transform duration-200 ${isMobileExpanded ? "rotate-180" : ""}`}
-          />
-        </div>
-      </button>
-      <Link
-        to="/calendar"
-        aria-label="Open the cash-flow calendar"
-        className="glass-panel px-3 min-h-[40px] shrink-0 flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300"
-      >
-        <CalendarDays size={15} />
-        Calendar
-      </Link>
+        <button
+          type="button"
+          onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+          className="glass-panel px-4 py-3 flex-1 min-w-0 flex items-center justify-between text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <TrendingUp size={15} className="text-emerald-400" />
+            <span>60-Day Cashflow Forecast</span>
+          </div>
+          <div className="flex items-center gap-1 text-zinc-400">
+            <span className="text-[11px] font-medium text-emerald-400">
+              {isMobileExpanded ? "Hide" : "Open"}
+            </span>
+            <ChevronDown
+              size={14}
+              className={`transition-transform duration-200 ${isMobileExpanded ? "rotate-180" : ""}`}
+            />
+          </div>
+        </button>
+        <Link
+          to="/calendar"
+          aria-label="Open the cash-flow calendar"
+          className="glass-panel px-3 min-h-[40px] shrink-0 flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300"
+        >
+          <CalendarDays size={15} />
+          Calendar
+        </Link>
       </div>
 
       <div className={`glass-panel p-4 sm:p-6 space-y-4 ${isMobileExpanded ? "block mt-3" : "hidden sm:block"}`}>
