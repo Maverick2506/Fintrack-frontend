@@ -16,6 +16,7 @@ import {
   Sparkles,
   SkipForward,
   X,
+  CloudOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import dashboardService from "../services/dashboardService";
@@ -25,6 +26,11 @@ import { buildExampleChips, cleanRecentChips } from "../utils/quickAddExamples";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 import { formatCurrency } from "../utils/formatUtils";
 import { getClientRef } from "../utils/pendingSubmission";
+import { shouldQueueSave, queueBadgeText } from "../utils/offlineQueue";
+import { queueQuickAddSave } from "../services/offlineSync";
+import useOfflineQueueCount from "../hooks/useOfflineQueueCount";
+import ReceiptScanButton from "../components/Common/ReceiptScanButton";
+import { receiptDraftToQuickAddText, receiptCategory, receiptDraftSummary, receiptDraftGaps } from "../utils/receiptDraft";
 import {
   parseQuickAddTextParam,
   withoutTextParam,
@@ -44,11 +50,33 @@ const readStoredLinkList = () => {
 };
 // After this long, a save is probably waiting on a Render cold start, so say so
 const SLOW_SAVE_MS = 8000;
+// Last cards and rules seen, so Quick Add still knows "visa" and your rules when opened offline
+const OFFLINE_CARDS_KEY = "fintrack_quick_cards";
+const OFFLINE_RULES_KEY = "fintrack_quick_rules";
+const readCached = (key) => {
+  try {
+    const list = JSON.parse(localStorage.getItem(key) || "null");
+    return Array.isArray(list) ? list : undefined;
+  } catch {
+    return undefined;
+  }
+};
+const writeCached = (key, list) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch {
+    // Storage full or blocked: Quick Add still works online
+  }
+};
+const isOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
 
 const QuickAddPage = () => {
   const [storedLink] = useState(readStoredLinkList);
   const [input, setInput] = useState(() => (storedLink ? storedLink.items[storedLink.index].text : ""));
-  const [creditCards, setCreditCards] = useState([]);
+  const [creditCards, setCreditCards] = useState(() => readCached(OFFLINE_CARDS_KEY) || []);
+  // The last receipt read with the camera, while the input still holds its text (AI5)
+  const [receipt, setReceipt] = useState(null);
+  const queuedCount = useOfflineQueueCount();
   const [recentChips, setRecentChips] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSlowSave, setIsSlowSave] = useState(false);
@@ -104,7 +132,10 @@ const QuickAddPage = () => {
     // Load credit cards for fuzzy matching
     dashboardService
       .fetchCreditCards()
-      .then((cards) => setCreditCards(cards || []))
+      .then((cards) => {
+        setCreditCards(cards || []);
+        writeCached(OFFLINE_CARDS_KEY, (cards || []).map((c) => ({ id: c.id, name: c.name })));
+      })
       .catch((err) => console.error("Could not fetch cards:", err));
 
     // Load recent quick-add entries from localStorage (examples show only while there are none)
@@ -123,14 +154,26 @@ const QuickAddPage = () => {
   // Your rules set the category, and the card when the text names none
   const { data: rules = [] } = useQuery({
     queryKey: ["rules"],
-    queryFn: () => dashboardService.fetchRules(),
+    queryFn: () =>
+      dashboardService.fetchRules().then((list) => {
+        writeCached(OFFLINE_RULES_KEY, list || []);
+        return list;
+      }),
+    placeholderData: () => readCached(OFFLINE_RULES_KEY),
     staleTime: 60000,
   });
 
   // Toronto's day, like the rest of the app, whatever time zone the phone is in
   const todayStr = getTorontoTodayStr();
   const typed = parseQuickAdd(input, creditCards, todayStr);
-  const parsed = applyRulesToQuickAdd(typed, rules, creditCards, todayStr);
+  const ruledParsed = applyRulesToQuickAdd(typed, rules, creditCards, todayStr);
+  // A receipt's category fills in only when your rules and the keywords found none (typed > rules > keywords > AI)
+  const receiptActive = receipt && input === receipt.text;
+  const receiptCat = receiptActive ? receiptCategory(receipt.draft) : null;
+  const parsed =
+    receiptCat && ruledParsed.type !== "income" && ruledParsed.category === "Other"
+      ? { ...ruledParsed, category: receiptCat }
+      : ruledParsed;
   const exampleChips = useMemo(() => buildExampleChips(getTorontoTodayStr()), []);
   const showExamples = recentChips.length === 0;
   const isLinkList = linkItems.length > 1;
@@ -189,36 +232,31 @@ const QuickAddPage = () => {
     );
     pendingRef.current = pending;
 
-    try {
-      if (parsed.type === "income") {
-        await dashboardService.addPaycheque({
-          name: parsed.name,
-          amount: parsed.amount,
-          payment_date: parsed.date,
-          recurrence: "none",
-          clientRef,
-        });
-      } else {
-        await dashboardService.addExpense({
-          name: parsed.name,
-          amount: parsed.amount,
-          due_date: parsed.date,
-          category: parsed.category,
-          creditCardId: parsed.creditCardId,
-          is_paid: parsed.is_paid,
-          applyToBalance: parsed.applyToBalance,
-          recurrence: "none",
-          clientRef,
-        });
-      }
+    const kind = parsed.type === "income" ? "income" : "expense";
+    const payload =
+      kind === "income"
+        ? {
+            name: parsed.name,
+            amount: parsed.amount,
+            payment_date: parsed.date,
+            recurrence: "none",
+            clientRef,
+          }
+        : {
+            name: parsed.name,
+            amount: parsed.amount,
+            due_date: parsed.date,
+            category: parsed.category,
+            creditCardId: parsed.creditCardId,
+            is_paid: parsed.is_paid,
+            applyToBalance: parsed.applyToBalance,
+            recurrence: "none",
+            clientRef,
+          };
 
-      toast.success(
-        parsed.type === "income"
-          ? `Recorded income: ${formatCurrency(parsed.amount)}`
-          : `Saved: ${parsed.name} (${formatCurrency(parsed.amount)})`
-      );
-
+    const finishEntry = () => {
       pendingRef.current = null;
+      setReceipt(null);
       saveRecentChip(entry);
       if (linkItems.length > 0) {
         advanceLink("saved");
@@ -226,7 +264,43 @@ const QuickAddPage = () => {
         setInput("");
         if (inputRef.current) inputRef.current.focus();
       }
+    };
+
+    // No connection: keep the save (with its clientRef and date) and send it when back online (F10)
+    const queueIt = async () => {
+      const waiting = await queueQuickAddSave({ kind, payload, label: entry });
+      toast(`Saved offline: ${parsed.name} (${formatCurrency(parsed.amount)}). ${queueBadgeText(waiting)}.`, {
+        icon: "📥",
+      });
+      finishEntry();
+    };
+
+    try {
+      if (isOffline()) {
+        await queueIt();
+        return;
+      }
+      if (kind === "income") {
+        await dashboardService.addPaycheque(payload);
+      } else {
+        await dashboardService.addExpense(payload);
+      }
+
+      toast.success(
+        kind === "income"
+          ? `Recorded income: ${formatCurrency(parsed.amount)}`
+          : `Saved: ${parsed.name} (${formatCurrency(parsed.amount)})`
+      );
+      finishEntry();
     } catch (err) {
+      if (shouldQueueSave(err, !isOffline())) {
+        try {
+          await queueIt();
+          return;
+        } catch (queueErr) {
+          console.error("Could not queue the save:", queueErr);
+        }
+      }
       console.error("Quick add failed:", err);
       toast.error(
         err?.response?.data?.error ||
@@ -235,6 +309,17 @@ const QuickAddPage = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // A receipt photo fills the input; nothing is saved until Save (AI5)
+  const handleReceiptDraft = (draft) => {
+    const text = receiptDraftToQuickAddText(draft, todayStr);
+    pendingRef.current = null;
+    setInput(text);
+    setReceipt({ draft, text });
+    const gaps = receiptDraftGaps(draft);
+    if (gaps.length > 0) toast(`Check the ${gaps.join(" and ")}: the receipt didn't show ${gaps.length === 1 ? "it" : "them"} clearly.`);
+    if (inputRef.current) inputRef.current.focus();
   };
 
   const handleChipClick = (chip) => {
@@ -258,6 +343,13 @@ const QuickAddPage = () => {
           </p>
         </div>
       </div>
+
+      {queuedCount > 0 && (
+        <p className="-mt-3 mb-4 inline-flex items-center gap-1.5 rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
+          <CloudOff size={12} aria-hidden="true" />
+          {queueBadgeText(queuedCount)}
+        </p>
+      )}
 
       {/* Entries from a Quick Add link: never saved until Save is tapped */}
       {linkItems.length > 0 && (
@@ -345,12 +437,23 @@ const QuickAddPage = () => {
               <button
                 type="button"
                 onClick={() => setInput("")}
-                className="text-xs text-zinc-500 hover:text-zinc-300 px-1.5 py-0.5 rounded"
+                className="shrink-0 min-h-10 text-xs text-zinc-500 hover:text-zinc-300 px-1.5 rounded"
               >
                 Clear
               </button>
             )}
+            <ReceiptScanButton
+              onDraft={handleReceiptDraft}
+              disabled={isSubmitting}
+              label="Receipt"
+              className="shrink-0 px-2.5"
+            />
           </div>
+          {receiptActive && (
+            <p className="mt-2 text-[11px] text-sky-300/90 break-words">
+              {receiptDraftSummary(receipt.draft)}. Check it, then Save.
+            </p>
+          )}
         </div>
 
         {/* Live Parsed Preview */}

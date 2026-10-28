@@ -64,7 +64,8 @@ const SubscriptionsPage = () => {
   const handleEditNextCharge = async (sub) => {
     // Attempt to load full transaction details from ledger or create an edit payload
     try {
-      const ledger = await dashboardService.fetchLedger();
+      // The next charge is upcoming, so it is in the Ledger's first page
+      const ledger = (await dashboardService.fetchLedger()).rows || [];
       const match = ledger.find((t) => t.id === sub.nextTransactionId);
       if (match) {
         setEditingTx(match);

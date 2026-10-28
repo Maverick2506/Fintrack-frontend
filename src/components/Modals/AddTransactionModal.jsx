@@ -43,6 +43,8 @@ import {
 } from "../../utils/undoDelete";
 import { getTorontoTodayStr, addDaysToDateStr } from "../../utils/dateUtils";
 import NotesTagsField from "./NotesTagsField";
+import ReceiptScanButton from "../Common/ReceiptScanButton";
+import { receiptFormFields, receiptDraftSummary, receiptDraftGaps } from "../../utils/receiptDraft";
 
 const CATEGORY_CONFIG = [
   { name: "Essentials", icon: Home },
@@ -97,6 +99,8 @@ const AddTransactionModal = ({
   const [tags, setTags] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // The receipt the camera read into this form (AI5); shown as a line to check before saving
+  const [receiptDraft, setReceiptDraft] = useState(null);
   const isEditing = !!existingTransaction;
   // A row opened from a list that didn't load its notes and tags leaves them alone, so a save can't wipe them
   const notesTagsLoaded =
@@ -134,6 +138,7 @@ const AddTransactionModal = ({
       setManualAlreadyInBalanceOverride(false);
       setAlreadyInCardBalance(false);
       setError(null);
+      setReceiptDraft(null);
       if (isEditing) {
         setName(existingTransaction.name || existingTransaction.title || "");
         const isInc =
@@ -294,6 +299,33 @@ const AddTransactionModal = ({
     // creditCards and selectedTargetAccount are read when the suggestion lands, not reasons to ask again
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, type, isOpen, isEditing, hasManuallySelectedCategory]);
+
+  // A receipt photo fills the form; nothing is saved until Save. Your rules already chose the category
+  // on the server when one matches the store; otherwise it is Gemini's.
+  const handleReceiptDraft = (draft) => {
+    const fields = receiptFormFields(draft, todayStr);
+    pendingRef.current = null;
+    setType("expense");
+    if (fields.amount) setAmount(fields.amount);
+    if (fields.name) setName(fields.name);
+    handleDueDateChange(fields.date);
+    if (fields.category) {
+      setCategory(fields.category);
+      setHasManuallySelectedCategory(true);
+      setSuggestedSource(draft.categorySource === "rule" ? "rule" : "ai");
+    }
+    if (
+      draft.accountId &&
+      !cardPickedRef.current &&
+      !selectedTargetAccount &&
+      creditCards.some((c) => c.id === draft.accountId)
+    ) {
+      setSelectedCard(draft.accountId);
+    }
+    setReceiptDraft(draft);
+    const gaps = receiptDraftGaps(draft);
+    if (gaps.length > 0) toast(`Check the ${gaps.join(" and ")}: the receipt didn't show ${gaps.length === 1 ? "it" : "them"} clearly.`);
+  };
 
   const handleSuggestCategory = async () => {
     if (!name) return;
@@ -558,6 +590,15 @@ const AddTransactionModal = ({
               </div>
             )}
 
+            {!isEditing && (
+              <ReceiptScanButton
+                onDraft={handleReceiptDraft}
+                disabled={isSubmitting}
+                label="Receipt"
+                className="px-2"
+              />
+            )}
+
             <button
               type="button"
               onClick={onClose}
@@ -618,6 +659,11 @@ const AddTransactionModal = ({
                 }`}
               />
             </div>
+            {receiptDraft && (
+              <p className="text-[11px] text-sky-300/90 mt-1 break-words">
+                {receiptDraftSummary(receiptDraft)}. Check it, then save.
+              </p>
+            )}
             {type === "expense" && parseFloat(existingTransaction?.amount) < 0 && (
               <p className="text-[11px] text-emerald-300/90 mt-1">Refund: lowers this category's spending by this amount</p>
             )}

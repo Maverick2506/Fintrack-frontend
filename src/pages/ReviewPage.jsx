@@ -23,7 +23,8 @@ const ReviewPage = () => {
   // Ledger rows carry every field the edit form needs; the inbox is the ones still needing review
   const { data: ledger = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["reviewLedger"],
-    queryFn: () => dashboardService.fetchLedger(),
+    // Every row still waiting for review, however old (the Ledger itself loads 3 months at a time)
+    queryFn: () => dashboardService.fetchLedger({ needsReview: true }).then((data) => data.rows || []),
   });
   const { data: accounts = [] } = useQuery({
     queryKey: ["importAccounts"],

@@ -7,6 +7,7 @@ import { queryClient } from "../utils/queryClient";
 import { isDuplicateClientRefError, isTimeoutError } from "../utils/pendingSubmission";
 import { buildLoginPath } from "../utils/quickAddLink";
 import { deletedIdsFrom, restoreResultMessages } from "../utils/undoDelete";
+import { readChatStream } from "../utils/chatStream";
 import {
   showUndoDeleteToast,
   TRANSACTIONS_RESTORED_EVENT,
@@ -20,13 +21,17 @@ const api = axios.create({
   timeout: 60000,
 });
 
+const sendToLogin = () => {
+  logout();
+  if (window.location.pathname !== "/login") {
+    window.location.replace(buildLoginPath(window.location.pathname, window.location.search));
+  }
+};
+
 api.interceptors.request.use(
   (config) => {
     if (!isLoggedIn()) {
-      logout();
-      if (window.location.pathname !== "/login") {
-        window.location.replace(buildLoginPath(window.location.pathname, window.location.search));
-      }
+      sendToLogin();
       return Promise.reject(new axios.Cancel("Session expired"));
     }
     const token = getToken();
@@ -44,10 +49,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      logout();
-      if (window.location.pathname !== "/login") {
-        window.location.replace(buildLoginPath(window.location.pathname, window.location.search));
-      }
+      sendToLogin();
     }
     return Promise.reject(error);
   }
@@ -278,6 +280,13 @@ const dashboardService = {
     );
   },
 
+  // Sends one save from the offline Quick Add queue (F10). No toast and no refresh here: the sync
+  // refreshes once after the whole queue. A 409 for its clientRef counts as saved (postWithClientRef).
+  sendQueuedSave: async (item) => {
+    const endpoint = item.kind === "income" ? "/paycheques" : "/expenses";
+    return postWithClientRef(endpoint, item.payload).then((res) => res.data);
+  },
+
   addPaycheque: async (paychequeData) => {
     return handleRequest(
       postWithClientRef("/paycheques", paychequeData),
@@ -305,8 +314,34 @@ const dashboardService = {
     );
   },
 
+  // Receipt photo -> draft (AI5). Saves nothing on the server, so it isn't a handleRequest write.
+  categorizeReceipt: async (image, fileName = "receipt.jpg") => {
+    const form = new FormData();
+    form.append("image", image, fileName);
+    return api.post("/categorize-receipt", form).then((res) => res.data);
+  },
+
   chatAdvisor: async (message, history = []) => {
     return api.post("/chat-advisor", { message, history }).then((res) => res.data);
+  },
+
+  // The same chat, streamed (AI6): onText(textSoFar) as the answer arrives, onStatus while a tool runs.
+  // Falls back to chatAdvisor (one JSON answer) when the stream can't start.
+  chatAdvisorStream: async (message, history = [], { onText, onStatus } = {}) => {
+    if (!isLoggedIn()) {
+      sendToLogin();
+      throw new axios.Cancel("Session expired");
+    }
+    return readChatStream({
+      fetchImpl: typeof fetch === "function" ? fetch.bind(window) : undefined,
+      url: `${API_URL}/chat-advisor`,
+      token: getToken(),
+      body: { message, history },
+      onText,
+      onStatus,
+      fallback: () => dashboardService.chatAdvisor(message, history),
+      onUnauthorized: sendToLogin,
+    });
   },
 
   // Today's AI requests (against the daily cap) and tokens
@@ -364,8 +399,13 @@ const dashboardService = {
     );
   },
 
-  fetchLedger: async () => {
-    return api.get("/expenses/all").then((res) => res.data);
+  // One page of the Ledger (R5): { rows, hasMore, from, to, reviewCount }. params: from, to, search,
+  // needsReview, and the other Ledger filters. Without from= the server sends the last 3 months.
+  fetchLedger: async (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
+    ).toString();
+    return api.get(`/expenses/all${qs ? `?${qs}` : ""}`).then((res) => res.data);
   },
 
   fetchSubscriptions: async () => {
