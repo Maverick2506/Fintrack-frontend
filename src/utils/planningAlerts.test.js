@@ -37,6 +37,18 @@ assert(
     "Statement balance $0.00" && statementLines({ statementDate: "2026-02-28", statementBalance: 0, newCharges: 0 }).paid,
   "No due date: the line leaves it out; $0 is paid"
 );
+const st = { statementDate: "2026-10-15", dueDate: "2026-11-10", nextDueDate: "2026-12-10", statementBalance: 500, newCharges: 0 };
+assert(statementLines(st, "2026-11-10").balanceText === "Statement balance $500.00 due Nov 10", "On the due date it is still due, not overdue");
+const late = statementLines(st, "2026-11-11");
+assert(
+  late.overdue && late.balanceText === "Statement balance $500.00 overdue since Nov 10" && late.dueDate === "2026-11-10",
+  `Unpaid after the due date is overdue (got "${late.balanceText}")`
+);
+const paidLate = statementLines({ ...st, statementBalance: 0 }, "2026-11-11");
+assert(
+  !paidLate.overdue && paidLate.balanceText === "Statement balance $0.00 due Dec 10" && paidLate.dueDate === "2026-12-10",
+  `Paid after the due date points at the next due date (got "${paidLate.balanceText}")`
+);
 assert(statementDayLabel(1) === "Closes on the 1st" && statementDayLabel(22) === "Closes on the 22nd" && statementDayLabel(13) === "Closes on the 13th", "Ordinals");
 assert(statementDayLabel(31) === "Closes on the 31st (or the month's last day)", "Day 31 mentions short months");
 
@@ -48,6 +60,16 @@ assert(sinkingFundNote(withTransfer) === "Monthly transfer $300.00 is set up." &
 assert(
   sinkingFundNote({ ...fund, monthlyTransfer: { amount: 250 } }) === "Monthly transfer $250.00 is less than the $300.00 needed.",
   "A smaller transfer is flagged"
+);
+assert(
+  sinkingFundNote({ ...fund, monthlyTransfer: { amount: 300, until: "2027-02-01" } }) ===
+    "Monthly transfers of $300.00 are scheduled until Feb 1." ,
+  "Scheduled transfers show when they end"
+);
+const soon = { ...fund, billInForecast: true, linkedBill: { title: "Registration", nextDate: "2026-11-07" } };
+assert(
+  sinkingFundNote(soon) === "Safe to Spend already counts this bill on Nov 7." && canSetUpTransfer(soon),
+  `A bill already in Safe to Spend's window isn't set aside again (got ${sinkingFundNote(soon)})`
 );
 assert(sinkingFundLine({ ...fund, ready: true, monthly: 0 }).text === "Ready for Car insurance on Feb 5", "Ready");
 assert(sinkingFundLine({ ...fund, overdue: true, dueDate: "2026-10-01", remaining: 100 }).tone === "warn", "Overdue warns");
@@ -64,6 +86,10 @@ assert(suggestionText(sug) === "$11.99 about monthly, 3 times (Aug 23, Sep 22, O
 assert(
   suggestionAcceptedToast(sug, { nextDate: "2026-11-22" }) === "Spotify is now a monthly subscription. Next charge Nov 22.",
   "Accepted toast"
+);
+assert(
+  suggestionAcceptedToast({ ...sug, title: "SPOTIFY 10/22" }, { title: "Spotify", nextDate: "2026-11-22" }).startsWith("Spotify is now"),
+  "The toast uses the series name the server saved"
 );
 
 if (failed > 0) {

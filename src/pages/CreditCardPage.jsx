@@ -8,6 +8,7 @@ import SyncStatementModal from "../components/Modals/SyncStatementModal";
 import dashboardService from "../services/dashboardService";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import { statementLines } from "../utils/planningAlerts";
+import { getTorontoTodayStr } from "../utils/dateUtils";
 
 const CreditCardPage = () => {
   const [cards, setCards] = useState([]);
@@ -157,9 +158,9 @@ const CreditCardPage = () => {
             const limit = parseFloat(card.creditLimit) || 0;
             const available = Math.max(0, limit - balance);
             const utilization = limit > 0 ? (balance / limit) * 100 : 0;
-            const lines = statementLines(card.statement);
-            // With a statement day, the due date is the current statement's (server-computed)
-            const dueDate = card.statement?.dueDate || card.dueDate;
+            const lines = statementLines(card.statement, getTorontoTodayStr());
+            // With a statement day, the due date is the statement's (the next one once this one is paid)
+            const dueDate = lines ? lines.dueDate : card.dueDate;
             const barColor =
               utilization > 70
                 ? "bg-rose-400"
@@ -245,10 +246,12 @@ const CreditCardPage = () => {
                     {lines && (
                       <dl className="mt-3 space-y-1.5 text-xs">
                         <div className="flex items-baseline justify-between gap-3">
-                          <dt className="text-zinc-400 min-w-0">{lines.balanceLabel}</dt>
+                          <dt className={`min-w-0 ${lines.overdue ? "text-amber-400" : "text-zinc-400"}`}>
+                            {lines.balanceLabel}
+                          </dt>
                           <dd
                             className={`tabular-nums font-medium shrink-0 ${
-                              lines.paid ? "text-emerald-400" : "text-zinc-100"
+                              lines.paid ? "text-emerald-400" : lines.overdue ? "text-amber-400" : "text-zinc-100"
                             }`}
                           >
                             {lines.balance}

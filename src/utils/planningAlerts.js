@@ -18,10 +18,21 @@ export const parseStatementDay = (raw) => {
 /**
  * The two lines under a card's balance, from GET /credit-cards `statement`:
  * "Statement balance $X due Nov 10" and "New charges since Oct 15 $Y". null without a statement day.
+ * Once the statement's due date has passed (todayStr is Toronto today): an unpaid balance is
+ * "overdue"; a paid one points at the next statement's due date instead. `dueDate` is the date to
+ * show in the card header.
  */
-export const statementLines = (statement) => {
+export const statementLines = (statement, todayStr = null) => {
   if (!statement) return null;
-  const due = statement.dueDate ? ` due ${formatShortDate(statement.dueDate)}` : "";
+  const paid = statement.statementBalance <= 0;
+  const pastDue = Boolean(todayStr && statement.dueDate && statement.dueDate < todayStr);
+  const overdue = pastDue && !paid;
+  const dueDate = pastDue && paid ? statement.nextDueDate || null : statement.dueDate || null;
+  const due = overdue
+    ? ` overdue since ${formatShortDate(statement.dueDate)}`
+    : dueDate
+    ? ` due ${formatShortDate(dueDate)}`
+    : "";
   return {
     balanceLabel: `Statement balance${due}`,
     balance: formatCurrency(statement.statementBalance),
@@ -29,7 +40,9 @@ export const statementLines = (statement) => {
     chargesLabel: `New charges since ${formatShortDate(statement.statementDate)}`,
     charges: formatCurrency(statement.newCharges),
     chargesText: `New charges since ${formatShortDate(statement.statementDate)} ${formatCurrency(statement.newCharges)}`,
-    paid: statement.statementBalance <= 0,
+    paid,
+    overdue,
+    dueDate,
   };
 };
 
@@ -60,15 +73,26 @@ export const sinkingFundLine = (fund) => {
   return { text: `Save ${formatCurrency(fund.monthly)}/month to be ready by ${by}`, tone: "normal" };
 };
 
-/** Under the line: whether Safe to Spend sets it aside or a transfer covers it */
+/**
+ * Under the line: what covers the monthly amount. Scheduled transfers (with an end date) or a running
+ * transfer; else, when the bill's charge already falls in Safe to Spend's window, the bill itself is
+ * counted there; else Safe to Spend sets the monthly amount aside.
+ */
 export const sinkingFundNote = (fund) => {
   if (!fund || fund.ready || !fund.monthly) return null;
   const transfer = fund.monthlyTransfer;
   if (transfer) {
     const short = transfer.amount + 0.005 < fund.monthly;
-    return short
-      ? `Monthly transfer ${formatCurrency(transfer.amount)} is less than the ${formatCurrency(fund.monthly)} needed.`
+    if (short) {
+      return `Monthly transfer ${formatCurrency(transfer.amount)} is less than the ${formatCurrency(fund.monthly)} needed.`;
+    }
+    return transfer.until
+      ? `Monthly transfers of ${formatCurrency(transfer.amount)} are scheduled until ${formatShortDate(transfer.until)}.`
       : `Monthly transfer ${formatCurrency(transfer.amount)} is set up.`;
+  }
+  if (fund.billInForecast) {
+    const on = fund.linkedBill?.nextDate ? ` on ${formatShortDate(fund.linkedBill.nextDate)}` : "";
+    return `Safe to Spend already counts this bill${on}.`;
   }
   return "Safe to Spend sets this aside each month.";
 };
@@ -96,4 +120,4 @@ export const suggestionText = (s) => {
 };
 
 export const suggestionAcceptedToast = (s, result) =>
-  `${s.title} is now a monthly subscription${result?.nextDate ? `. Next charge ${formatShortDate(result.nextDate)}` : ""}.`;
+  `${result?.title || s.title} is now a monthly subscription${result?.nextDate ? `. Next charge ${formatShortDate(result.nextDate)}` : ""}.`;
