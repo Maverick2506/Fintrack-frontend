@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, PiggyBank, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, PiggyBank, Calendar, Receipt } from "lucide-react";
 import { calculatePacing } from "../utils/savingsPacing";
 import { formatCurrency } from "../utils/formatUtils";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
@@ -10,6 +10,14 @@ import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import dashboardService from "../services/dashboardService";
 import { confirmAndEndSeries } from "../services/endSeriesAction";
 import { recurringContributionLine } from "../utils/endSeries";
+import { sinkingFundLine, sinkingFundNote, canSetUpTransfer, fundDateLabel, effectiveTarget } from "../utils/planningAlerts";
+
+const FUND_TONES = {
+  good: "text-emerald-400 font-medium",
+  warn: "text-amber-400",
+  muted: "text-zinc-500",
+  normal: "text-zinc-300",
+};
 
 const getRegBadge = (type) => {
   switch (type) {
@@ -55,6 +63,21 @@ const SavingsPage = () => {
       type: c.type,
     });
     if (result) fetchGoals();
+  };
+
+  // Sinking fund: "Set up monthly transfer" creates the recurring transfer for the monthly amount
+  const [settingUpId, setSettingUpId] = useState(null);
+  const handleSetUpTransfer = async (goal) => {
+    if (settingUpId) return;
+    setSettingUpId(goal.id);
+    try {
+      await dashboardService.setUpGoalMonthlyTransfer(goal.id);
+      fetchGoals();
+    } catch (error) {
+      console.error("Error setting up monthly transfer:", error);
+    } finally {
+      setSettingUpId(null);
+    }
   };
 
   const fetchGoals = async () => {
@@ -103,7 +126,7 @@ const SavingsPage = () => {
     0
   );
   const totalTarget = goals.reduce(
-    (s, g) => s + (parseFloat(g.goal_amount) || 0),
+    (s, g) => s + effectiveTarget(g),
     0
   );
   const overallProgress =
@@ -181,10 +204,16 @@ const SavingsPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {goals.map((goal) => {
             const pacing = calculatePacing(goal, "bi-weekly");
+            const fund = goal.sinkingFund;
+            const fundLine = sinkingFundLine(fund);
+            const fundNote = sinkingFundNote(fund);
+            const bill = fund?.linkedBill;
             const current = parseFloat(goal.current_amount) || 0;
-            const target = parseFloat(goal.goal_amount) || 0;
-            const progress = target > 0 ? (current / target) * 100 : 0;
-            const remaining = Math.max(0, target - current);
+            // A sinking fund without its own target saves for the bill's amount
+            const target = effectiveTarget(goal);
+            // A Done sinking fund (its one-time bill was paid) is complete, whatever is left in it
+            const progress = fund?.done ? 100 : target > 0 ? (current / target) * 100 : 0;
+            const remaining = fund?.done ? 0 : Math.max(0, target - current);
             const regBadge = getRegBadge(goal.registeredType);
 
             return (
@@ -194,7 +223,7 @@ const SavingsPage = () => {
               >
                 <div>
                   <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-base font-semibold text-zinc-100">
                           {goal.name}
@@ -208,7 +237,16 @@ const SavingsPage = () => {
                           </span>
                         )}
                       </div>
-                      {goal.target_date && (
+                      {bill && (
+                        <p className="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5 min-w-0">
+                          <Receipt size={11} className="shrink-0" />
+                          <span className="truncate">
+                            For {bill.title}
+                            {fund.dueDate ? ` · due ${fundDateLabel(fund.dueDate)}` : ""}
+                          </span>
+                        </p>
+                      )}
+                      {!bill && goal.target_date && (
                         <p className="text-[11px] text-zinc-500 flex items-center gap-1 mt-0.5">
                           <Calendar size={11} />
                           <span>
@@ -365,7 +403,42 @@ const SavingsPage = () => {
                     </span>
                   </div>
 
+                  {/* Sinking fund: monthly amount to be ready for the bill, planned in Safe to Spend */}
+                  {fundLine && (
+                    <div className="mt-3 pt-3 border-t border-white/[0.06] text-xs space-y-1.5">
+                      <p className={`tabular-nums ${FUND_TONES[fundLine.tone]}`}>{fundLine.text}</p>
+                      {fundNote && <p className="text-[11px] text-zinc-500">{fundNote}</p>}
+                      {canSetUpTransfer(fund) && (
+                        <button
+                          type="button"
+                          onClick={() => handleSetUpTransfer(goal)}
+                          disabled={settingUpId === goal.id}
+                          className="btn-secondary min-h-10 w-full justify-center"
+                        >
+                          {settingUpId === goal.id
+                            ? "Setting up..."
+                            : `Set up monthly transfer · ${formatCurrency(fund.monthly)}`}
+                        </button>
+                      )}
+                      {/* Done: archive follows the $0 rule; the dialog offers "Move $X back to Checking" */}
+                      {fund?.done && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveGoalId(goal.id);
+                            setActiveGoal(goal);
+                            setDeleteModalOpen(true);
+                          }}
+                          className="btn-secondary min-h-10 w-full justify-center tabular-nums"
+                        >
+                          {current > 0 ? `Archive goal · ${formatCurrency(current)} left` : "Archive goal"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Pacing line and badge (Phase I) */}
+                  {!fundLine && (
                   <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] gap-2">
                     <span className="text-zinc-400 truncate" title={pacing.copy}>
                       {pacing.status === "NO_TARGET_DATE" ? (
@@ -392,6 +465,7 @@ const SavingsPage = () => {
                       {pacing.label}
                     </span>
                   </div>
+                  )}
                 </div>
               </div>
             );

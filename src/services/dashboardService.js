@@ -1,6 +1,7 @@
 import axios from "axios";
 import { isAiCapError } from "../utils/aiUsage";
 import toast from "react-hot-toast";
+import { cardPaidToast } from "../utils/planningAlerts";
 import { getToken, isLoggedIn, logout } from "../utils/auth";
 import { queryClient } from "../utils/queryClient";
 import { isDuplicateClientRefError, isTimeoutError } from "../utils/pendingSubmission";
@@ -147,11 +148,11 @@ const dashboardService = {
     );
   },
 
+  // paymentData: { amount, fundBills? } ("Use $X from <fund>" boxes); the toast says what funds paid
   payCreditCard: async (cardId, paymentData) => {
-    return handleRequest(
-      api.post(`/credit-cards/${cardId}/pay`, paymentData),
-      "Card payment successful!"
-    );
+    const data = await handleRequest(api.post(`/credit-cards/${cardId}/pay`, paymentData), null);
+    toast.success(cardPaidToast(data));
+    return data;
   },
 
   // What archiving or deleting a card, debt or goal would affect (read, so no handleRequest)
@@ -199,10 +200,32 @@ const dashboardService = {
     );
   },
 
-  markBillAsPaid: async (billId, successMessage = "Bill marked as paid!") => {
+  // payFromGoalId: "Pay from <fund>" for a bill a savings goal saves for. successMessage can be a
+  // function of the response (what the fund paid).
+  // payFromGoalId: "Pay from <fund>" on a bill; fundBills: "Use $X from <fund>" on a card payment
+  markBillAsPaid: async (billId, successMessage = "Bill marked as paid!", { payFromGoalId = null, fundBills = null } = {}) => {
+    const data = await handleRequest(
+      api.put(`/expenses/${billId}`, {
+        is_paid: true,
+        ...(payFromGoalId ? { payFromGoalId } : {}),
+        ...(fundBills && fundBills.length > 0 ? { fundBills } : {}),
+      }),
+      typeof successMessage === "function" ? null : successMessage
+    );
+    if (typeof successMessage === "function") toast.success(successMessage(data));
+    return data;
+  },
+
+  // One-time bills a savings goal can save for
+  fetchOneOffBills: async () => {
+    return api.get("/savings-goals/one-off-bills").then((res) => res.data);
+  },
+
+  // "Pay statement balance" / "Pay full balance" on a scheduled card payment above what is owed
+  setScheduledCardPayment: async (cardId, transactionId, pay) => {
     return handleRequest(
-      api.put(`/expenses/${billId}`, { is_paid: true }),
-      successMessage
+      api.post(`/credit-cards/${cardId}/scheduled-payment`, { transactionId, pay }),
+      pay === "statement" ? "Payment set to the statement balance." : "Payment set to the full balance."
     );
   },
 
@@ -347,6 +370,27 @@ const dashboardService = {
 
   fetchSubscriptions: async () => {
     return api.get("/subscriptions").then((res) => res.data);
+  },
+
+  // "Make this a subscription?" cards on the Dashboard
+  fetchSubscriptionSuggestions: async () => {
+    return api.get("/alerts/subscription-suggestions").then((res) => res.data);
+  },
+
+  acceptSubscriptionSuggestion: async (id) => {
+    return handleRequest(api.post(`/alerts/subscription-suggestions/${id}/accept`, {}), null);
+  },
+
+  dismissSubscriptionSuggestion: async (id) => {
+    return handleRequest(api.post(`/alerts/subscription-suggestions/${id}/dismiss`, {}), null);
+  },
+
+  // Sinking fund: a monthly transfer from Checking for the goal's monthly amount
+  setUpGoalMonthlyTransfer: async (goalId) => {
+    return handleRequest(
+      api.post(`/savings-goals/${goalId}/monthly-transfer`, {}),
+      "Monthly transfer set up."
+    );
   },
 
   cancelSubscription: async (id) => {

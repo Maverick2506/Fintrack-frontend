@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { X, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import { parseStatementDay, statementDayLabel } from "../../utils/planningAlerts";
 
 const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
   const [name, setName] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
   const [currentBalance, setCurrentBalance] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [statementDay, setStatementDay] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -16,6 +18,7 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
     setCreditLimit("");
     setCurrentBalance("");
     setDueDate("");
+    setStatementDay("");
   };
 
   useEffect(() => {
@@ -35,11 +38,17 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
     if (isSubmitting) return;
     if (!name || !creditLimit) return;
 
+    const parsedDay = parseStatementDay(statementDay);
+    if (parsedDay.error) {
+      setError(parsedDay.error);
+      return;
+    }
     const payload = {
       name,
       creditLimit: creditLimit,
       currentBalance: currentBalance || "0",
       dueDate: dueDate || null,
+      statementDay: parsedDay.value,
     };
 
     setIsSubmitting(true);
@@ -168,6 +177,34 @@ const AddCreditCardModal = ({ isOpen, onClose, refreshData }) => {
             </div>
           </div>
 
+
+          <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] px-3 py-2.5">
+            <label
+              htmlFor="statementDay"
+              className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-1 mb-1"
+            >
+              <Calendar size={11} /> Statement Closes On Day
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                id="statementDay"
+                min="1"
+                max="31"
+                step="1"
+                value={statementDay}
+                onChange={(e) => setStatementDay(e.target.value)}
+                className="w-16 min-h-10 bg-transparent text-xs font-medium text-zinc-200 placeholder-zinc-600 focus:outline-none tabular-nums"
+                placeholder="1-31"
+              />
+              <span className="text-[11px] text-zinc-500 min-w-0">
+                {statementDay
+                  ? statementDayLabel(statementDay)
+                  : "Optional. Splits the statement balance from new charges."}
+              </span>
+            </div>
+          </div>
           {error && (
             <p className="text-xs text-rose-400 flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5">
               <AlertCircle size={13} className="shrink-0" />

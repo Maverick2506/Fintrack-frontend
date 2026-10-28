@@ -47,18 +47,22 @@ const CustomForecastTooltip = ({ active, payload, label, buffer }) => {
                 key={idx}
                 className="flex items-center justify-between gap-2 text-[11px]"
               >
-                <span className="text-zinc-300 truncate max-w-[170px]" title={it.title}>
+                {/* A bill a savings goal covers says so in full: "Car insurance $1,200 (fund covers $1,150)" */}
+                <span
+                  className={`text-zinc-300 max-w-[170px] ${it.fundCovers ? "break-words" : "truncate"}`}
+                  title={it.title}
+                >
                   {it.title}
                   {it.estimated && !it.title?.toLowerCase().includes("estimated") && (
                     <span className="text-zinc-500 font-normal ml-1">(est.)</span>
                   )}
                 </span>
                 <span
-                  className={`tabular-nums font-medium ${
-                    it.amount >= 0 ? "text-emerald-400" : "text-rose-400"
+                  className={`tabular-nums font-medium shrink-0 ${
+                    it.amount === 0 ? "text-zinc-400" : it.amount > 0 ? "text-emerald-400" : "text-rose-400"
                   }`}
                 >
-                  {it.amount >= 0 ? "+" : ""}
+                  {it.amount > 0 ? "+" : ""}
                   {formatCurrency(it.amount)}
                 </span>
               </div>

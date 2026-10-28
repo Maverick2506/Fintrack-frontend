@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
 import { X, PiggyBank, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import LinkedBillField from "./LinkedBillField";
+import { linkPayload } from "../../utils/planningAlerts";
 
 const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   const [name, setName] = useState("");
   const [goalAmount, setGoalAmount] = useState("");
+  // A goal saving for a bill can leave its target empty: it follows the bill's amount (shown as the placeholder)
+  const [billAmount, setBillAmount] = useState(null);
   const [currentAmount, setCurrentAmount] = useState("");
   const [targetDate, setTargetDate] = useState("");
   const [registeredType, setRegisteredType] = useState("");
+  const [linkedBillId, setLinkedBillId] = useState(null);
   const [contributionRoom, setContributionRoom] = useState("");
   const [roomYear, setRoomYear] = useState(new Date().getFullYear().toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,7 +21,8 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   useEffect(() => {
     if (goal) {
       setName(goal.name || "");
-      setGoalAmount(goal.goal_amount || "");
+      setGoalAmount(parseFloat(goal.goal_amount) > 0 ? goal.goal_amount : "");
+      setBillAmount(null);
       setCurrentAmount(goal.current_amount ?? "");
       setTargetDate(
         goal.target_date
@@ -24,6 +30,7 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
           : ""
       );
       setRegisteredType(goal.registeredType || "");
+      setLinkedBillId(goal.linkedRecurringGroupId || null);
       setContributionRoom(
         goal.contributionRoom !== null && goal.contributionRoom !== undefined
           ? goal.contributionRoom
@@ -50,16 +57,22 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
-    if (!name || !goalAmount) return;
+    if (!name) return;
+    if (!goalAmount && !linkedBillId) {
+      setError("Enter a target amount, or pick a bill to save for.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
     try {
       await dashboardService.updateSavingsGoal(goal.id, {
         name,
-        goal_amount: goalAmount,
+        // null: no target of its own, so a goal saving for a bill follows the bill's amount
+        goal_amount: goalAmount === "" ? null : goalAmount,
         current_amount: currentAmount,
         target_date: targetDate || null,
+        ...linkPayload(linkedBillId),
         registeredType: registeredType || null,
         contributionRoom:
           registeredType && contributionRoom !== ""
@@ -127,9 +140,16 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
                 value={goalAmount}
                 onChange={(e) => setGoalAmount(e.target.value)}
                 className="w-full bg-transparent text-3xl font-semibold tracking-tight text-zinc-100 placeholder-zinc-700 focus:outline-none tabular-nums"
-                required
+                placeholder={linkedBillId && (billAmount ?? goal?.sinkingFund?.targetAmount) ? Number(billAmount ?? goal.sinkingFund.targetAmount).toFixed(2) : "0.00"}
+                aria-describedby={linkedBillId ? "goalAmountEditHint" : undefined}
+                required={!linkedBillId}
               />
             </div>
+            {linkedBillId && !goalAmount && (
+              <p id="goalAmountEditHint" className="text-[11px] text-zinc-500 mt-1">
+                Empty: the goal follows the bill's amount.
+              </p>
+            )}
             <div className="mt-3 pt-2.5 border-t border-white/[0.06] flex items-center gap-2">
               <PiggyBank size={14} className="text-zinc-500 flex-shrink-0" />
               <input
@@ -180,6 +200,15 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
               />
             </div>
           </div>
+
+          <LinkedBillField
+            id="linkedBillEdit"
+            value={linkedBillId}
+            onChange={setLinkedBillId}
+            onPick={(bill) => setBillAmount(bill.amount)}
+            targetDate={targetDate}
+            currentTitle={goal?.sinkingFund?.linkedBill?.title}
+          />
 
           {/* Phase J: Registered Account (TFSA / RRSP / FHSA) */}
           <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] p-3 space-y-3">

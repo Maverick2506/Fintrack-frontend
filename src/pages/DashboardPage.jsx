@@ -25,6 +25,9 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
+import SubscriptionSuggestions from "../components/Dashboard/SubscriptionSuggestions";
+import usePayFromFund from "../hooks/usePayFromFund";
+import { billPaidToast } from "../utils/planningAlerts";
 import NextPayLine from "../components/Dashboard/NextPayLine";
 import ExpectedPayModal from "../components/Modals/ExpectedPayModal";
 
@@ -227,11 +230,12 @@ const DashboardPage = () => {
   };
 
   const markAsPaidMutation = useMutation({
-    mutationFn: (billId) => dashboardService.markBillAsPaid(billId),
+    mutationFn: ({ billId, options }) => dashboardService.markBillAsPaid(billId, billPaidToast, options),
     onSuccess: () => {
       invalidateDashboard();
     },
   });
+  const { askPayFrom, dialog: payFromFundDialog } = usePayFromFund();
 
   const deleteBillMutation = useMutation({
     mutationFn: (billId) => dashboardService.deleteBill(billId),
@@ -249,8 +253,16 @@ const DashboardPage = () => {
     },
   });
 
-  const handleMarkAsPaid = (billId) => {
-    return markAsPaidMutation.mutateAsync(billId);
+  // A bill a savings goal saves for asks "Pay from <fund>" first (a card payment, "Use $X from <fund>");
+  // cancelling leaves it unpaid
+  const handleMarkAsPaid = async (billId) => {
+    const choice = await askPayFrom(upcomingBills.find((b) => b.id === billId));
+    if (!choice) {
+      const cancelled = new Error("Cancelled");
+      cancelled.cancelled = true;
+      throw cancelled;
+    }
+    return markAsPaidMutation.mutateAsync({ billId, options: choice });
   };
 
   const handleDeleteConfirm = () => {
@@ -601,6 +613,7 @@ const DashboardPage = () => {
 
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 flex flex-col gap-6">
+            <SubscriptionSuggestions />
             <MonthlySummary summary={monthlySummary} monthLabel={MONTH_NAMES[selectedMonth - 1]} />
             <UpcomingBills
               bills={upcomingBills}
@@ -774,6 +787,7 @@ const DashboardPage = () => {
           onSynced={invalidateDashboard}
         />
       )}
+      {payFromFundDialog}
     </div>
   );
 };

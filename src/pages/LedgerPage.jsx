@@ -38,6 +38,8 @@ import useMediaQuery from "../hooks/useMediaQuery";
 import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
 import { getTorontoTodayStr } from "../utils/dateUtils";
+import usePayFromFund from "../hooks/usePayFromFund";
+import { billPaidToast, bulkPayOptions } from "../utils/planningAlerts";
 import {
   groupLedgerRows,
   summarizeLedgerGroup,
@@ -108,6 +110,7 @@ const LedgerPage = () => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [lastClickedIndex, setLastClickedIndex] = useState(null);
+  const { askPayFrom, defaultPayFrom, dialog: payFromFundDialog } = usePayFromFund();
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isBulkMarking, setIsBulkMarking] = useState(false);
 
@@ -170,10 +173,14 @@ const LedgerPage = () => {
 
   const handleMarkPaid = async (row) => {
     setSwipeOpen(null);
+    // A bill a savings goal saves for asks "Pay from <fund>" first; cancelling leaves it unpaid
+    const choice = await askPayFrom(row);
+    if (!choice) return;
     try {
       await dashboardService.markBillAsPaid(
         row.id,
-        row.type === "income" ? "Marked as received!" : undefined
+        row.type === "income" ? "Marked as received!" : billPaidToast,
+        choice
       );
       setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_paid: true } : r)));
       refreshRowsQuietly();
@@ -260,9 +267,22 @@ const LedgerPage = () => {
     if (targets.length === 0 || isBulkMarking) return;
     setIsBulkMarking(true);
     const done = [];
+    let fromFunds = 0;
+    let fromFundsTotal = 0;
+    const cardsPaid = new Set();
     for (const row of targets) {
       try {
-        await dashboardService.markBillAsPaid(row.id, null);
+        // A bill a savings goal saves for is paid from it, the same default as the single "Paid" dialog.
+        // A card's fund bills go with its first payment in the batch that goes through.
+        const { options, cardId } = bulkPayOptions(defaultPayFrom(row), row, cardsPaid);
+        const result = await dashboardService.markBillAsPaid(row.id, null, options);
+        if (cardId) cardsPaid.add(cardId);
+        const paid = [
+          ...(result?.sinkingFund?.paidFromFund?.amount > 0 ? [result.sinkingFund.paidFromFund] : []),
+          ...(result?.cardFunds || []).filter((f) => f.amount > 0),
+        ];
+        fromFunds += paid.length;
+        fromFundsTotal += paid.reduce((sum, f) => sum + f.amount, 0);
         done.push(row);
       } catch (err) {
         // handleRequest already showed the error toast for this row
@@ -274,7 +294,11 @@ const LedgerPage = () => {
       const doneIds = new Set(done.map((r) => r.id));
       setRows((prev) => prev.map((r) => (doneIds.has(r.id) ? { ...r, is_paid: true } : r)));
       const word = done.every((r) => r.type === "income") ? "received" : "paid";
-      toast.success(`Marked ${done.length} transaction${done.length === 1 ? "" : "s"} as ${word}`);
+      const fundNote =
+        fromFunds > 0
+          ? ` (${formatCurrency(fromFundsTotal)} from ${fromFunds === 1 ? "a savings goal" : `${fromFunds} savings goals`})`
+          : "";
+      toast.success(`Marked ${done.length} transaction${done.length === 1 ? "" : "s"} as ${word}${fundNote}`);
       refreshRowsQuietly();
       exitSelection();
     }
@@ -1144,6 +1168,7 @@ const LedgerPage = () => {
           selectedRows.length === 1 ? "" : "s"
         }`}
       />
+      {payFromFundDialog}
     </div>
   );
 };
