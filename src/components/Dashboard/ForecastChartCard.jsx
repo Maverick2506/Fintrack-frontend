@@ -325,8 +325,22 @@ const ForecastChartCard = ({
             Includes estimated paycheques:{" "}
             <span className="text-zinc-200 font-medium">
               {formatCurrency(forecast.estimatedIncome.amount)} {forecast.estimatedIncome.cadence}
-            </span>{" "}
-            (based on your last {forecast.estimatedIncome.basedOn}).
+            </span>
+            {forecast.estimatedIncome.typicalAmount != null &&
+              forecast.estimatedIncome.typicalAmount !== forecast.estimatedIncome.amount && (
+                <> (cautious; typical {formatCurrency(forecast.estimatedIncome.typicalAmount)})</>
+              )}
+            , based on your last {forecast.estimatedIncome.basedOn}.
+          </span>
+        </div>
+      )}
+      {forecast.incomeSource === "expected-pay" && (
+        <div className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-900/50 rounded-lg px-3 py-2 border border-white/[0.06]">
+          <Sparkles size={13} className="text-emerald-400 shrink-0" />
+          <span>
+            Includes your Expected pay:{" "}
+            <span className="text-zinc-200 font-medium">{formatCurrency(forecast.planningAmount)}</span> per paycheque,
+            until 2 paycheques are logged.
           </span>
         </div>
       )}
