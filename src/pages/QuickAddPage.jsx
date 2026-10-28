@@ -37,6 +37,8 @@ import {
   restoreLinkList,
   TEXT_PARAM,
 } from "../utils/quickAddLink";
+import { readSharedQuickAdd, withoutShareParams, shareTextToQuickAdd } from "../utils/shareTarget";
+import { SHARE_TARGET } from "../constants/shareTarget";
 
 const RECENT_KEY = "fintrack_recent_quick_add";
 // The link list in progress, so a reload or a re-login mid-list picks up where it left off
@@ -90,34 +92,57 @@ const QuickAddPage = () => {
   // They only fill the input, one at a time; each needs its own Save.
   const [linkItems, setLinkItems] = useState(() => (storedLink ? storedLink.items : []));
   const [linkIndex, setLinkIndex] = useState(() => (storedLink ? storedLink.index : 0));
+  // Set when the entry came from Share -> FinTrack (a bank notification), for the banner's wording
+  const [sharedFrom, setSharedFrom] = useState(() => (storedLink ? storedLink.sharedFrom || null : null));
+  // The share's query and the line made from it, so the card can be filled in once the cards load
+  const sharedSourceRef = useRef(null);
 
   useEffect(() => {
     try {
       if (linkItems.length > 0) {
-        sessionStorage.setItem(LINK_LIST_KEY, JSON.stringify({ items: linkItems, index: linkIndex }));
+        sessionStorage.setItem(LINK_LIST_KEY, JSON.stringify({ items: linkItems, index: linkIndex, sharedFrom }));
       } else {
         sessionStorage.removeItem(LINK_LIST_KEY);
       }
     } catch {
       // Ignore storage errors; the list still works for this page view
     }
-  }, [linkItems, linkIndex]);
+  }, [linkItems, linkIndex, sharedFrom]);
 
   useEffect(() => {
-    if (!new URLSearchParams(location.search).has(TEXT_PARAM)) return;
-    const lines = parseQuickAddTextParam(location.search);
+    const params = new URLSearchParams(location.search);
+    if (!params.has(TEXT_PARAM) && !params.has(SHARE_TARGET.params.title)) return;
+    // Share -> FinTrack: a bank notification becomes one Quick Add line (cards from the last visit)
+    const shared = readSharedQuickAdd(location.search, readCached(OFFLINE_CARDS_KEY) || []);
+    const lines = shared ? [shared.line] : parseQuickAddTextParam(location.search);
     if (lines.length > 0) {
       setLinkItems(lines.map((text) => ({ text, status: "pending" })));
       setLinkIndex(0);
       setInput(lines[0]);
+      setSharedFrom(shared ? "share" : null);
+      sharedSourceRef.current = shared ? { search: location.search, line: shared.line } : null;
       pendingRef.current = null;
+    } else if (params.get(SHARE_TARGET.params.title)) {
+      toast("FinTrack couldn't find an amount in what you shared. Type it in.");
     }
-    // Clear ?text= so a refresh or a shared screenshot of the URL doesn't bring it back
+    // Clear ?text= (and a share's title) so a refresh or a screenshot of the URL doesn't bring it back
     navigate(
-      { pathname: location.pathname, search: withoutTextParam(location.search) },
+      { pathname: location.pathname, search: withoutShareParams(withoutTextParam(location.search)) },
       { replace: true }
     );
   }, [location.pathname, location.search, navigate]);
+
+  // A share opened before the cards were ever loaded on this phone: pick the card once they arrive,
+  // unless the line was already edited
+  useEffect(() => {
+    const source = sharedSourceRef.current;
+    if (!source || creditCards.length === 0) return;
+    const next = readSharedQuickAdd(source.search, creditCards);
+    if (!next || next.line === source.line) return;
+    sharedSourceRef.current = { ...source, line: next.line };
+    setInput((current) => (current === source.line ? next.line : current));
+    setLinkItems((items) => items.map((it) => (it.text === source.line && it.status === "pending" ? { ...it, text: next.line } : it)));
+  }, [creditCards]);
 
   useEffect(() => {
     if (!isSubmitting) return undefined;
@@ -191,6 +216,7 @@ const QuickAddPage = () => {
       }
       setLinkItems([]);
       setLinkIndex(0);
+      setSharedFrom(null);
       setInput("");
     } else {
       setLinkItems(items);
@@ -204,6 +230,7 @@ const QuickAddPage = () => {
     pendingRef.current = null;
     setLinkItems([]);
     setLinkIndex(0);
+    setSharedFrom(null);
     setInput("");
   };
 
@@ -322,6 +349,17 @@ const QuickAddPage = () => {
     if (inputRef.current) inputRef.current.focus();
   };
 
+  // A pasted bank alert ("You spent $23.40 at TIM HORTONS...") becomes a Quick Add line, like a share.
+  // Anything else pastes as usual.
+  const handlePaste = (e) => {
+    if (input.trim()) return;
+    const shared = shareTextToQuickAdd(e.clipboardData?.getData("text") || "", creditCards);
+    if (!shared) return;
+    e.preventDefault();
+    pendingRef.current = null;
+    setInput(shared.line);
+  };
+
   const handleChipClick = (chip) => {
     setInput(chip);
     if (inputRef.current) inputRef.current.focus();
@@ -361,6 +399,8 @@ const QuickAddPage = () => {
                 <p className="text-sm font-semibold text-zinc-100">
                   {isLinkList
                     ? `From a link: entry ${linkIndex + 1} of ${linkItems.length}`
+                    : sharedFrom
+                    ? "Filled from what you shared"
                     : "Filled from a link"}
                 </p>
                 <p className="text-xs text-zinc-400">
@@ -372,7 +412,7 @@ const QuickAddPage = () => {
               type="button"
               onClick={stopLink}
               disabled={isSubmitting}
-              aria-label="Dismiss link entries"
+              aria-label={sharedFrom ? "Dismiss shared entry" : "Dismiss link entries"}
               className="shrink-0 min-h-[40px] min-w-[40px] -mr-2 -mt-2 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 disabled:opacity-50"
             >
               <X size={16} />
@@ -428,6 +468,7 @@ const QuickAddPage = () => {
               id="quickInput"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={handlePaste}
               placeholder={`e.g. ${exampleChips[0]}, ${exampleChips[1]}`}
               className="w-full bg-transparent text-base sm:text-lg text-zinc-100 placeholder-zinc-600 focus:outline-none"
               autoComplete="off"

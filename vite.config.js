@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { SHARE_TARGET } from "./src/constants/shareTarget.js";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -36,6 +37,8 @@ export default defineConfig({
             purpose: "maskable",
           },
         ],
+        // Share -> FinTrack on Android: a bank notification's text fills Quick Add (never saved by itself)
+        share_target: SHARE_TARGET,
         shortcuts: [
           {
             name: "Quick Add",

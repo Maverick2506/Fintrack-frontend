@@ -510,6 +510,25 @@ const dashboardService = {
     );
   },
 
+  // Widgets page: the KWGT feed URL and its Hide amounts setting (read, so no handleRequest)
+  fetchWidgetConfig: async () => {
+    return api.get("/export/widget-config").then((res) => res.data);
+  },
+
+  regenerateWidgetKey: async () => {
+    return handleRequest(
+      api.post("/export/regenerate-widget-key"),
+      "New widget link made. Update it in KWGT."
+    );
+  },
+
+  setWidgetHideAmounts: async (hideAmounts) => {
+    return handleRequest(
+      api.put("/export/widget-settings", { hideAmounts }),
+      hideAmounts ? "The widget now hides amounts." : "The widget now shows amounts."
+    );
+  },
+
   fetchBudgets: async (month) => {
     const url = month ? `/budgets?month=${encodeURIComponent(month)}` : "/budgets";
     const data = await api.get(url).then((res) => res.data);

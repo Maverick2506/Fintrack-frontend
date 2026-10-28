@@ -38,7 +38,7 @@ export const withoutTextParam = (search) => {
 };
 
 // Checks a link list saved in sessionStorage (so a reload or re-login mid-list doesn't lose it).
-// Returns { items, index } pointing at a pending entry, or null when there's nothing usable.
+// Returns { items, index, sharedFrom } pointing at a pending entry, or null when there's nothing usable.
 export const restoreLinkList = (raw) => {
   try {
     const data = JSON.parse(raw);
@@ -55,7 +55,9 @@ export const restoreLinkList = (raw) => {
       items[preferred] && items[preferred].status === "pending"
         ? preferred
         : items.findIndex((it) => it.status === "pending");
-    return index === -1 ? null : { items, index };
+    // "share" when the entry came from Share -> FinTrack
+    if (index === -1) return null;
+    return data.sharedFrom === "share" ? { items, index, sharedFrom: "share" } : { items, index };
   } catch {
     return null;
   }
