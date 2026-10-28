@@ -10,7 +10,7 @@ import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import dashboardService from "../services/dashboardService";
 import { confirmAndEndSeries } from "../services/endSeriesAction";
 import { recurringContributionLine } from "../utils/endSeries";
-import { sinkingFundLine, sinkingFundNote, canSetUpTransfer, fundDateLabel } from "../utils/planningAlerts";
+import { sinkingFundLine, sinkingFundNote, canSetUpTransfer, fundDateLabel, effectiveTarget } from "../utils/planningAlerts";
 
 const FUND_TONES = {
   good: "text-emerald-400 font-medium",
@@ -126,7 +126,7 @@ const SavingsPage = () => {
     0
   );
   const totalTarget = goals.reduce(
-    (s, g) => s + (parseFloat(g.goal_amount) || g.sinkingFund?.targetAmount || 0),
+    (s, g) => s + effectiveTarget(g),
     0
   );
   const overallProgress =
@@ -210,7 +210,7 @@ const SavingsPage = () => {
             const bill = fund?.linkedBill;
             const current = parseFloat(goal.current_amount) || 0;
             // A sinking fund without its own target saves for the bill's amount
-            const target = parseFloat(goal.goal_amount) || fund?.targetAmount || 0;
+            const target = effectiveTarget(goal);
             // A Done sinking fund (its one-time bill was paid) is complete, whatever is left in it
             const progress = fund?.done ? 100 : target > 0 ? (current / target) * 100 : 0;
             const remaining = fund?.done ? 0 : Math.max(0, target - current);

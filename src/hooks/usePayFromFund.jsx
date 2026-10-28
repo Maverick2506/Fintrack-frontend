@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import dashboardService from "../services/dashboardService";
 import PayFromFundDialog from "../components/Modals/PayFromFundDialog";
 import CardFundsDialog from "../components/Modals/CardFundsDialog";
-import { cardFundBills, defaultFundChecks, fundBillsPayload, fundForBill } from "../utils/planningAlerts";
+import { cardFundBills, coveredFundBills, defaultFundChecks, fundBillsPayload, fundForBill } from "../utils/planningAlerts";
 
 /**
  * For a page that marks bills paid: askPayFrom(bill) resolves the options for markBillAsPaid, or null
@@ -25,15 +25,27 @@ const usePayFromFund = () => {
 
   const askPayFrom = useCallback(
     (bill) => {
+      // One dialog at a time: a second tap while one is open cancels the first
+      const ask = (next) =>
+        new Promise((resolve) =>
+          setPrompt((prev) => {
+            prev?.resolve(null);
+            return { ...next, resolve };
+          })
+        );
       const fundBills = cardFundBills(cards, bill);
       if (fundBills.length > 0) {
-        // No fund has money: nothing to ask, the funds still roll over with the payment
-        if (!fundBills.some((fb) => fb.use > 0)) return Promise.resolve({ fundBills: fundBillsPayload(fundBills, new Set()) });
-        return new Promise((resolve) => setPrompt({ bill, fundBills, resolve }));
+        const amount = Math.abs(parseFloat(bill.amount) || 0);
+        const covered = coveredFundBills(fundBills, amount);
+        // No fund with money that this payment covers: nothing to ask, the covered bills still roll over
+        if (!fundBills.some((fb) => fb.use > 0 && covered.has(fb.billId))) {
+          return Promise.resolve({ fundBills: fundBillsPayload(fundBills, new Set(), amount) });
+        }
+        return ask({ bill, fundBills });
       }
       const fund = fundForBill(goals, bill);
       if (!fund) return Promise.resolve({ payFromGoalId: null });
-      return new Promise((resolve) => setPrompt({ bill, fund, resolve }));
+      return ask({ bill, fund });
     },
     [goals, cards]
   );
@@ -41,7 +53,9 @@ const usePayFromFund = () => {
   const defaultPayFrom = useCallback(
     (bill) => {
       const fundBills = cardFundBills(cards, bill);
-      if (fundBills.length > 0) return { fundBills: fundBillsPayload(fundBills, defaultFundChecks(fundBills)) };
+      if (fundBills.length > 0) {
+        return { fundBills: fundBillsPayload(fundBills, defaultFundChecks(fundBills), Math.abs(parseFloat(bill.amount) || 0)) };
+      }
       return { payFromGoalId: fundForBill(goals, bill)?.goalId || null };
     },
     [goals, cards]

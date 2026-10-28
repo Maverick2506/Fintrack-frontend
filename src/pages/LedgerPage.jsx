@@ -39,7 +39,7 @@ import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 import usePayFromFund from "../hooks/usePayFromFund";
-import { billPaidToast } from "../utils/planningAlerts";
+import { billPaidToast, bulkPayOptions } from "../utils/planningAlerts";
 import {
   groupLedgerRows,
   summarizeLedgerGroup,
@@ -268,18 +268,21 @@ const LedgerPage = () => {
     setIsBulkMarking(true);
     const done = [];
     let fromFunds = 0;
+    let fromFundsTotal = 0;
     const cardsPaid = new Set();
     for (const row of targets) {
       try {
         // A bill a savings goal saves for is paid from it, the same default as the single "Paid" dialog.
-        // A card's fund bills go with its first payment in the batch.
-        const options = defaultPayFrom(row);
-        const cardId = row.toAccountId || row.targetAccountId;
-        if (options.fundBills && cardsPaid.has(cardId)) delete options.fundBills;
-        if (options.fundBills) cardsPaid.add(cardId);
+        // A card's fund bills go with its first payment in the batch that goes through.
+        const { options, cardId } = bulkPayOptions(defaultPayFrom(row), row, cardsPaid);
         const result = await dashboardService.markBillAsPaid(row.id, null, options);
-        if (result?.sinkingFund?.paidFromFund?.amount > 0) fromFunds++;
-        fromFunds += (result?.cardFunds || []).filter((f) => f.amount > 0).length;
+        if (cardId) cardsPaid.add(cardId);
+        const paid = [
+          ...(result?.sinkingFund?.paidFromFund?.amount > 0 ? [result.sinkingFund.paidFromFund] : []),
+          ...(result?.cardFunds || []).filter((f) => f.amount > 0),
+        ];
+        fromFunds += paid.length;
+        fromFundsTotal += paid.reduce((sum, f) => sum + f.amount, 0);
         done.push(row);
       } catch (err) {
         // handleRequest already showed the error toast for this row
@@ -291,7 +294,10 @@ const LedgerPage = () => {
       const doneIds = new Set(done.map((r) => r.id));
       setRows((prev) => prev.map((r) => (doneIds.has(r.id) ? { ...r, is_paid: true } : r)));
       const word = done.every((r) => r.type === "income") ? "received" : "paid";
-      const fundNote = fromFunds > 0 ? ` (${fromFunds} paid from ${fromFunds === 1 ? "its savings goal" : "their savings goals"})` : "";
+      const fundNote =
+        fromFunds > 0
+          ? ` (${formatCurrency(fromFundsTotal)} from ${fromFunds === 1 ? "a savings goal" : `${fromFunds} savings goals`})`
+          : "";
       toast.success(`Marked ${done.length} transaction${done.length === 1 ? "" : "s"} as ${word}${fundNote}`);
       refreshRowsQuietly();
       exitSelection();

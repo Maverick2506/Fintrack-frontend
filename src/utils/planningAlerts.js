@@ -182,6 +182,35 @@ export const billPaidToast = (result, todayStr = getTorontoTodayStr()) => {
     : `Paid ${formatCurrency(paid.amount)} from ${paid.goalName}.${next}`;
 };
 
+/**
+ * A goal's target: its own, else its sinking fund's (the bill's amount). The Dashboard summary's
+ * goal_amount is already the effective one; GET /savings-goals carries sinkingFund.targetAmount. 0 when none.
+ */
+export const effectiveTarget = (goal) =>
+  parseFloat(goal?.goal_amount) || parseFloat(goal?.sinkingFund?.targetAmount) || parseFloat(goal?.targetAmount) || 0;
+
+/** Percent saved of the effective target; 0 when there is no target */
+export const goalProgress = (goal, current) => {
+  const target = effectiveTarget(goal);
+  return target > 0 ? ((parseFloat(current) || 0) / target) * 100 : 0;
+};
+
+/**
+ * Which of a card's fund bills a payment of `amount` pays: each bill the payment covers in full, in
+ * order, taking its amount out of the payment (as the server does). A smaller payment leaves the bill
+ * for the next payment, so its fund isn't offered.
+ */
+export const coveredFundBills = (fundBills, amount) => {
+  let left = Math.round((parseFloat(amount) || 0) * 100) / 100;
+  const covered = new Set();
+  for (const fb of fundBills || []) {
+    if (fb.amount > left + 0.005) continue;
+    left = Math.round((left - fb.amount) * 100) / 100;
+    covered.add(fb.billId);
+  }
+  return covered;
+};
+
 // Dashboard bills carry fromAccount/toAccount objects, Ledger rows fromAccountType/toAccountType
 const accountType = (bill, side) => bill?.[`${side}Account`]?.type || bill?.[`${side}AccountType`] || null;
 export const isCardCharge = (bill) => accountType(bill, "from") === "CREDIT_CARD";
@@ -206,13 +235,41 @@ export const fundUseDetail = (fb) =>
 /** Bills whose fund has money get a box, checked by default; the rest roll over with the payment */
 export const defaultFundChecks = (fundBills) => new Set((fundBills || []).filter((fb) => fb.use > 0).map((fb) => fb.billId));
 
-/** The fundBills a card payment sends: every listed bill, useFund for the checked ones that have money */
-export const fundBillsPayload = (fundBills, checked) =>
-  (fundBills || []).map((fb) => ({ billId: fb.billId, useFund: fb.use > 0 && checked.has(fb.billId) }));
+/**
+ * The fundBills a card payment of `amount` sends: every bill it covers (coveredFundBills), useFund for
+ * the checked ones that have money. Bills it doesn't cover aren't sent, so they stay for the next payment.
+ */
+export const fundBillsPayload = (fundBills, checked, amount) => {
+  const covered = coveredFundBills(fundBills, amount);
+  return (fundBills || [])
+    .filter((fb) => covered.has(fb.billId))
+    .map((fb) => ({ billId: fb.billId, useFund: fb.use > 0 && checked.has(fb.billId) }));
+};
 
-/** What the checked funds move to Checking */
-export const fundsTotal = (fundBills, checked) =>
-  Math.round((fundBills || []).reduce((sum, fb) => sum + (fb.use > 0 && checked.has(fb.billId) ? fb.use : 0), 0) * 100) / 100;
+/** What the checked funds move to Checking with a payment of `amount` */
+export const fundsTotal = (fundBills, checked, amount) => {
+  const covered = coveredFundBills(fundBills, amount);
+  return (
+    Math.round(
+      (fundBills || []).reduce((sum, fb) => sum + (fb.use > 0 && covered.has(fb.billId) && checked.has(fb.billId) ? fb.use : 0), 0) * 100
+    ) / 100
+  );
+};
+
+/** Under a fund box the payment doesn't cover yet: "Pay $1,200.00 or more to use Car Fund" */
+export const fundNeedsMoreLabel = (fb) => `Pay ${formatCurrency(fb.amount)} or more to use ${fb.goalName} for ${fb.title}.`;
+
+/**
+ * Bulk "Mark paid": the options for each row, as the single dialog defaults. A card's fund bills go
+ * with its first payment in the batch that covers them (paidCards: card ids already used, updated by
+ * the caller once that request succeeds). Returns { options, cardId }.
+ */
+export const bulkPayOptions = (defaultOptions, row, paidCards) => {
+  const cardId = row.toAccountId || row.targetAccountId || null;
+  const options = { ...defaultOptions };
+  if (options.fundBills && (paidCards.has(cardId) || options.fundBills.length === 0)) delete options.fundBills;
+  return { options, cardId: options.fundBills ? cardId : null };
+};
 
 /** Toast after a card payment, from the response's cardFunds */
 export const cardPaidToast = (result, fallback = "Card payment successful!") => {

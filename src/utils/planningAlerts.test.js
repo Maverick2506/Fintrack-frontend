@@ -24,6 +24,11 @@ import {
   fundBillsPayload,
   fundsTotal,
   cardPaidToast,
+  effectiveTarget,
+  goalProgress,
+  coveredFundBills,
+  fundNeedsMoreLabel,
+  bulkPayOptions,
 } from "./planningAlerts.js";
 
 let failed = 0;
@@ -213,9 +218,9 @@ assert(
 const checks = defaultFundChecks(fundBills);
 assert(
   checks.has("c1") && !checks.has("c2") &&
-    JSON.stringify(fundBillsPayload(fundBills, checks)) === JSON.stringify([{ billId: "c1", useFund: true }, { billId: "c2", useFund: false }]) &&
-    JSON.stringify(fundBillsPayload(fundBills, new Set())) === JSON.stringify([{ billId: "c1", useFund: false }, { billId: "c2", useFund: false }]) &&
-    fundsTotal(fundBills, checks) === 1000 && fundsTotal(fundBills, new Set()) === 0,
+    JSON.stringify(fundBillsPayload(fundBills, checks, 1250)) === JSON.stringify([{ billId: "c1", useFund: true }, { billId: "c2", useFund: false }]) &&
+    JSON.stringify(fundBillsPayload(fundBills, new Set(), 1250)) === JSON.stringify([{ billId: "c1", useFund: false }, { billId: "c2", useFund: false }]) &&
+    fundsTotal(fundBills, checks, 1250) === 1000 && fundsTotal(fundBills, new Set(), 1250) === 0,
   "Funds with money are checked by default; every listed bill is sent so its fund rolls over"
 );
 assert(
@@ -225,6 +230,39 @@ assert(
     billPaidToast({ sinkingFund: null, cardFunds: [{ goalName: "Car Fund", amount: 1000 }] }) === "Payment saved. Car Fund paid $1,000.00 of it." &&
     billPaidToast({ sinkingFund: null, cardFunds: [] }) === "Bill marked as paid!",
   "Toast after a card payment says what the funds paid"
+);
+
+// Review fixes: a fund is used only by a payment that covers its whole bill
+const covered100 = coveredFundBills(fundBills, 100);
+const covered1200 = coveredFundBills(fundBills, 1200);
+assert(
+  !covered100.has("c1") && covered100.has("c2") && covered1200.has("c1") && !covered1200.has("c2") &&
+    coveredFundBills(fundBills, 1250).size === 2 && coveredFundBills(fundBills, "").size === 0,
+  "A payment covers the bills it pays in full, in order ($100: only the $50 gym; $1,200: only the insurance)"
+);
+assert(
+  JSON.stringify(fundBillsPayload(fundBills, checks, 100)) === JSON.stringify([{ billId: "c2", useFund: false }]) &&
+    fundsTotal(fundBills, checks, 100) === 0 && fundsTotal(fundBills, checks, 1200) === 1000 &&
+    fundNeedsMoreLabel(fundBills[0]) === "Pay $1,200.00 or more to use Car Fund for Car insurance.",
+  "A $100 payment sends no fund for the $1,200 bill (it stays for the next payment) and says what would"
+);
+assert(
+  effectiveTarget({ goal_amount: "0", sinkingFund: { targetAmount: 1200 } }) === 1200 &&
+    effectiveTarget({ goal_amount: 500, sinkingFund: { targetAmount: 1200 } }) === 500 &&
+    effectiveTarget({ goal_amount: null, targetAmount: "300" }) === 300 && effectiveTarget({}) === 0 &&
+    goalProgress({ goal_amount: 0, sinkingFund: { targetAmount: 1200 } }, 600) === 50 && goalProgress({}, 600) === 0,
+  "A goal's target falls back to its bill; no target means 0%, not $1"
+);
+const paidCards = new Set();
+const first = bulkPayOptions({ fundBills: [{ billId: "c1", useFund: true }] }, { targetAccountId: "card1" }, paidCards);
+paidCards.add(first.cardId);
+const second = bulkPayOptions({ fundBills: [{ billId: "c1", useFund: true }] }, { targetAccountId: "card1" }, paidCards);
+const plain = bulkPayOptions({ payFromGoalId: "g1" }, { targetAccountId: null }, paidCards);
+assert(
+  first.cardId === "card1" && first.options.fundBills.length === 1 && second.cardId === null && !second.options.fundBills &&
+    plain.options.payFromGoalId === "g1" && plain.cardId === null &&
+    bulkPayOptions({ fundBills: [] }, { targetAccountId: "card2" }, new Set()).cardId === null,
+  "Bulk: a card's fund bills go with its first payment only; a failed request (card not added) lets the next one use them"
 );
 
 if (failed > 0) {

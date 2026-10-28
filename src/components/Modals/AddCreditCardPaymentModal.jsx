@@ -45,7 +45,7 @@ const AddCreditCardPaymentModal = ({
   const newBalance = Math.max(0, currentBalance - numAmount);
   const isOverpaying = currentBalance > 0 && numAmount > currentBalance;
   const isFullyPaid = currentBalance > 0 && numAmount >= currentBalance;
-  const fromFunds = fundsTotal(fundBills, fundChecks);
+  const fromFunds = fundsTotal(fundBills, fundChecks, numAmount);
   const toggleFund = (billId) =>
     setFundChecks((prev) => {
       const next = new Set(prev);
@@ -73,7 +73,7 @@ const AddCreditCardPaymentModal = ({
     try {
       await dashboardService.payCreditCard(effectiveCardId, {
         amount: numAmount,
-        ...(fundBills.length > 0 ? { fundBills: fundBillsPayload(fundBills, fundChecks) } : {}),
+        ...(fundBills.length > 0 ? { fundBills: fundBillsPayload(fundBills, fundChecks, numAmount) } : {}),
       });
       setAmount("");
       onClose();
@@ -290,7 +290,7 @@ const AddCreditCardPaymentModal = ({
               <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                 Paid from savings
               </p>
-              <FundBillsChecklist fundBills={fundBills} checked={fundChecks} onToggle={toggleFund} />
+              <FundBillsChecklist fundBills={fundBills} checked={fundChecks} onToggle={toggleFund} amount={numAmount} />
               {fromFunds > 0 && (
                 <p className="text-[11px] text-zinc-500">
                   {formatCurrency(fromFunds)} moves from savings to Checking with this payment.

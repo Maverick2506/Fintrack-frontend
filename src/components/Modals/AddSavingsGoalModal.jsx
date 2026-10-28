@@ -7,6 +7,8 @@ import { linkPayload } from "../../utils/planningAlerts";
 const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const [name, setName] = useState("");
   const [goalAmount, setGoalAmount] = useState("");
+  // A goal saving for a bill can leave its target empty: it follows the bill's amount (shown as the placeholder)
+  const [billAmount, setBillAmount] = useState(null);
   const [currentAmount, setCurrentAmount] = useState("");
   const [targetDate, setTargetDate] = useState("");
   const [registeredType, setRegisteredType] = useState("");
@@ -29,7 +31,11 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
-    if (!name || !goalAmount) return;
+    if (!name) return;
+    if (!goalAmount && !linkedBillId) {
+      setError("Enter a target amount, or pick a bill to save for.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -118,11 +124,17 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
                 value={goalAmount}
                 onChange={(e) => setGoalAmount(e.target.value)}
                 className="w-full bg-transparent text-3xl font-semibold tracking-tight text-zinc-100 placeholder-zinc-700 focus:outline-none tabular-nums"
-                placeholder="0.00"
-                required
+                placeholder={linkedBillId && billAmount ? Number(billAmount).toFixed(2) : "0.00"}
+                aria-describedby={linkedBillId ? "goalAmountHint" : undefined}
+                required={!linkedBillId}
                 autoFocus
               />
             </div>
+            {linkedBillId && !goalAmount && (
+              <p id="goalAmountHint" className="text-[11px] text-zinc-500 mt-1">
+                Empty: the goal follows the bill's amount.
+              </p>
+            )}
             <div className="mt-3 pt-2.5 border-t border-white/[0.06] flex items-center gap-2">
               <PiggyBank size={14} className="text-zinc-500 flex-shrink-0" />
               <input
@@ -180,9 +192,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
             id="linkedBill"
             value={linkedBillId}
             onChange={setLinkedBillId}
-            onPick={(bill) => {
-              if (!goalAmount) setGoalAmount(String(bill.amount));
-            }}
+            onPick={(bill) => setBillAmount(bill.amount)}
             targetDate={targetDate}
           />
 

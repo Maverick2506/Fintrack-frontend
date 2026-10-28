@@ -10,7 +10,7 @@ const CardFundsDialog = ({ bill, fundBills, onConfirm, onCancel }) => {
   const [checked, setChecked] = useState(() => defaultFundChecks(fundBills));
   const amount = Math.abs(parseFloat(bill.amount) || 0);
   const name = bill.name || bill.title;
-  const fromFunds = fundsTotal(fundBills, checked);
+  const fromFunds = fundsTotal(fundBills, checked, amount);
   const fromChecking = Math.max(0, Math.round((amount - fromFunds) * 100) / 100);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ const CardFundsDialog = ({ bill, fundBills, onConfirm, onCancel }) => {
           </button>
         </div>
 
-        <FundBillsChecklist fundBills={fundBills} checked={checked} onToggle={toggle} />
+        <FundBillsChecklist fundBills={fundBills} checked={checked} onToggle={toggle} amount={amount} />
         <p className="text-[11px] text-zinc-500 mt-3">
           {fromFunds > 0
             ? `Savings move ${formatCurrency(fromFunds)} to Checking, so Checking pays ${formatCurrency(fromChecking)} net.`
@@ -73,7 +73,7 @@ const CardFundsDialog = ({ bill, fundBills, onConfirm, onCancel }) => {
           </button>
           <button
             type="button"
-            onClick={() => onConfirm({ fundBills: fundBillsPayload(fundBills, checked) })}
+            onClick={() => onConfirm({ fundBills: fundBillsPayload(fundBills, checked, amount) })}
             className="btn-primary min-h-10"
           >
             Mark paid

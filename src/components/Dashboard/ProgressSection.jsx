@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Plus } from "lucide-react";
 import { formatCurrency } from "../../utils/formatUtils";
 import { calculatePacing } from "../../utils/savingsPacing";
+import { effectiveTarget, goalProgress } from "../../utils/planningAlerts";
 
 const ProgressSection = ({
   debtSummary,
@@ -93,10 +94,11 @@ const ProgressSection = ({
         {savingsSummary &&
           savingsSummary.length > 0 &&
           savingsSummary.map((goal, gIdx) => {
-            const pacing = calculatePacing(goal, "bi-weekly");
-            const target = parseFloat(goal.goal_amount ?? goal.targetAmount) || 1;
+            // A sinking fund's pace is its monthly amount for the bill, not the goal pacing badge
+            const pacing = goal.sinkingMonthly > 0 ? null : calculatePacing(goal, "bi-weekly");
+            const target = effectiveTarget(goal);
             const current = parseFloat(goal.initialBalance) || 0;
-            const progress = (current / target) * 100;
+            const progress = goalProgress(goal, current);
 
             return (
               <div key={goal.id} className={!showAllMobile && (activeDebts.length + gIdx) >= 3 ? "hidden sm:block" : ""}>

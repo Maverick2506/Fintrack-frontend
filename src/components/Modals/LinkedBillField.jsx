@@ -4,9 +4,10 @@ import dashboardService from "../../services/dashboardService";
 import { billOptions, oneOffBillOptions } from "../../utils/planningAlerts";
 import { formatShortDate } from "../../utils/formatUtils";
 
-// Sinking fund: the bill a savings goal saves for. Picking one fills an empty target amount with the
-// bill's amount (onPick); an empty target date follows the bill's next date on the server.
-const LinkedBillField = ({ id, value, onChange, onPick, targetDate }) => {
+// Sinking fund: the bill a savings goal saves for. An empty target amount and date follow the bill
+// (its latest amount and next date) on the server; onPick gets the bill so the form can show them.
+// currentTitle names a linked bill that is no longer in the list (ended).
+const LinkedBillField = ({ id, value, onChange, onPick, targetDate, currentTitle }) => {
   const [series, setSeries] = useState([]);
   const [oneOffs, setOneOffs] = useState([]);
   const [loadError, setLoadError] = useState(false);
@@ -53,7 +54,7 @@ const LinkedBillField = ({ id, value, onChange, onPick, targetDate }) => {
         className="w-full min-h-10 bg-zinc-900 border border-white/[0.08] text-xs font-medium text-zinc-200 rounded-lg px-2.5 focus:outline-none focus:border-zinc-700"
       >
         <option value="">No bill (regular goal)</option>
-        {showUnknown && <option value={value}>Current bill</option>}
+        {showUnknown && <option value={value}>{currentTitle || "Current bill"}</option>}
         {series.length > 0 && (
           <optgroup label="Recurring bills">
             {series.map((b) => (
@@ -77,7 +78,7 @@ const LinkedBillField = ({ id, value, onChange, onPick, targetDate }) => {
         {loadError
           ? "Couldn't load your bills."
           : value
-          ? `Safe to Spend sets the monthly amount aside.${
+          ? `The goal saves for this bill month by month; its card says how Safe to Spend covers it.${
               !targetDate && picked?.nextDate ? ` With no target date, it's the bill's next date (${formatShortDate(picked.nextDate)}).` : ""
             }`
           : "Link a bill to save for it month by month (a sinking fund)."}

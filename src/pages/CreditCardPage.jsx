@@ -205,9 +205,9 @@ const CreditCardPage = () => {
                         <h2 className="text-sm font-semibold text-zinc-100 tracking-tight">
                           {card.name}
                         </h2>
-                        <p className="text-[11px] text-zinc-500">
+                        <p className={`text-[11px] ${lines?.overdue ? "text-amber-400" : "text-zinc-500"}`}>
                           {dueDate
-                            ? `Due ${new Date(dueDate).toLocaleDateString(
+                            ? `${lines?.overdue ? "Overdue since" : "Due"} ${new Date(dueDate).toLocaleDateString(
                                 "en-US",
                                 {
                                   timeZone: "UTC",
