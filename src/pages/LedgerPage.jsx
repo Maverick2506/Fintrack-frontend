@@ -110,7 +110,7 @@ const LedgerPage = () => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [lastClickedIndex, setLastClickedIndex] = useState(null);
-  const { askPayFrom, dialog: payFromFundDialog } = usePayFromFund();
+  const { askPayFrom, defaultPayFrom, dialog: payFromFundDialog } = usePayFromFund();
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isBulkMarking, setIsBulkMarking] = useState(false);
 
@@ -267,9 +267,13 @@ const LedgerPage = () => {
     if (targets.length === 0 || isBulkMarking) return;
     setIsBulkMarking(true);
     const done = [];
+    let fromFunds = 0;
     for (const row of targets) {
       try {
-        await dashboardService.markBillAsPaid(row.id, null);
+        // A bill a savings goal saves for is paid from it, the same default as the single "Paid" dialog
+        const payFromGoalId = defaultPayFrom(row);
+        const result = await dashboardService.markBillAsPaid(row.id, null, { payFromGoalId });
+        if (result?.sinkingFund?.paidFromFund?.amount > 0) fromFunds++;
         done.push(row);
       } catch (err) {
         // handleRequest already showed the error toast for this row
@@ -281,7 +285,8 @@ const LedgerPage = () => {
       const doneIds = new Set(done.map((r) => r.id));
       setRows((prev) => prev.map((r) => (doneIds.has(r.id) ? { ...r, is_paid: true } : r)));
       const word = done.every((r) => r.type === "income") ? "received" : "paid";
-      toast.success(`Marked ${done.length} transaction${done.length === 1 ? "" : "s"} as ${word}`);
+      const fundNote = fromFunds > 0 ? ` (${fromFunds} paid from ${fromFunds === 1 ? "its savings goal" : "their savings goals"})` : "";
+      toast.success(`Marked ${done.length} transaction${done.length === 1 ? "" : "s"} as ${word}${fundNote}`);
       refreshRowsQuietly();
       exitSelection();
     }

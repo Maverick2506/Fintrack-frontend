@@ -7,6 +7,7 @@ import { fundForBill } from "../utils/planningAlerts";
 /**
  * For a page that marks bills paid: askPayFrom(bill) resolves { payFromGoalId } (null when no goal saves
  * for the bill, or the box was unchecked), or null when the person cancelled. Render `dialog`.
+ * defaultPayFrom(bill) is the box's default without asking (bulk "Mark paid"): the goal id, or null.
  */
 const usePayFromFund = () => {
   const { data: goals } = useQuery({
@@ -24,6 +25,8 @@ const usePayFromFund = () => {
     [goals]
   );
 
+  const defaultPayFrom = useCallback((bill) => fundForBill(goals, bill)?.goalId || null, [goals]);
+
   const finish = (choice) => {
     prompt?.resolve(choice);
     setPrompt(null);
@@ -38,7 +41,7 @@ const usePayFromFund = () => {
     />
   ) : null;
 
-  return { askPayFrom, dialog };
+  return { askPayFrom, defaultPayFrom, dialog };
 };
 
 export default usePayFromFund;
