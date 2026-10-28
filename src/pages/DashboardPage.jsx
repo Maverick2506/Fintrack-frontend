@@ -72,7 +72,11 @@ const DashboardPage = () => {
       dashboardService.fetchDashboard(selectedYear, selectedMonth),
   });
 
-  const spendingData = useMemo(() => dashboardData?.spendingSummary || [], [dashboardData?.spendingSummary]);
+  // A category that only holds refunds nets below zero: it lowers total spending but has no slice or budget row
+  const spendingData = useMemo(
+    () => (dashboardData?.spendingSummary || []).filter((c) => c.value > 0),
+    [dashboardData?.spendingSummary]
+  );
   const loading = dashboardLoading;
 
   const upcomingBills = useMemo(() => {

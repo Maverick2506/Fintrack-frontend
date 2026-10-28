@@ -18,6 +18,8 @@ import {
   PiggyBank,
   Wallet,
   CircleStop,
+  Upload,
+  Inbox,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
@@ -86,6 +88,8 @@ const AccountName = ({ side, className = "min-w-0" }) => {
 
 const LedgerPage = () => {
   const [rows, setRows] = useState([]);
+  // Rows a bank import added that are still waiting in Review new
+  const reviewCount = useMemo(() => rows.filter((r) => r.needsReview).length, [rows]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
@@ -462,6 +466,14 @@ const LedgerPage = () => {
         </span>
       );
     }
+    if (row.amount < 0) {
+      // A refund: negative spending
+      return (
+        <span className="text-emerald-400" title="Refund">
+          +{formatCurrency(Math.abs(row.amount))}
+        </span>
+      );
+    }
     return <span className="text-zinc-100">{formatCurrency(-Math.abs(row.amount))}</span>;
   };
 
@@ -744,6 +756,26 @@ const LedgerPage = () => {
           </h1>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
+          {reviewCount > 0 && (
+            <Link
+              to="/review"
+              className="btn-secondary h-10 px-3 shrink-0 text-sky-300"
+              title="Imported rows waiting for review"
+              aria-label={`Review ${reviewCount} new`}
+            >
+              <Inbox size={14} />
+              <span className="tabular-nums">{reviewCount}</span>
+              <span className="hidden sm:inline">to review</span>
+            </Link>
+          )}
+          <Link
+            to="/import"
+            className="btn-secondary h-10 px-3.5 shrink-0 hidden sm:inline-flex"
+            title="Import transactions from a bank or card CSV"
+          >
+            <Upload size={14} />
+            <span>Import</span>
+          </Link>
           <Link
             to="/trash"
             className="btn-secondary h-10 px-3.5 shrink-0"
