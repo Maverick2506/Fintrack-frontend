@@ -25,6 +25,7 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
+import SubscriptionSuggestions from "../components/Dashboard/SubscriptionSuggestions";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
@@ -596,6 +597,7 @@ const DashboardPage = () => {
 
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 flex flex-col gap-6">
+            <SubscriptionSuggestions />
             <MonthlySummary summary={monthlySummary} monthLabel={MONTH_NAMES[selectedMonth - 1]} />
             <UpcomingBills
               bills={upcomingBills}

@@ -94,7 +94,7 @@ const ProgressSection = ({
           savingsSummary.length > 0 &&
           savingsSummary.map((goal, gIdx) => {
             const pacing = calculatePacing(goal, "bi-weekly");
-            const target = parseFloat(goal.targetAmount) || 1;
+            const target = parseFloat(goal.goal_amount ?? goal.targetAmount) || 1;
             const current = parseFloat(goal.initialBalance) || 0;
             const progress = (current / target) * 100;
 
@@ -136,7 +136,9 @@ const ProgressSection = ({
                 </div>
                 <div className="flex justify-between items-center text-[11px] text-zinc-500 mt-1 tabular-nums">
                   <span className="truncate max-w-[170px]">
-                    {pacing && (pacing.status === "ON_TRACK" || pacing.status === "SLIGHTLY_BEHIND" || pacing.status === "BEHIND")
+                    {goal.sinkingMonthly > 0
+                      ? `Save ${formatCurrency(goal.sinkingMonthly)}/mo for the bill`
+                      : pacing && (pacing.status === "ON_TRACK" || pacing.status === "SLIGHTLY_BEHIND" || pacing.status === "BEHIND")
                       ? `${formatCurrency(pacing.requiredPerMonth)}/mo pace`
                       : ""}
                   </span>

@@ -349,6 +349,27 @@ const dashboardService = {
     return api.get("/subscriptions").then((res) => res.data);
   },
 
+  // "Make this a subscription?" cards on the Dashboard
+  fetchSubscriptionSuggestions: async () => {
+    return api.get("/alerts/subscription-suggestions").then((res) => res.data);
+  },
+
+  acceptSubscriptionSuggestion: async (id) => {
+    return handleRequest(api.post(`/alerts/subscription-suggestions/${id}/accept`, {}), null);
+  },
+
+  dismissSubscriptionSuggestion: async (id) => {
+    return handleRequest(api.post(`/alerts/subscription-suggestions/${id}/dismiss`, {}), null);
+  },
+
+  // Sinking fund: a monthly transfer from Checking for the goal's monthly amount
+  setUpGoalMonthlyTransfer: async (goalId) => {
+    return handleRequest(
+      api.post(`/savings-goals/${goalId}/monthly-transfer`, {}),
+      "Monthly transfer set up."
+    );
+  },
+
   cancelSubscription: async (id) => {
     return handleRequest(
       api.post(`/subscriptions/${id}/cancel`),

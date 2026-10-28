@@ -7,6 +7,7 @@ import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import SyncStatementModal from "../components/Modals/SyncStatementModal";
 import dashboardService from "../services/dashboardService";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
+import { statementLines } from "../utils/planningAlerts";
 
 const CreditCardPage = () => {
   const [cards, setCards] = useState([]);
@@ -156,6 +157,9 @@ const CreditCardPage = () => {
             const limit = parseFloat(card.creditLimit) || 0;
             const available = Math.max(0, limit - balance);
             const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+            const lines = statementLines(card.statement);
+            // With a statement day, the due date is the current statement's (server-computed)
+            const dueDate = card.statement?.dueDate || card.dueDate;
             const barColor =
               utilization > 70
                 ? "bg-rose-400"
@@ -184,8 +188,8 @@ const CreditCardPage = () => {
                           {card.name}
                         </h2>
                         <p className="text-[11px] text-zinc-500">
-                          {card.dueDate
-                            ? `Due ${new Date(card.dueDate).toLocaleDateString(
+                          {dueDate
+                            ? `Due ${new Date(dueDate).toLocaleDateString(
                                 "en-US",
                                 {
                                   timeZone: "UTC",
@@ -238,6 +242,24 @@ const CreditCardPage = () => {
                         of ${limit.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </span>
                     </div>
+                    {lines && (
+                      <dl className="mt-3 space-y-1.5 text-xs">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-zinc-400 min-w-0">{lines.balanceLabel}</dt>
+                          <dd
+                            className={`tabular-nums font-medium shrink-0 ${
+                              lines.paid ? "text-emerald-400" : "text-zinc-100"
+                            }`}
+                          >
+                            {lines.balance}
+                          </dd>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-zinc-500 min-w-0">{lines.chargesLabel}</dt>
+                          <dd className="tabular-nums text-zinc-300 shrink-0">{lines.charges}</dd>
+                        </div>
+                      </dl>
+                    )}
                   </div>
                 </div>
 

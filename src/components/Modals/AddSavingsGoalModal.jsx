@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, PiggyBank, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import LinkedBillField from "./LinkedBillField";
 
 const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const [name, setName] = useState("");
@@ -8,6 +9,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const [currentAmount, setCurrentAmount] = useState("");
   const [targetDate, setTargetDate] = useState("");
   const [registeredType, setRegisteredType] = useState("");
+  const [linkedBillId, setLinkedBillId] = useState(null);
   const [contributionRoom, setContributionRoom] = useState("");
   const [roomYear, setRoomYear] = useState(new Date().getFullYear().toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +38,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
         goal_amount: goalAmount,
         current_amount: currentAmount || 0,
         target_date: targetDate || null,
+        linkedRecurringGroupId: linkedBillId,
         registeredType: registeredType || null,
         contributionRoom:
           registeredType && contributionRoom !== ""
@@ -49,6 +52,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
       setCurrentAmount("");
       setTargetDate("");
       setRegisteredType("");
+      setLinkedBillId(null);
       setContributionRoom("");
       setRoomYear(new Date().getFullYear().toString());
       onClose();
@@ -170,6 +174,16 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
               />
             </div>
           </div>
+
+          <LinkedBillField
+            id="linkedBill"
+            value={linkedBillId}
+            onChange={setLinkedBillId}
+            onPick={(bill) => {
+              if (!goalAmount) setGoalAmount(String(bill.amount));
+            }}
+            targetDate={targetDate}
+          />
 
           {/* Phase J: Registered Account (TFSA / RRSP / FHSA) */}
           <div className="rounded-xl bg-zinc-950/60 border border-white/[0.06] p-3 space-y-3">
