@@ -87,6 +87,8 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
   // The answer as it streams in (AI6), and what the server is doing before the first words
   const [streamText, setStreamText] = useState("");
   const [streamStatus, setStreamStatus] = useState("");
+  // Aborted when the panel closes, so the server stops working on an answer nobody will see
+  const abortRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const [capDraft, setCapDraft] = useState(null);
@@ -111,6 +113,11 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     saveAskHistory(window.sessionStorage, messages);
   }, [messages]);
+
+  useEffect(() => {
+    if (!isOpen) abortRef.current?.abort();
+  }, [isOpen]);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
     if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -139,9 +146,12 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
         .slice(-8)
         .map((m) => ({ role: m.role, text: m.text.slice(0, 4000) }));
 
+      const controller = new AbortController();
+      abortRef.current = controller;
       const res = await dashboardService.chatAdvisorStream(textToSend, apiHistory, {
         onText: setStreamText,
         onStatus: setStreamStatus,
+        signal: controller.signal,
       });
       const replyText = res?.reply || "I didn't receive a response. Please try again.";
       // Drafted transactions: shown as cards that open Quick Add; the chat never saves anything
@@ -152,6 +162,11 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
         { role: "model", text: replyText, ...(proposals.length ? { proposals } : {}) },
       ]);
     } catch (err) {
+      if (abortRef.current?.signal.aborted) {
+        // Closed mid-answer: keep the question, say it stopped
+        setMessages((prev) => [...prev, { role: "model", text: "Stopped when the panel closed. Ask again for an answer.", isError: true }]);
+        return;
+      }
       const errMsg =
         err.response?.data?.error ||
         "Failed to reach AI financial advisor. Please check your connection and try again.";

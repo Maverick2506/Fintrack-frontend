@@ -41,7 +41,13 @@ import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
 import { collectTags, matchesTag, tagsOf } from "../utils/transactionTags";
 import { ledgerExportQuery, exportFileName } from "../utils/ledgerExport";
-import { ledgerFetchParams, olderWindowFrom, ledgerWindowNote } from "../utils/ledgerPaging";
+import {
+  ledgerFetchParams,
+  olderWindowFrom,
+  ledgerWindowNote,
+  ledgerMonthOptions,
+  windowFromForMonth,
+} from "../utils/ledgerPaging";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 import usePayFromFund from "../hooks/usePayFromFund";
 import { billPaidToast, bulkPayOptions } from "../utils/planningAlerts";
@@ -217,12 +223,14 @@ const LedgerPage = () => {
     setSearchRows((prev) => (prev ? fn(prev) : prev));
   }, []);
 
-  // "Load older": 3 more months, read as one page so sorting still covers everything loaded
-  const loadOlder = async () => {
+  // "Load older": 3 more months (or back to a picked month), read as one page so sorting still covers
+  // everything loaded
+  const loadOlder = async (target) => {
     if (!windowFrom || isLoadingOlder) return;
     setIsLoadingOlder(true);
     try {
-      applyPage(await dashboardService.fetchLedger(ledgerFetchParams({ windowFrom: olderWindowFrom(windowFrom) })));
+      const from = typeof target === "string" ? target : olderWindowFrom(windowFrom);
+      applyPage(await dashboardService.fetchLedger(ledgerFetchParams({ windowFrom: from })));
     } catch (err) {
       console.error("Failed to load older rows:", err);
       toast.error("Couldn't load older transactions. Try again.");
@@ -421,13 +429,22 @@ const LedgerPage = () => {
     tagFilter === "all" || availableTags.includes(tagFilter) ? availableTags : [...availableTags, tagFilter];
 
   const availableMonths = useMemo(() => {
-    const set = new Set(
-      baseRows
-        .map((r) => (r.date ? String(r.date).slice(0, 7) : null))
-        .filter(Boolean)
+    const loaded = Array.from(
+      new Set(baseRows.map((r) => (r.date ? String(r.date).slice(0, 7) : null)).filter(Boolean))
     );
-    return Array.from(set).sort().reverse();
-  }, [baseRows]);
+    // Months before the loaded window are offered too while older rows exist; picking one loads it
+    return ledgerMonthOptions(loaded, {
+      windowFrom,
+      hasMore: hasMore && !searching,
+      todayStr: getTorontoTodayStr(),
+    });
+  }, [baseRows, windowFrom, hasMore, searching]);
+
+  const chooseMonth = (ym) => {
+    setMonthFilter(ym);
+    const from = windowFromForMonth(ym, windowFrom);
+    if (from && hasMore && !searching) loadOlder(from);
+  };
 
   const filtered = useMemo(() => {
     let data = baseRows;
@@ -1025,7 +1042,7 @@ const LedgerPage = () => {
             </select>
             <select
               value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
+              onChange={(e) => chooseMonth(e.target.value)}
               aria-label="Month"
               className={inlineSelect}
             >
@@ -1305,7 +1322,7 @@ const LedgerPage = () => {
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
         monthFilter={monthFilter}
-        setMonthFilter={setMonthFilter}
+        setMonthFilter={chooseMonth}
         tags={tagOptions}
         tagFilter={tagFilter}
         setTagFilter={setTagFilter}

@@ -45,9 +45,14 @@ const ReceiptScanButton = ({ onDraft, label = "Scan receipt", className = "", la
   const [isReading, setIsReading] = useState(false);
 
   const handleFile = async (event) => {
-    const file = event.target.files?.[0];
+    const picked = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
+    if (!picked) return;
+    // Some phones give HEIC photos no type; name it, so the upload isn't sent as application/octet-stream
+    const file =
+      !picked.type && /\.(heic|heif)$/i.test(picked.name || "")
+        ? new File([picked], picked.name, { type: /\.heif$/i.test(picked.name) ? "image/heif" : "image/heic" })
+        : picked;
     const problem = receiptFileProblem(file);
     if (problem) {
       toast.error(problem);

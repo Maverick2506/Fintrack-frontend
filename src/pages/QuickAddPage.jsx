@@ -313,7 +313,7 @@ const QuickAddPage = () => {
 
   // A receipt photo fills the input; nothing is saved until Save (AI5)
   const handleReceiptDraft = (draft) => {
-    const text = receiptDraftToQuickAddText(draft, todayStr);
+    const text = receiptDraftToQuickAddText(draft, todayStr, creditCards);
     pendingRef.current = null;
     setInput(text);
     setReceipt({ draft, text });

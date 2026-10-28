@@ -321,13 +321,13 @@ const dashboardService = {
     return api.post("/categorize-receipt", form).then((res) => res.data);
   },
 
-  chatAdvisor: async (message, history = []) => {
-    return api.post("/chat-advisor", { message, history }).then((res) => res.data);
+  chatAdvisor: async (message, history = [], { signal } = {}) => {
+    return api.post("/chat-advisor", { message, history }, { signal }).then((res) => res.data);
   },
 
   // The same chat, streamed (AI6): onText(textSoFar) as the answer arrives, onStatus while a tool runs.
   // Falls back to chatAdvisor (one JSON answer) when the stream can't start.
-  chatAdvisorStream: async (message, history = [], { onText, onStatus } = {}) => {
+  chatAdvisorStream: async (message, history = [], { onText, onStatus, signal } = {}) => {
     if (!isLoggedIn()) {
       sendToLogin();
       throw new axios.Cancel("Session expired");
@@ -339,8 +339,9 @@ const dashboardService = {
       body: { message, history },
       onText,
       onStatus,
-      fallback: () => dashboardService.chatAdvisor(message, history),
+      fallback: () => dashboardService.chatAdvisor(message, history, { signal }),
       onUnauthorized: sendToLogin,
+      signal,
     });
   },
 

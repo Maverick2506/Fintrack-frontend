@@ -99,5 +99,26 @@ console.log("==================================================");
   const unauth = await run(json({ error: "Invalid or expired token" }, 401), { onUnauthorized: () => (signedOut = true) });
   assert(unauth.error?.response?.status === 401 && signedOut, "A 401 signs out like every other request");
 
+  console.log("\n--- Test 6: Closing the panel stops the answer ---");
+  const controller = new AbortController();
+  let fetchSignal = null;
+  const closing = run(
+    async (url, opts) => {
+      fetchSignal = opts.signal;
+      // Like fetch: aborting the signal errors the body that is still arriving
+      const slowBody = new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode(sse([["delta", { text: "Start" }]])));
+          opts.signal.addEventListener("abort", () => c.error(new DOMException("Aborted", "AbortError")));
+        },
+      });
+      return new Response(slowBody, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+    },
+    { signal: controller.signal, onText: () => controller.abort() }
+  );
+  const closed = await closing;
+  assert(fetchSignal === controller.signal, "The request carries the panel's abort signal");
+  assert(closed.error && closed.fallbacks() === 0, "After closing, nothing is retried the ordinary way");
+
   console.log("\nAll chatStream tests passed.");
 })();

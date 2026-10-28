@@ -1,5 +1,6 @@
 import { EXPENSE_CATEGORIES } from "../constants/categories.js";
 import { formatCurrency, formatShortDate } from "./formatUtils.js";
+import { cardKeywords, CHECKING_WORDS } from "./quickAddParser.js";
 
 /**
  * Receipt photos (AI5): POST /categorize-receipt reads a photo and answers a draft
@@ -21,21 +22,31 @@ export const receiptFileProblem = (file) => {
   return null;
 };
 
-// The merchant as Quick Add text: words only, so the parser can't read a store number as the amount
-// or a word like "due" or "on" as a date
+// The merchant as Quick Add text: words only, so the parser can't read a store number as the amount,
+// a word like "due" or "on" as a date, or a card's name ("Visa Gift Shop") or "bank" as how it was paid
 const QUICK_ADD_RESERVED = /^(due|on|today|tomorrow|paid|unpaid)$/i;
-export const merchantForQuickAdd = (merchant) =>
-  String(merchant || "")
+export const merchantForQuickAdd = (merchant, cards = []) => {
+  const cardWords = new Set((cards || []).flatMap(cardKeywords));
+  return String(merchant || "")
     .replace(/[^\p{L}\p{N}&'.\- ]+/gu, " ")
     .split(/\s+/)
-    .filter((word) => word && !/^[\d.\-#]+$/.test(word) && !QUICK_ADD_RESERVED.test(word))
+    .filter(
+      (word) =>
+        word &&
+        !/^[\d.\-#]+$/.test(word) &&
+        !QUICK_ADD_RESERVED.test(word) &&
+        !CHECKING_WORDS.test(word) &&
+        !cardWords.has(word.toLowerCase())
+    )
     .join(" ")
     .slice(0, 60)
     .trim();
+};
 
-/** Quick Add text from a draft: "23.46 Corner Store", with " on 2026-10-25" when it isn't today */
-export const receiptDraftToQuickAddText = (draft, todayStr) => {
-  const name = merchantForQuickAdd(draft?.merchant) || "Receipt";
+/** Quick Add text from a draft: "23.46 Corner Store", with " on 2026-10-25" when it isn't today. cards are the
+ * ones Quick Add matches, so a store named after a card doesn't charge that card. */
+export const receiptDraftToQuickAddText = (draft, todayStr, cards = []) => {
+  const name = merchantForQuickAdd(draft?.merchant, cards) || "Receipt";
   const amount = Number(draft?.amount) > 0 ? Number(draft.amount).toFixed(2) : "";
   const date = draft?.date && draft.date !== todayStr && draft.date < todayStr ? ` on ${draft.date}` : "";
   return `${amount ? `${amount} ` : ""}${name}${date}`;

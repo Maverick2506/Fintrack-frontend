@@ -75,8 +75,20 @@ export const httpError = (status, data, message) => {
  * Sends one chat message and reads the streamed answer. fetchImpl is fetch; fallback() sends the same
  * message the non-streaming way (axios, JSON). onText(fullTextSoFar) and onStatus(text) update the panel.
  * Resolves { reply, proposals }; rejects with err.response = { status, data } like axios.
+ * signal: aborting it (the panel closed) cancels the request, so the server stops the answer too; the
+ * promise then rejects with an AbortError and nothing falls back.
  */
-export const readChatStream = async ({ fetchImpl, url, token, body, onText = () => {}, onStatus = () => {}, fallback, onUnauthorized }) => {
+export const readChatStream = async ({
+  fetchImpl,
+  url,
+  token,
+  body,
+  onText = () => {},
+  onStatus = () => {},
+  fallback,
+  onUnauthorized,
+  signal,
+}) => {
   if (typeof fetchImpl !== "function" || typeof TextDecoder === "undefined") return fallback();
 
   let res;
@@ -89,8 +101,10 @@ export const readChatStream = async ({ fetchImpl, url, token, body, onText = () 
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
+      signal,
     });
-  } catch {
+  } catch (err) {
+    if (signal?.aborted) throw err;
     // The stream couldn't start (no connection, blocked): try once the ordinary way
     return fallback();
   }
@@ -142,7 +156,8 @@ export const readChatStream = async ({ fetchImpl, url, token, body, onText = () 
       parser.push(await res.text());
     }
     parser.flush();
-  } catch {
+  } catch (err) {
+    if (signal?.aborted) throw err;
     if (!result && !failure && !text) return fallback();
     if (!result && !failure) failure = httpError(0, { error: "The connection dropped mid-answer. Please ask again." });
   }

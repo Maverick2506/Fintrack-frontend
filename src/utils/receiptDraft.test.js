@@ -46,6 +46,14 @@ assert(receiptDraftToQuickAddText({ ...draft, date: "2026-11-02" }, today) === "
 assert(receiptDraftToQuickAddText({ amount: null, merchant: "Cafe" }, today) === "Cafe", "No total: just the store, so the user types the amount");
 assert(merchantForQuickAdd("Due North Café 99 on Main") === "North Café Main", "Words Quick Add treats as dates and store numbers are left out");
 assert(receiptDraftToQuickAddText({ amount: 5 }, today) === "5.00 Receipt", "No store: named Receipt");
+const cards = [{ id: "c1", name: "TD Visa" }, { id: "c2", name: "Amex Cobalt" }];
+const giftText = receiptDraftToQuickAddText({ amount: 23.46, merchant: "Visa Gift Shop", date: "2026-10-20" }, today, cards);
+const gift = parseQuickAdd(giftText, cards, today);
+assert(giftText === "23.46 Gift Shop on 2026-10-20" && gift.creditCardId === null, `A store named after a card doesn't charge that card (got "${giftText}", card ${gift.creditCardId})`);
+const lounge = parseQuickAdd(receiptDraftToQuickAddText({ amount: 40, merchant: "Amex Lounge" }, today, cards), cards, today);
+assert(lounge.creditCardId === null && /lounge/i.test(lounge.name), "Amex Lounge stays on Checking");
+const bank = parseQuickAdd(receiptDraftToQuickAddText({ amount: 9, merchant: "Bank Street Bakery" }, today, cards), cards, today);
+assert(bank.accountMentioned === false, "A store with \"bank\" in its name doesn't count as naming Checking, so a rule can still pick the card");
 
 console.log("\n--- Test 3: Add Transaction fields ---");
 const fields = receiptFormFields(draft, today);

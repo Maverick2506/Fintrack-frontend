@@ -28,6 +28,33 @@ export const ledgerFetchParams = ({ windowFrom, search }) => {
   return windowFrom ? { from: windowFrom } : {};
 };
 
+// How far back the Month filter offers months that aren't loaded yet
+export const MONTH_OPTIONS_BACK = 24;
+
+/**
+ * The Month filter's list (newest first): the months loaded, plus, while older rows exist, every month
+ * back to 24 months before today, so a month from last spring can be picked without "Load older" first.
+ */
+export const ledgerMonthOptions = (loadedMonths, { windowFrom, hasMore, todayStr, back = MONTH_OPTIONS_BACK }) => {
+  const set = new Set(loadedMonths);
+  if (hasMore && windowFrom && todayStr) {
+    const oldest = addMonthsToDateStr(`${todayStr.slice(0, 7)}-01`, -back).slice(0, 7);
+    let ym = windowFrom.slice(0, 7);
+    while (ym >= oldest) {
+      set.add(ym);
+      ym = addMonthsToDateStr(`${ym}-01`, -1).slice(0, 7);
+    }
+  }
+  return [...set].sort().reverse();
+};
+
+/** The from= to load so a picked month is all on screen, or null when it already is */
+export const windowFromForMonth = (ym, windowFrom) => {
+  if (!ym || ym === "all" || !windowFrom) return null;
+  const start = `${ym}-01`;
+  return start < windowFrom ? start : null;
+};
+
 /** The line under the list: what's loaded */
 export const ledgerWindowNote = ({ from, hasMore, searching }) => {
   if (searching) return "Searching all history";

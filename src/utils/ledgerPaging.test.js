@@ -1,5 +1,12 @@
 /* global process */
-import { addMonthsToDateStr, olderWindowFrom, ledgerFetchParams, ledgerWindowNote } from "./ledgerPaging.js";
+import {
+  addMonthsToDateStr,
+  olderWindowFrom,
+  ledgerFetchParams,
+  ledgerWindowNote,
+  ledgerMonthOptions,
+  windowFromForMonth,
+} from "./ledgerPaging.js";
 import { ledgerExportQuery } from "./ledgerExport.js";
 
 function assert(condition, message) {
@@ -37,5 +44,15 @@ console.log("\n--- Test 4: The CSV download holds the rows loaded ---");
 assert(ledgerExportQuery({ windowFrom: "2026-07-28" }) === "from=2026-07-28", "No month filter: from= the loaded window");
 assert(ledgerExportQuery({ windowFrom: "2026-07-28", monthFilter: "2026-08" }) === "from=2026-08-01&to=2026-08-31", "A month filter wins over the window");
 assert(ledgerExportQuery({ windowFrom: "2026-07-28", search: "hydro" }) === "search=hydro", "A search exports its matches across all history");
+
+console.log("\n--- Test 5: The Month filter offers months not loaded yet ---");
+const loaded = ["2026-11", "2026-10", "2026-09", "2026-08", "2026-07"];
+const months = ledgerMonthOptions(loaded, { windowFrom: "2026-07-28", hasMore: true, todayStr: "2026-10-28" });
+assert(months[0] === "2026-11" && months.includes("2026-03") && months[months.length - 1] === "2024-10", `With older rows waiting, the list goes back 24 months (got ${months.length}, last ${months[months.length - 1]})`);
+assert(new Set(months).size === months.length, "No month twice");
+assert(JSON.stringify(ledgerMonthOptions(loaded, { windowFrom: "2026-07-28", hasMore: false, todayStr: "2026-10-28" })) === JSON.stringify(loaded), "With everything loaded, only months that have rows");
+assert(windowFromForMonth("2026-03", "2026-07-28") === "2026-03-01", "Picking March loads from March 1");
+assert(windowFromForMonth("2026-07", "2026-07-28") === "2026-07-01", "Picking the window's own first month loads the whole month");
+assert(windowFromForMonth("2026-09", "2026-07-28") === null && windowFromForMonth("all", "2026-07-28") === null, "A loaded month needs nothing more");
 
 console.log("\nAll ledgerPaging tests passed.");
