@@ -21,6 +21,7 @@ import {
   Upload,
   Inbox,
   StickyNote,
+  Download,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
@@ -39,6 +40,7 @@ import useMediaQuery from "../hooks/useMediaQuery";
 import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
 import { collectTags, matchesTag, tagsOf } from "../utils/transactionTags";
+import { ledgerExportQuery, exportFileName } from "../utils/ledgerExport";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 import usePayFromFund from "../hooks/usePayFromFund";
 import { billPaidToast, bulkPayOptions } from "../utils/planningAlerts";
@@ -104,6 +106,7 @@ const LedgerPage = () => {
   const [monthFilter, setMonthFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
@@ -209,6 +212,28 @@ const LedgerPage = () => {
     setMonthFilter("all");
     setTagFilter("all");
     setSort(DEFAULT_SORT.key, DEFAULT_SORT.dir);
+  };
+
+  // Downloads the rows the filters and search show, in the same order, as a CSV from the server
+  const exportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const query = ledgerExportQuery({ typeFilter, categoryFilter, monthFilter, tagFilter, search, sortKey, sortDir });
+      const { blob, contentDisposition } = await dashboardService.downloadLedgerCsv(query);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = exportFileName(contentDisposition, getTorontoTodayStr());
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Ledger CSV export failed:", err);
+      toast.error("Couldn't export the CSV. Try again.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const removeChip = (id) => {
@@ -979,6 +1004,16 @@ const LedgerPage = () => {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={isExporting || filtered.length === 0}
+              title="Download the rows shown as a CSV"
+              className="h-10 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-xl text-xs font-medium border bg-zinc-900/80 text-zinc-300 border-white/[0.07] hover:text-zinc-100 disabled:opacity-50 cursor-pointer"
+            >
+              <Download size={14} />
+              {isExporting ? "Exporting…" : "Export CSV"}
+            </button>
           </>
         ) : (
           <button
@@ -1178,6 +1213,8 @@ const LedgerPage = () => {
         setSort={setSort}
         onReset={resetFilters}
         resultCount={filtered.length}
+        onExport={exportCsv}
+        isExporting={isExporting}
       />
       <AddTransactionModal
         isOpen={isTxModalOpen}

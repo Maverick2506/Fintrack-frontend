@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X, Download } from "lucide-react";
 import useEscapeClose from "../../hooks/useEscapeClose";
 import { TYPE_OPTIONS, SORT_OPTIONS, monthOptionLabel } from "../../utils/ledgerFilters";
 
@@ -10,7 +10,7 @@ const pill = (active) =>
     active ? "bg-zinc-100 text-zinc-950" : "bg-zinc-900 text-zinc-400 border border-white/[0.07] hover:text-zinc-200"
   }`;
 
-/** Bottom sheet with the Ledger's Type, Category, Month, Tag and Sort, for screens under 1024 px. */
+/** Bottom sheet with the Ledger's Type, Category, Month, Tag and Sort, and Export CSV, for screens under 1024 px. */
 const LedgerFilterSheet = ({
   isOpen,
   onClose,
@@ -30,6 +30,8 @@ const LedgerFilterSheet = ({
   setSort,
   onReset,
   resultCount,
+  onExport,
+  isExporting = false,
 }) => {
   useEscapeClose(isOpen, onClose);
   if (!isOpen) return null;
@@ -141,6 +143,18 @@ const LedgerFilterSheet = ({
               })}
             </div>
           </div>
+
+          {onExport && (
+            <button
+              type="button"
+              onClick={onExport}
+              disabled={isExporting || resultCount === 0}
+              className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-900 text-sm text-zinc-200 hover:border-white/[0.16] disabled:opacity-50 cursor-pointer"
+            >
+              <Download size={15} />
+              {isExporting ? "Preparing CSV…" : `Export CSV (${resultCount} row${resultCount === 1 ? "" : "s"})`}
+            </button>
+          )}
         </div>
 
         <div className="flex gap-2 px-5 pt-3 pb-5 border-t border-white/[0.06]">

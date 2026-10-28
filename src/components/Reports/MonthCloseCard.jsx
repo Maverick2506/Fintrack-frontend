@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles, TrendingUp, TrendingDown, Tag, PiggyBank, CalendarCheck } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
@@ -25,20 +26,28 @@ const Tile = ({ label, value, sub, tone = "text-zinc-100" }) => (
   </div>
 );
 
-/** Reports → Month close: the month's numbers from the server, and Gemini's short note about them */
-const MonthCloseCard = ({ month, isAiAvailable }) => {
+/**
+ * Reports → Month close: the month's numbers from the server, and Gemini's short note about them.
+ * The note costs an AI call, so it is only asked for while the card is on screen (isVisible): on its
+ * own for a month that is over, and with "Write a note" for the month in progress, whose numbers
+ * change every day.
+ */
+const MonthCloseCard = ({ month, isAiAvailable, isVisible = true }) => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["monthClose", month],
     queryFn: () => dashboardService.fetchMonthClose(month),
     enabled: Boolean(month),
   });
+  // The month (and its numbers) the person asked a note for
+  const [requestedKey, setRequestedKey] = useState(null);
 
-  // The note is written once per month for the same numbers; GET above returns it when it exists
-  const needsCommentary = Boolean(data) && data.commentary === null && isAiAvailable;
+  // The server returns a written note for these exact numbers; commentaryKey changes when they do
+  const canWrite = Boolean(data) && data.commentary === null && isAiAvailable;
+  const wantsNote = canWrite && isVisible && (data.isComplete || requestedKey === data.commentaryKey);
   const commentaryQuery = useQuery({
-    queryKey: ["monthCloseCommentary", month, data?.totals?.spending, data?.totals?.income],
+    queryKey: ["monthCloseCommentary", month, data?.commentaryKey],
     queryFn: () => dashboardService.fetchMonthCloseCommentary(month),
-    enabled: needsCommentary,
+    enabled: wantsNote,
     retry: false,
     staleTime: Infinity,
   });
@@ -81,6 +90,18 @@ const MonthCloseCard = ({ month, isAiAvailable }) => {
           </span>
         )}
       </div>
+
+      {/* The month in progress: the note is written only when asked for */}
+      {canWrite && !data.isComplete && requestedKey !== data.commentaryKey && (
+        <button
+          type="button"
+          onClick={() => setRequestedKey(data.commentaryKey)}
+          className="w-full min-h-[40px] inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-3 text-xs font-medium text-emerald-300 hover:bg-emerald-500/[0.1] cursor-pointer"
+        >
+          <Sparkles size={13} />
+          Write a note about this month so far
+        </button>
+      )}
 
       {/* Gemini's note: words only, every number in it comes from the cards below */}
       {(lines.length > 0 || commentaryQuery.isFetching || capNote) && (

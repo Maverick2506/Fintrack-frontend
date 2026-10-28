@@ -627,6 +627,12 @@ const dashboardService = {
     return api.get(`/net-worth-history?months=${months}`).then((res) => res.data);
   },
 
+  // Ledger CSV download of the filtered rows (a read: nothing changes on the server)
+  downloadLedgerCsv: async (query) => {
+    const res = await api.get(`/expenses/export.csv?${query}`, { responseType: "blob" });
+    return { blob: res.data, contentDisposition: res.headers?.["content-disposition"] };
+  },
+
   // Month close (Reports). The commentary call may write and cache Gemini's lines on the server, but it
   // changes no money, so it is a read here (no handleRequest refresh).
   fetchMonthClose: async (month) => {

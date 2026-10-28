@@ -142,12 +142,12 @@ const CalendarPage = () => {
               return (
                 <section key={month.key} className="glass-panel p-3 sm:p-5">
                   <h2 className="text-sm font-semibold text-zinc-200 mb-2.5">{month.label}</h2>
-                  <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-zinc-500 mb-1">
+                  <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-[10px] font-medium text-zinc-500 mb-1">
                     {WEEKDAYS.map((d, i) => (
                       <span key={i}>{d}</span>
                     ))}
                   </div>
-                  <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
                     {month.weeks.flat().map((cell, i) => {
                       if (!cell) return <span key={`blank-${i}`} />;
                       if (!cell.inForecast) {

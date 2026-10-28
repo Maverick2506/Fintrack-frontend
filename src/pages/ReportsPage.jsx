@@ -15,6 +15,7 @@ import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToas
 import MonthCloseCard from "../components/Reports/MonthCloseCard";
 import { monthCloseMonth } from "../utils/monthClose";
 import { getTorontoTodayStr } from "../utils/dateUtils";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -50,6 +51,8 @@ const ReportsPage = () => {
     staleTime: 60000,
   });
   const isAiAvailable = healthData?.ai ?? true;
+  // From 768 px every section shows; on phones only the active tab does
+  const showsAllSections = useMediaQuery("(min-width: 768px)");
 
   const { data: netWorthHistoryData } = useQuery({
     queryKey: ["netWorthHistory", 12],
@@ -326,7 +329,11 @@ const ReportsPage = () => {
       ) : reportData ? (
         <div className="space-y-6">
           <div className={activeTab === "close" ? "block" : "hidden md:block"}>
-            <MonthCloseCard month={closeMonth} isAiAvailable={isAiAvailable} />
+            <MonthCloseCard
+              month={closeMonth}
+              isAiAvailable={isAiAvailable}
+              isVisible={showsAllSections || activeTab === "close"}
+            />
           </div>
           <div className={activeTab === "trends" ? "block" : "hidden md:block"}>
             <SpendingTrendsChart data={trendsData} />
