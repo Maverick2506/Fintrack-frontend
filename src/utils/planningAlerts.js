@@ -267,7 +267,8 @@ export const fundNeedsMoreLabel = (fb) => `Pay ${formatCurrency(fb.amount)} or m
 export const bulkPayOptions = (defaultOptions, row, paidCards) => {
   const cardId = row.toAccountId || row.targetAccountId || null;
   const options = { ...defaultOptions };
-  if (options.fundBills && (paidCards.has(cardId) || options.fundBills.length === 0)) delete options.fundBills;
+  // Without a card id there is no once-per-card guard, so fund bills aren't sent at all
+  if (options.fundBills && (!cardId || paidCards.has(cardId) || options.fundBills.length === 0)) delete options.fundBills;
   return { options, cardId: options.fundBills ? cardId : null };
 };
 

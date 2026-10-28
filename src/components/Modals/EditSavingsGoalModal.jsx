@@ -68,7 +68,8 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
     try {
       await dashboardService.updateSavingsGoal(goal.id, {
         name,
-        goal_amount: goalAmount,
+        // null: no target of its own, so a goal saving for a bill follows the bill's amount
+        goal_amount: goalAmount === "" ? null : goalAmount,
         current_amount: currentAmount,
         target_date: targetDate || null,
         ...linkPayload(linkedBillId),

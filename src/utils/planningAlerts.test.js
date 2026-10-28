@@ -265,6 +265,21 @@ assert(
   "Bulk: a card's fund bills go with its first payment only; a failed request (card not added) lets the next one use them"
 );
 
+// The server pays the bills in list order and skips one the rest of the payment can't cover
+const bigFirst = [
+  { billId: "b1", amount: 1000 },
+  { billId: "b2", amount: 500 },
+];
+assert(
+  [...coveredFundBills(bigFirst, 1200)].join() === "b1" && [...coveredFundBills(bigFirst, 500)].join() === "b2" &&
+    [...coveredFundBills(bigFirst, 1500)].join() === "b1,b2" && coveredFundBills(bigFirst, 499).size === 0,
+  "A large bill ahead of a smaller one: $1,200 covers the $1,000, $500 covers the $500, $1,500 both"
+);
+assert(
+  !bulkPayOptions({ fundBills: [{ billId: "c1", useFund: true }] }, {}, new Set()).options.fundBills,
+  "Bulk: a row with no card id sends no fund bills"
+);
+
 if (failed > 0) {
   console.error(`\n${failed} planningAlerts test(s) failed`);
   process.exit(1);
