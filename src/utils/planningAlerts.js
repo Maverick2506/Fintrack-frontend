@@ -147,6 +147,8 @@ export const linkPayload = (value) =>
  */
 export const fundForBill = (goals, bill) => {
   if (!bill || !bill.recurringGroupId || bill.is_paid || bill.isCleared) return null;
+  // A bill charged to a card is paid from its fund when the card is paid (cardFundBills)
+  if (isCardCharge(bill)) return null;
   const type = String(bill.type || "").toLowerCase();
   if (type && type !== "expense") return null;
   const goal = (goals || []).find(
@@ -170,6 +172,7 @@ export const payFromFundSplit = (fund, billAmount) => {
 
 /** Toast after marking a linked bill paid, from the PUT /expenses response's sinkingFund */
 export const billPaidToast = (result, todayStr = getTorontoTodayStr()) => {
+  if (result?.cardFunds?.some((f) => f.amount > 0)) return cardPaidToast(result);
   const paid = result?.sinkingFund?.paidFromFund;
   const rolled = result?.sinkingFund?.rolledOver?.[0];
   const next = rolled ? ` The fund now saves for ${fundDateLabel(rolled.dueDate, todayStr)}.` : "";
@@ -177,6 +180,48 @@ export const billPaidToast = (result, todayStr = getTorontoTodayStr()) => {
   return paid.shortfall > 0
     ? `Paid ${formatCurrency(paid.amount)} from ${paid.goalName} and ${formatCurrency(paid.shortfall)} from Checking.${next}`
     : `Paid ${formatCurrency(paid.amount)} from ${paid.goalName}.${next}`;
+};
+
+// Dashboard bills carry fromAccount/toAccount objects, Ledger rows fromAccountType/toAccountType
+const accountType = (bill, side) => bill?.[`${side}Account`]?.type || bill?.[`${side}AccountType`] || null;
+export const isCardCharge = (bill) => accountType(bill, "from") === "CREDIT_CARD";
+
+/**
+ * Marking a payment to a card paid: the bills on that card that savings goals save for, from GET
+ * /credit-cards `fundBills` ({ billId, title, amount, goalName, use, ... }). [] for anything else.
+ */
+export const cardFundBills = (cards, bill) => {
+  if (!bill || bill.is_paid || bill.isCleared || accountType(bill, "to") !== "CREDIT_CARD") return [];
+  const cardId = bill.toAccountId || bill.targetAccountId;
+  return (cards || []).find((c) => c.id === cardId)?.fundBills || [];
+};
+
+/** A card fund box: "Use $1,200.00 from Car Fund", with "for Car insurance ($1,200.00)" under it */
+export const fundUseLabel = (fb) => `Use ${formatCurrency(fb.use)} from ${fb.goalName}`;
+export const fundUseDetail = (fb) =>
+  fb.use < fb.amount
+    ? `for ${fb.title} (${formatCurrency(fb.amount)}); the rest comes from Checking`
+    : `for ${fb.title} (${formatCurrency(fb.amount)})`;
+
+/** Bills whose fund has money get a box, checked by default; the rest roll over with the payment */
+export const defaultFundChecks = (fundBills) => new Set((fundBills || []).filter((fb) => fb.use > 0).map((fb) => fb.billId));
+
+/** The fundBills a card payment sends: every listed bill, useFund for the checked ones that have money */
+export const fundBillsPayload = (fundBills, checked) =>
+  (fundBills || []).map((fb) => ({ billId: fb.billId, useFund: fb.use > 0 && checked.has(fb.billId) }));
+
+/** What the checked funds move to Checking */
+export const fundsTotal = (fundBills, checked) =>
+  Math.round((fundBills || []).reduce((sum, fb) => sum + (fb.use > 0 && checked.has(fb.billId) ? fb.use : 0), 0) * 100) / 100;
+
+/** Toast after a card payment, from the response's cardFunds */
+export const cardPaidToast = (result, fallback = "Card payment successful!") => {
+  const paid = (result?.cardFunds || []).filter((f) => f.amount > 0);
+  if (paid.length === 0) return fallback;
+  const total = paid.reduce((sum, f) => sum + f.amount, 0);
+  return paid.length === 1
+    ? `Payment saved. ${paid[0].goalName} paid ${formatCurrency(total)} of it.`
+    : `Payment saved. ${paid.length} savings goals paid ${formatCurrency(total)} of it.`;
 };
 
 /**

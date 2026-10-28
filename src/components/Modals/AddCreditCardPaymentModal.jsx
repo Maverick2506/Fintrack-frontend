@@ -2,6 +2,8 @@ import { formatCurrency } from "../../utils/formatUtils";
 import { useState, useEffect } from "react";
 import { X, CreditCard, CheckCircle2, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import { defaultFundChecks, fundBillsPayload, fundsTotal } from "../../utils/planningAlerts";
+import FundBillsChecklist from "./FundBillsChecklist";
 
 const AddCreditCardPaymentModal = ({
   isOpen,
@@ -13,19 +15,23 @@ const AddCreditCardPaymentModal = ({
   const [amount, setAmount] = useState("");
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // "Use $X from <fund>": bills on this card that savings goals save for, checked by default
+  const fundBills = card?.fundBills || [];
+  const [fundChecks, setFundChecks] = useState(() => defaultFundChecks(fundBills));
 
   useEffect(() => {
     if (!isOpen) return;
     setAmount("");
     setError(null);
     setIsSubmitting(false);
+    setFundChecks(defaultFundChecks(card?.fundBills));
 
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, card?.fundBills]);
 
   const effectiveCardId = cardId || card?.id;
   const cardName = card?.name || "Credit Card";
@@ -39,6 +45,14 @@ const AddCreditCardPaymentModal = ({
   const newBalance = Math.max(0, currentBalance - numAmount);
   const isOverpaying = currentBalance > 0 && numAmount > currentBalance;
   const isFullyPaid = currentBalance > 0 && numAmount >= currentBalance;
+  const fromFunds = fundsTotal(fundBills, fundChecks);
+  const toggleFund = (billId) =>
+    setFundChecks((prev) => {
+      const next = new Set(prev);
+      if (next.has(billId)) next.delete(billId);
+      else next.add(billId);
+      return next;
+    });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,6 +73,7 @@ const AddCreditCardPaymentModal = ({
     try {
       await dashboardService.payCreditCard(effectiveCardId, {
         amount: numAmount,
+        ...(fundBills.length > 0 ? { fundBills: fundBillsPayload(fundBills, fundChecks) } : {}),
       });
       setAmount("");
       onClose();
@@ -83,7 +98,7 @@ const AddCreditCardPaymentModal = ({
       onClick={onClose}
     >
       <div
-        className="bg-zinc-900 border border-white/[0.09] rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+        className="bg-zinc-900 border border-white/[0.09] rounded-2xl w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -267,6 +282,20 @@ const AddCreditCardPaymentModal = ({
                   </div>
                 </div>
               ) : null}
+            </div>
+          )}
+
+          {fundBills.some((fb) => fb.use > 0) && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+                Paid from savings
+              </p>
+              <FundBillsChecklist fundBills={fundBills} checked={fundChecks} onToggle={toggleFund} />
+              {fromFunds > 0 && (
+                <p className="text-[11px] text-zinc-500">
+                  {formatCurrency(fromFunds)} moves from savings to Checking with this payment.
+                </p>
+              )}
             </div>
           )}
 

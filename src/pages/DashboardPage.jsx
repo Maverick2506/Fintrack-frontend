@@ -230,8 +230,7 @@ const DashboardPage = () => {
   };
 
   const markAsPaidMutation = useMutation({
-    mutationFn: ({ billId, payFromGoalId }) =>
-      dashboardService.markBillAsPaid(billId, billPaidToast, { payFromGoalId }),
+    mutationFn: ({ billId, options }) => dashboardService.markBillAsPaid(billId, billPaidToast, options),
     onSuccess: () => {
       invalidateDashboard();
     },
@@ -254,7 +253,8 @@ const DashboardPage = () => {
     },
   });
 
-  // A bill a savings goal saves for asks "Pay from <fund>" first; cancelling leaves it unpaid
+  // A bill a savings goal saves for asks "Pay from <fund>" first (a card payment, "Use $X from <fund>");
+  // cancelling leaves it unpaid
   const handleMarkAsPaid = async (billId) => {
     const choice = await askPayFrom(upcomingBills.find((b) => b.id === billId));
     if (!choice) {
@@ -262,7 +262,7 @@ const DashboardPage = () => {
       cancelled.cancelled = true;
       throw cancelled;
     }
-    return markAsPaidMutation.mutateAsync({ billId, payFromGoalId: choice.payFromGoalId });
+    return markAsPaidMutation.mutateAsync({ billId, options: choice });
   };
 
   const handleDeleteConfirm = () => {

@@ -16,6 +16,14 @@ import {
   payFromFundSplit,
   billPaidToast,
   scheduledPaymentLines,
+  isCardCharge,
+  cardFundBills,
+  fundUseLabel,
+  fundUseDetail,
+  defaultFundChecks,
+  fundBillsPayload,
+  fundsTotal,
+  cardPaidToast,
 } from "./planningAlerts.js";
 
 let failed = 0;
@@ -175,6 +183,48 @@ const allOnStatement = scheduledPaymentLines({ statementBalance: 320.55, schedul
 assert(
   allOnStatement.explanation === "Scheduled $900.00 on Oct 31" && allOnStatement.fixes.map((f) => f.pay).join() === "full",
   "Everything owed is on the statement: no \"$0 goes to new charges\", and one fix, not two of the same amount"
+);
+
+// Card-charged bills: the fund pays when the card is paid
+const carCharge = { ...tires, fromAccount: { type: "CREDIT_CARD" } };
+assert(
+  isCardCharge(carCharge) && isCardCharge({ fromAccountType: "CREDIT_CARD" }) && !isCardCharge(tires) &&
+    !fundForBill(goals, carCharge) && !fundForBill(goals, { ...tires, type: "expense", fromAccountType: "CREDIT_CARD" }),
+  "A bill charged to a card gets no \"Pay from fund\" box (Dashboard and Ledger shapes)"
+);
+const fundBills = [
+  { billId: "c1", title: "Car insurance", amount: 1200, goalName: "Car Fund", saved: 1000, use: 1000 },
+  { billId: "c2", title: "Gym", amount: 50, goalName: "Gym Fund", saved: 0, use: 0 },
+];
+const cards = [{ id: "card1", fundBills }];
+assert(
+  cardFundBills(cards, { toAccountId: "card1", toAccount: { type: "CREDIT_CARD" }, isCleared: false }).length === 2 &&
+    cardFundBills(cards, { targetAccountId: "card1", toAccountType: "CREDIT_CARD", is_paid: false }).length === 2 &&
+    cardFundBills(cards, { targetAccountId: "card1", toAccountType: "CREDIT_CARD", is_paid: true }).length === 0 &&
+    cardFundBills(cards, { toAccountId: "goal1", toAccount: { type: "SAVINGS_GOAL" } }).length === 0,
+  "Marking an unpaid card payment paid offers that card's fund bills (Dashboard and Ledger shapes)"
+);
+assert(
+  fundUseLabel(fundBills[0]) === "Use $1,000.00 from Car Fund" &&
+    fundUseDetail(fundBills[0]) === "for Car insurance ($1,200.00); the rest comes from Checking" &&
+    fundUseDetail({ ...fundBills[0], use: 1200 }) === "for Car insurance ($1,200.00)",
+  `"Use $X from <fund>" box (got ${fundUseLabel(fundBills[0])} / ${fundUseDetail(fundBills[0])})`
+);
+const checks = defaultFundChecks(fundBills);
+assert(
+  checks.has("c1") && !checks.has("c2") &&
+    JSON.stringify(fundBillsPayload(fundBills, checks)) === JSON.stringify([{ billId: "c1", useFund: true }, { billId: "c2", useFund: false }]) &&
+    JSON.stringify(fundBillsPayload(fundBills, new Set())) === JSON.stringify([{ billId: "c1", useFund: false }, { billId: "c2", useFund: false }]) &&
+    fundsTotal(fundBills, checks) === 1000 && fundsTotal(fundBills, new Set()) === 0,
+  "Funds with money are checked by default; every listed bill is sent so its fund rolls over"
+);
+assert(
+  cardPaidToast({ cardFunds: [{ goalName: "Car Fund", amount: 1000 }] }) === "Payment saved. Car Fund paid $1,000.00 of it." &&
+    cardPaidToast({ cardFunds: [{ goalName: "A", amount: 10 }, { goalName: "B", amount: 5.5 }] }) === "Payment saved. 2 savings goals paid $15.50 of it." &&
+    cardPaidToast({ cardFunds: [{ goalName: "A", amount: 0 }] }) === "Card payment successful!" && cardPaidToast(null, "Paid!") === "Paid!" &&
+    billPaidToast({ sinkingFund: null, cardFunds: [{ goalName: "Car Fund", amount: 1000 }] }) === "Payment saved. Car Fund paid $1,000.00 of it." &&
+    billPaidToast({ sinkingFund: null, cardFunds: [] }) === "Bill marked as paid!",
+  "Toast after a card payment says what the funds paid"
 );
 
 if (failed > 0) {

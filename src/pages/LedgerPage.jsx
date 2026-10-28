@@ -180,7 +180,7 @@ const LedgerPage = () => {
       await dashboardService.markBillAsPaid(
         row.id,
         row.type === "income" ? "Marked as received!" : billPaidToast,
-        { payFromGoalId: choice.payFromGoalId }
+        choice
       );
       setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_paid: true } : r)));
       refreshRowsQuietly();
@@ -268,12 +268,18 @@ const LedgerPage = () => {
     setIsBulkMarking(true);
     const done = [];
     let fromFunds = 0;
+    const cardsPaid = new Set();
     for (const row of targets) {
       try {
-        // A bill a savings goal saves for is paid from it, the same default as the single "Paid" dialog
-        const payFromGoalId = defaultPayFrom(row);
-        const result = await dashboardService.markBillAsPaid(row.id, null, { payFromGoalId });
+        // A bill a savings goal saves for is paid from it, the same default as the single "Paid" dialog.
+        // A card's fund bills go with its first payment in the batch.
+        const options = defaultPayFrom(row);
+        const cardId = row.toAccountId || row.targetAccountId;
+        if (options.fundBills && cardsPaid.has(cardId)) delete options.fundBills;
+        if (options.fundBills) cardsPaid.add(cardId);
+        const result = await dashboardService.markBillAsPaid(row.id, null, options);
         if (result?.sinkingFund?.paidFromFund?.amount > 0) fromFunds++;
+        fromFunds += (result?.cardFunds || []).filter((f) => f.amount > 0).length;
         done.push(row);
       } catch (err) {
         // handleRequest already showed the error toast for this row
