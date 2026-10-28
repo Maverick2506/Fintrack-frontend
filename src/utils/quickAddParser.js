@@ -257,30 +257,27 @@ export const parseQuickAdd = (input = "", creditCards = [], today = new Date()) 
   // Whether the text named an account (checking or a card); rules may only pick one when it didn't
   let accountMentioned = false;
 
-  if (/\b(checking|chequing|debit|bank)\b/i.test(text)) {
-    accountMentioned = true;
-    accountName = "Primary Checking";
-    creditCardId = null;
-    text = text.replace(/\b(checking|chequing|debit|bank)\b/i, " ").trim();
-  } else if (creditCards.length > 0 && type !== "income") {
-    for (const card of creditCards) {
-      const keywords = cardKeywords(card);
-
-      let found = false;
-      for (const kw of keywords) {
-        const regex = new RegExp(`\\b${kw}\\b`, "i");
-        if (regex.test(text)) {
-          creditCardId = card.id;
-          accountName = card.name;
-          accountMentioned = true;
-          text = text.replace(regex, " ").trim();
-          found = true;
-          break;
-        }
-      }
-      if (found) break;
+  // An account word counts only as a whole space-separated token: "VISA-Shop" or "visa.ca" stay in the
+  // name. When several tokens name an account, the last one wins and only that token is removed.
+  const tokens = text.split(/\s+/).filter(Boolean);
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const token = tokens[i].toLowerCase();
+    if (CHECKING_WORDS.test(token)) {
+      accountMentioned = true;
+      tokens.splice(i, 1);
+      break;
+    }
+    const card =
+      type !== "income" ? creditCards.find((c) => cardKeywords(c).includes(token)) : null;
+    if (card) {
+      creditCardId = card.id;
+      accountName = card.name;
+      accountMentioned = true;
+      tokens.splice(i, 1);
+      break;
     }
   }
+  if (accountMentioned) text = tokens.join(" ");
 
   // 5. Categorize based on keywords
   const textLower = text.toLowerCase();
