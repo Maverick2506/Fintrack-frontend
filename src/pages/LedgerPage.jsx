@@ -20,6 +20,7 @@ import {
   CircleStop,
   Upload,
   Inbox,
+  StickyNote,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
@@ -37,6 +38,7 @@ import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToas
 import useMediaQuery from "../hooks/useMediaQuery";
 import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
+import { collectTags, matchesTag, tagsOf } from "../utils/transactionTags";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 import usePayFromFund from "../hooks/usePayFromFund";
 import { billPaidToast, bulkPayOptions } from "../utils/planningAlerts";
@@ -100,6 +102,7 @@ const LedgerPage = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
 
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
@@ -193,7 +196,7 @@ const LedgerPage = () => {
   useEffect(() => {
     setSelectedIds(new Set());
     setLastClickedIndex(null);
-  }, [search, typeFilter, categoryFilter, monthFilter]);
+  }, [search, typeFilter, categoryFilter, monthFilter, tagFilter]);
 
   const setSort = (key, dir) => {
     setSortKey(key);
@@ -204,6 +207,7 @@ const LedgerPage = () => {
     setTypeFilter("all");
     setCategoryFilter("all");
     setMonthFilter("all");
+    setTagFilter("all");
     setSort(DEFAULT_SORT.key, DEFAULT_SORT.dir);
   };
 
@@ -211,6 +215,7 @@ const LedgerPage = () => {
     if (id === "type") setTypeFilter("all");
     if (id === "category") setCategoryFilter("all");
     if (id === "month") setMonthFilter("all");
+    if (id === "tag") setTagFilter("all");
     if (id === "sort") setSort(DEFAULT_SORT.key, DEFAULT_SORT.dir);
   };
 
@@ -309,6 +314,8 @@ const LedgerPage = () => {
     return Array.from(set).sort();
   }, [rows]);
 
+  const availableTags = useMemo(() => collectTags(rows), [rows]);
+
   const availableMonths = useMemo(() => {
     const set = new Set(
       rows
@@ -325,6 +332,7 @@ const LedgerPage = () => {
       data = data.filter((r) => r.category === categoryFilter);
     if (monthFilter !== "all")
       data = data.filter((r) => String(r.date).startsWith(monthFilter));
+    if (tagFilter !== "all") data = data.filter((r) => matchesTag(r, tagFilter));
     // Account names count too (card, debt, goal and Checking, even when the row shows "To Amex")
     if (search) data = data.filter((r) => ledgerRowMatchesSearch(r, search));
     return [...data].sort((a, b) => {
@@ -346,7 +354,7 @@ const LedgerPage = () => {
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [rows, search, sortKey, sortDir, typeFilter, categoryFilter, monthFilter]);
+  }, [rows, search, sortKey, sortDir, typeFilter, categoryFilter, monthFilter, tagFilter]);
 
   const todayStr = getTorontoTodayStr();
   const groups = useMemo(
@@ -517,6 +525,7 @@ const LedgerPage = () => {
     const isSelected = selectedIds.has(row.id);
     const tag = getLedgerRowTag(row, todayStr);
     const { from, to, direction } = getLedgerAccountLine(row);
+    const rowTags = tagsOf(row);
     const dim = isUpcoming && !isSelected ? "opacity-75" : "";
     return (
       <div
@@ -586,6 +595,18 @@ const LedgerPage = () => {
               </>
             )}
           </div>
+          {(rowTags.length > 0 || row.notes) && (
+            <div className="flex items-center gap-1 mt-0.5 text-[11px] min-w-0">
+              {row.notes && (
+                <StickyNote size={11} className="shrink-0 text-zinc-500" aria-hidden="true" />
+              )}
+              {rowTags.length > 0 && (
+                <span className="truncate text-sky-300/80" title={rowTags.map((t) => `#${t}`).join(" ")}>
+                  {rowTags.map((t) => `#${t}`).join(" ")}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className={`text-sm font-medium tabular-nums text-right whitespace-nowrap shrink-0 ${dim}`}>
           {renderAmount(row)}
@@ -738,7 +759,7 @@ const LedgerPage = () => {
     );
   };
 
-  const chips = getActiveFilterChips({ typeFilter, categoryFilter, monthFilter, sortKey, sortDir });
+  const chips = getActiveFilterChips({ typeFilter, categoryFilter, monthFilter, tagFilter, sortKey, sortDir });
   const activeFilterCount = chips.filter((c) => c.id !== "sort").length;
   const currentSortValue = `${sortKey}:${sortDir}`;
   const inlineSelect =
@@ -911,6 +932,21 @@ const LedgerPage = () => {
                 </option>
               ))}
             </select>
+            {(availableTags.length > 0 || tagFilter !== "all") && (
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                aria-label="Tag"
+                className={inlineSelect}
+              >
+                <option value="all">All Tags</option>
+                {availableTags.map((t) => (
+                  <option key={t} value={t}>
+                    #{t}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="inline-flex rounded-xl bg-zinc-900/80 border border-white/[0.06]">
               {TYPE_OPTIONS.map(([value, label]) => (
                 <button
@@ -1134,6 +1170,9 @@ const LedgerPage = () => {
         setCategoryFilter={setCategoryFilter}
         monthFilter={monthFilter}
         setMonthFilter={setMonthFilter}
+        tags={availableTags}
+        tagFilter={tagFilter}
+        setTagFilter={setTagFilter}
         sortKey={sortKey}
         sortDir={sortDir}
         setSort={setSort}

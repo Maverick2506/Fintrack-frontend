@@ -203,6 +203,12 @@ const goalWithdrawal = { type: "transfer", name: "Move back to Checking", fromAc
 const cardToCardRow = { type: "transfer", name: "Balance transfer", fromAccount: "Amex", fromAccountType: "CREDIT_CARD", toAccount: "Visa", toAccountType: "CREDIT_CARD" };
 assert(ledgerRowMatchesSearch(cardPayment, "checking"), "Searching Checking finds a card payment that reads To Amex");
 assert(ledgerRowMatchesSearch({ ...goalWithdrawal, name: "Trip refund" }, "Checking"), "Searching Checking finds a goal withdrawal that reads From Trip");
+assert(
+  ledgerRowMatchesSearch({ name: "Lunch", notes: "With Sam", tags: ["work"] }, "sam") &&
+    ledgerRowMatchesSearch({ name: "Lunch", tags: ["work"] }, "#work") &&
+    !ledgerRowMatchesSearch({ name: "Lunch", tags: ["work"] }, "#trip"),
+  "Search finds a row by its notes or a #tag"
+);
 assert(ledgerRowMatchesSearch(cardPayment, "primary checking"), "The full account name matches too");
 assert(!ledgerRowMatchesSearch(cardToCardRow, "checking"), "Card → card does not match Checking");
 assert(ledgerRowMatchesSearch(cardToCardRow, "visa") && ledgerRowMatchesSearch(cardPayment, "to amex"), "Account names and the shown label match");

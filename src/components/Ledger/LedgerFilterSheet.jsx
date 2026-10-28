@@ -10,7 +10,7 @@ const pill = (active) =>
     active ? "bg-zinc-100 text-zinc-950" : "bg-zinc-900 text-zinc-400 border border-white/[0.07] hover:text-zinc-200"
   }`;
 
-/** Bottom sheet with the Ledger's Type, Category, Month and Sort, for screens under 1024 px. */
+/** Bottom sheet with the Ledger's Type, Category, Month, Tag and Sort, for screens under 1024 px. */
 const LedgerFilterSheet = ({
   isOpen,
   onClose,
@@ -22,6 +22,9 @@ const LedgerFilterSheet = ({
   setCategoryFilter,
   monthFilter,
   setMonthFilter,
+  tags = [],
+  tagFilter,
+  setTagFilter,
   sortKey,
   sortDir,
   setSort,
@@ -104,6 +107,20 @@ const LedgerFilterSheet = ({
               </select>
             </label>
           </div>
+
+          {(tags.length > 0 || tagFilter !== "all") && (
+            <label className="block min-w-0">
+              <span className={fieldLabel}>Tag</span>
+              <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} className={selectClass}>
+                <option value="all">All tags</option>
+                {tags.map((tag) => (
+                  <option key={tag} value={tag}>
+                    #{tag}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <div>
             <span className={fieldLabel}>Sort</span>
