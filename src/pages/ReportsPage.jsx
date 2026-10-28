@@ -12,6 +12,10 @@ import { formatCurrency } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
+import MonthCloseCard from "../components/Reports/MonthCloseCard";
+import { monthCloseMonth } from "../utils/monthClose";
+import { getTorontoTodayStr } from "../utils/dateUtils";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -38,6 +42,17 @@ const ReportsPage = () => {
   const [activeTab, setActiveTab] = useState("spending");
 
   const selectedMonthStr = `${selectedDate.year}-${String(selectedDate.month).padStart(2, "0")}`;
+
+  const closeMonth = monthCloseMonth(selectedDate.year, selectedDate.month, getTorontoTodayStr());
+  // No AI on the server: the month close shows its numbers without the note
+  const { data: healthData } = useQuery({
+    queryKey: ["health"],
+    queryFn: () => dashboardService.fetchHealth(),
+    staleTime: 60000,
+  });
+  const isAiAvailable = healthData?.ai ?? true;
+  // From 768 px every section shows; on phones only the active tab does
+  const showsAllSections = useMediaQuery("(min-width: 768px)");
 
   const { data: netWorthHistoryData } = useQuery({
     queryKey: ["netWorthHistory", 12],
@@ -226,6 +241,7 @@ const ReportsPage = () => {
         <div className="md:hidden flex items-center gap-1 p-1 bg-zinc-900/80 rounded-xl border border-white/[0.08] mb-5 overflow-x-auto">
           {[
             { id: "spending", label: "Spending" },
+            { id: "close", label: "Month close" },
             { id: "trends", label: "Trends" },
             { id: "networth", label: "Net worth" },
             ...(registeredAccounts.length > 0 ? [{ id: "tax", label: "Tax" }] : []),
@@ -312,6 +328,13 @@ const ReportsPage = () => {
         </div>
       ) : reportData ? (
         <div className="space-y-6">
+          <div className={activeTab === "close" ? "block" : "hidden md:block"}>
+            <MonthCloseCard
+              month={closeMonth}
+              isAiAvailable={isAiAvailable}
+              isVisible={showsAllSections || activeTab === "close"}
+            />
+          </div>
           <div className={activeTab === "trends" ? "block" : "hidden md:block"}>
             <SpendingTrendsChart data={trendsData} />
           </div>

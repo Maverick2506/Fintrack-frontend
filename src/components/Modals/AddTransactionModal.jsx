@@ -42,6 +42,7 @@ import {
   SERIES_END_FALLBACK_MESSAGE,
 } from "../../utils/undoDelete";
 import { getTorontoTodayStr, addDaysToDateStr } from "../../utils/dateUtils";
+import NotesTagsField from "./NotesTagsField";
 
 const CATEGORY_CONFIG = [
   { name: "Essentials", icon: Home },
@@ -92,9 +93,14 @@ const AddTransactionModal = ({
   const [openDropdown, setOpenDropdown] = useState(null); // "payment" | "schedule" | "paydown" | null
   const [alreadyInCardBalance, setAlreadyInCardBalance] = useState(false);
   const [manualAlreadyInBalanceOverride, setManualAlreadyInBalanceOverride] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [tags, setTags] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const isEditing = !!existingTransaction;
+  // A row opened from a list that didn't load its notes and tags leaves them alone, so a save can't wipe them
+  const notesTagsLoaded =
+    !isEditing || existingTransaction.tags !== undefined || existingTransaction.notes !== undefined;
   // Keeps the same clientRef when the same new transaction is retried (e.g. after a timeout
   // during a cold start), so the server returns the save that already landed instead of a duplicate
   const pendingRef = useRef(null);
@@ -171,6 +177,8 @@ const AddTransactionModal = ({
             ? String(existingTransaction.taxRate)
             : "13"
         );
+        setNotes(existingTransaction.notes || "");
+        setTags(Array.isArray(existingTransaction.tags) ? existingTransaction.tags : []);
         setSelectedCard(existingTransaction.creditCardId || "");
         setSelectedTargetAccount(
           existingTransaction.targetAccountId ||
@@ -192,6 +200,8 @@ const AddTransactionModal = ({
         setSelectedCard("");
         setSelectedTargetAccount("");
         setType("expense");
+        setNotes("");
+        setTags([]);
       }
     }
   }, [existingTransaction, isOpen, isEditing, todayStr]);
@@ -410,6 +420,7 @@ const AddTransactionModal = ({
             ...(showCardBalanceToggle && !alreadyInCardBalance
               ? { applyToBalance: true }
               : {}),
+            ...(notesTagsLoaded ? { notes: notes.trim() || null, tags } : {}),
           }
         : {
             id: existingTransaction?.id,
@@ -418,6 +429,7 @@ const AddTransactionModal = ({
             payment_date: paymentDate,
             category: "Income",
             recurrence,
+            ...(notesTagsLoaded ? { notes: notes.trim() || null, tags } : {}),
           };
 
       // Setting a recurring row to One-time can end its series (B3, R4): the backend then removes the
@@ -1329,6 +1341,10 @@ const AddTransactionModal = ({
                 )}
               </div>
             </div>
+          )}
+
+          {notesTagsLoaded && (
+            <NotesTagsField notes={notes} onNotesChange={setNotes} tags={tags} onTagsChange={setTags} />
           )}
 
           {/* Action Footer: Delete, and End series for a row of a recurring series */}

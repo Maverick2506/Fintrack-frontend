@@ -20,6 +20,8 @@ import {
   CircleStop,
   Upload,
   Inbox,
+  StickyNote,
+  Download,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
@@ -37,6 +39,8 @@ import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToas
 import useMediaQuery from "../hooks/useMediaQuery";
 import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
+import { collectTags, matchesTag, tagsOf } from "../utils/transactionTags";
+import { ledgerExportQuery, exportFileName } from "../utils/ledgerExport";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 import usePayFromFund from "../hooks/usePayFromFund";
 import { billPaidToast, bulkPayOptions } from "../utils/planningAlerts";
@@ -100,7 +104,9 @@ const LedgerPage = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
@@ -193,7 +199,7 @@ const LedgerPage = () => {
   useEffect(() => {
     setSelectedIds(new Set());
     setLastClickedIndex(null);
-  }, [search, typeFilter, categoryFilter, monthFilter]);
+  }, [search, typeFilter, categoryFilter, monthFilter, tagFilter]);
 
   const setSort = (key, dir) => {
     setSortKey(key);
@@ -204,13 +210,37 @@ const LedgerPage = () => {
     setTypeFilter("all");
     setCategoryFilter("all");
     setMonthFilter("all");
+    setTagFilter("all");
     setSort(DEFAULT_SORT.key, DEFAULT_SORT.dir);
+  };
+
+  // Downloads the rows the filters and search show, in the same order, as a CSV from the server
+  const exportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const query = ledgerExportQuery({ typeFilter, categoryFilter, monthFilter, tagFilter, search, sortKey, sortDir });
+      const { blob, contentDisposition } = await dashboardService.downloadLedgerCsv(query);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = exportFileName(contentDisposition, getTorontoTodayStr());
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Ledger CSV export failed:", err);
+      toast.error("Couldn't export the CSV. Try again.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const removeChip = (id) => {
     if (id === "type") setTypeFilter("all");
     if (id === "category") setCategoryFilter("all");
     if (id === "month") setMonthFilter("all");
+    if (id === "tag") setTagFilter("all");
     if (id === "sort") setSort(DEFAULT_SORT.key, DEFAULT_SORT.dir);
   };
 
@@ -309,6 +339,11 @@ const LedgerPage = () => {
     return Array.from(set).sort();
   }, [rows]);
 
+  const availableTags = useMemo(() => collectTags(rows), [rows]);
+  // A tag whose last row was deleted stays in the list while it is the filter, so the select shows it
+  const tagOptions =
+    tagFilter === "all" || availableTags.includes(tagFilter) ? availableTags : [...availableTags, tagFilter];
+
   const availableMonths = useMemo(() => {
     const set = new Set(
       rows
@@ -325,6 +360,7 @@ const LedgerPage = () => {
       data = data.filter((r) => r.category === categoryFilter);
     if (monthFilter !== "all")
       data = data.filter((r) => String(r.date).startsWith(monthFilter));
+    if (tagFilter !== "all") data = data.filter((r) => matchesTag(r, tagFilter));
     // Account names count too (card, debt, goal and Checking, even when the row shows "To Amex")
     if (search) data = data.filter((r) => ledgerRowMatchesSearch(r, search));
     return [...data].sort((a, b) => {
@@ -346,7 +382,7 @@ const LedgerPage = () => {
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [rows, search, sortKey, sortDir, typeFilter, categoryFilter, monthFilter]);
+  }, [rows, search, sortKey, sortDir, typeFilter, categoryFilter, monthFilter, tagFilter]);
 
   const todayStr = getTorontoTodayStr();
   const groups = useMemo(
@@ -517,6 +553,7 @@ const LedgerPage = () => {
     const isSelected = selectedIds.has(row.id);
     const tag = getLedgerRowTag(row, todayStr);
     const { from, to, direction } = getLedgerAccountLine(row);
+    const rowTags = tagsOf(row);
     const dim = isUpcoming && !isSelected ? "opacity-75" : "";
     return (
       <div
@@ -586,6 +623,18 @@ const LedgerPage = () => {
               </>
             )}
           </div>
+          {(rowTags.length > 0 || row.notes) && (
+            <div className="flex items-center gap-1 mt-0.5 text-[11px] min-w-0">
+              {row.notes && (
+                <StickyNote size={11} className="shrink-0 text-zinc-500" aria-hidden="true" />
+              )}
+              {rowTags.length > 0 && (
+                <span className="truncate text-sky-300/80" title={rowTags.map((t) => `#${t}`).join(" ")}>
+                  {rowTags.map((t) => `#${t}`).join(" ")}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className={`text-sm font-medium tabular-nums text-right whitespace-nowrap shrink-0 ${dim}`}>
           {renderAmount(row)}
@@ -738,7 +787,7 @@ const LedgerPage = () => {
     );
   };
 
-  const chips = getActiveFilterChips({ typeFilter, categoryFilter, monthFilter, sortKey, sortDir });
+  const chips = getActiveFilterChips({ typeFilter, categoryFilter, monthFilter, tagFilter, sortKey, sortDir });
   const activeFilterCount = chips.filter((c) => c.id !== "sort").length;
   const currentSortValue = `${sortKey}:${sortDir}`;
   const inlineSelect =
@@ -911,6 +960,21 @@ const LedgerPage = () => {
                 </option>
               ))}
             </select>
+            {(availableTags.length > 0 || tagFilter !== "all") && (
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                aria-label="Tag"
+                className={inlineSelect}
+              >
+                <option value="all">All Tags</option>
+                {tagOptions.map((t) => (
+                  <option key={t} value={t}>
+                    #{t}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="inline-flex rounded-xl bg-zinc-900/80 border border-white/[0.06]">
               {TYPE_OPTIONS.map(([value, label]) => (
                 <button
@@ -943,6 +1007,16 @@ const LedgerPage = () => {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={isExporting || filtered.length === 0}
+              title="Download the rows shown as a CSV"
+              className="h-10 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-xl text-xs font-medium border bg-zinc-900/80 text-zinc-300 border-white/[0.07] hover:text-zinc-100 disabled:opacity-50 cursor-pointer"
+            >
+              <Download size={14} />
+              {isExporting ? "Exporting…" : "Export CSV"}
+            </button>
           </>
         ) : (
           <button
@@ -1134,11 +1208,16 @@ const LedgerPage = () => {
         setCategoryFilter={setCategoryFilter}
         monthFilter={monthFilter}
         setMonthFilter={setMonthFilter}
+        tags={tagOptions}
+        tagFilter={tagFilter}
+        setTagFilter={setTagFilter}
         sortKey={sortKey}
         sortDir={sortDir}
         setSort={setSort}
         onReset={resetFilters}
         resultCount={filtered.length}
+        onExport={exportCsv}
+        isExporting={isExporting}
       />
       <AddTransactionModal
         isOpen={isTxModalOpen}

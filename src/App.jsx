@@ -10,6 +10,7 @@ import AskFinTrackHost from "./components/Layout/AskFinTrackHost";
 // Route-level code splitting to cut initial bundle size by >50%
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const DebtsPage = lazy(() => import("./pages/DebtsPage"));
 const SavingsPage = lazy(() => import("./pages/SavingsPage"));
 const CreditCardPage = lazy(() => import("./pages/CreditCardPage"));
@@ -49,6 +50,14 @@ function AppLayout() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedRoute>
+                  <CalendarPage />
                 </ProtectedRoute>
               }
             />
