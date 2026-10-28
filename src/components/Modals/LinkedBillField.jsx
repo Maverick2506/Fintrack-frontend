@@ -1,21 +1,23 @@
 import { useEffect, useState } from "react";
 import { Receipt } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
-import { billOptions } from "../../utils/planningAlerts";
+import { billOptions, oneOffBillOptions } from "../../utils/planningAlerts";
 import { formatShortDate } from "../../utils/formatUtils";
 
 // Sinking fund: the bill a savings goal saves for. Picking one fills an empty target amount with the
 // bill's amount (onPick); an empty target date follows the bill's next date on the server.
 const LinkedBillField = ({ id, value, onChange, onPick, targetDate }) => {
-  const [bills, setBills] = useState([]);
+  const [series, setSeries] = useState([]);
+  const [oneOffs, setOneOffs] = useState([]);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    dashboardService
-      .fetchSubscriptions()
-      .then((data) => {
-        if (!cancelled) setBills(billOptions(data?.subscriptions));
+    Promise.all([dashboardService.fetchSubscriptions(), dashboardService.fetchOneOffBills()])
+      .then(([subs, once]) => {
+        if (cancelled) return;
+        setSeries(billOptions(subs?.subscriptions));
+        setOneOffs(oneOffBillOptions(once));
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -25,6 +27,8 @@ const LinkedBillField = ({ id, value, onChange, onPick, targetDate }) => {
     };
   }, []);
 
+  // Recurring bills, then one-time bills (a one-off is "bill:<id>" until it is linked)
+  const bills = [...series, ...oneOffs];
   const picked = bills.find((b) => b.value === value);
   // A linked bill that is no longer running (ended) still shows, so saving doesn't unlink it
   const showUnknown = value && !picked;
@@ -50,11 +54,24 @@ const LinkedBillField = ({ id, value, onChange, onPick, targetDate }) => {
       >
         <option value="">No bill (regular goal)</option>
         {showUnknown && <option value={value}>Current bill</option>}
-        {bills.map((b) => (
-          <option key={b.value} value={b.value}>
-            {b.label}
-          </option>
-        ))}
+        {series.length > 0 && (
+          <optgroup label="Recurring bills">
+            {series.map((b) => (
+              <option key={b.value} value={b.value}>
+                {b.label}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {oneOffs.length > 0 && (
+          <optgroup label="One-time bills">
+            {oneOffs.map((b) => (
+              <option key={b.value} value={b.value}>
+                {b.label}
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
       <p className="text-[11px] text-zinc-500 mt-1.5">
         {loadError

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, PiggyBank, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import LinkedBillField from "./LinkedBillField";
+import { linkPayload } from "../../utils/planningAlerts";
 
 const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   const [name, setName] = useState("");
@@ -63,7 +64,7 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
         goal_amount: goalAmount,
         current_amount: currentAmount,
         target_date: targetDate || null,
-        linkedRecurringGroupId: linkedBillId,
+        ...linkPayload(linkedBillId),
         registeredType: registeredType || null,
         contributionRoom:
           registeredType && contributionRoom !== ""

@@ -7,7 +7,7 @@ import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import SyncStatementModal from "../components/Modals/SyncStatementModal";
 import dashboardService from "../services/dashboardService";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
-import { statementLines } from "../utils/planningAlerts";
+import { statementLines, scheduledPaymentLines } from "../utils/planningAlerts";
 import { getTorontoTodayStr } from "../utils/dateUtils";
 
 const CreditCardPage = () => {
@@ -22,6 +22,22 @@ const CreditCardPage = () => {
   const [activeCard, setActiveCard] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [syncTarget, setSyncTarget] = useState(null);
+
+  const [fixingId, setFixingId] = useState(null);
+
+  // "Pay statement balance" / "Pay full balance": edits only that scheduled payment
+  const handleFixPayment = async (cardId, transactionId, pay) => {
+    setFixingId(cardId);
+    try {
+      await dashboardService.setScheduledCardPayment(cardId, transactionId, pay);
+      await fetchCreditCards();
+    } catch (err) {
+      // handleRequest already showed the error toast
+      console.error("Failed to change the scheduled payment:", err);
+    } finally {
+      setFixingId(null);
+    }
+  };
 
   const fetchCreditCards = async () => {
     setLoading(true);
@@ -159,6 +175,7 @@ const CreditCardPage = () => {
             const available = Math.max(0, limit - balance);
             const utilization = limit > 0 ? (balance / limit) * 100 : 0;
             const lines = statementLines(card.statement, getTorontoTodayStr());
+            const payment = scheduledPaymentLines(card.statement);
             // With a statement day, the due date is the statement's (the next one once this one is paid)
             const dueDate = lines ? lines.dueDate : card.dueDate;
             const barColor =
@@ -262,6 +279,28 @@ const CreditCardPage = () => {
                           <dd className="tabular-nums text-zinc-300 shrink-0">{lines.charges}</dd>
                         </div>
                       </dl>
+                    )}
+                    {/* A scheduled payment above the statement: what the rest pays, and a warning above what's owed */}
+                    {payment?.explanation && (
+                      <p className="mt-2 text-[11px] text-zinc-400 tabular-nums">{payment.explanation}</p>
+                    )}
+                    {payment?.warning && (
+                      <div className="mt-2 rounded-xl bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs">
+                        <p className="text-amber-300 font-medium tabular-nums">{payment.warning}</p>
+                        <div className="mt-2 flex flex-col min-[420px]:flex-row gap-2">
+                          {payment.fixes.map((fix) => (
+                            <button
+                              key={fix.pay}
+                              type="button"
+                              onClick={() => handleFixPayment(card.id, payment.paymentId, fix.pay)}
+                              disabled={fixingId === card.id}
+                              className="btn-secondary min-h-10 justify-center tabular-nums disabled:opacity-50"
+                            >
+                              {fix.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

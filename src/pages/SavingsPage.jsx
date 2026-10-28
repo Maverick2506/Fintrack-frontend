@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, PiggyBank, Calendar, Receipt } from "lucide-react";
 import { calculatePacing } from "../utils/savingsPacing";
-import { formatCurrency, formatShortDate } from "../utils/formatUtils";
+import { formatCurrency } from "../utils/formatUtils";
 import AddSavingsContributionModal from "../components/Modals/AddSavingsContributionModal";
 import AddSavingsGoalModal from "../components/Modals/AddSavingsGoalModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
@@ -10,7 +10,7 @@ import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import dashboardService from "../services/dashboardService";
 import { confirmAndEndSeries } from "../services/endSeriesAction";
 import { recurringContributionLine } from "../utils/endSeries";
-import { sinkingFundLine, sinkingFundNote, canSetUpTransfer } from "../utils/planningAlerts";
+import { sinkingFundLine, sinkingFundNote, canSetUpTransfer, fundDateLabel } from "../utils/planningAlerts";
 
 const FUND_TONES = {
   good: "text-emerald-400 font-medium",
@@ -211,8 +211,9 @@ const SavingsPage = () => {
             const current = parseFloat(goal.current_amount) || 0;
             // A sinking fund without its own target saves for the bill's amount
             const target = parseFloat(goal.goal_amount) || fund?.targetAmount || 0;
-            const progress = target > 0 ? (current / target) * 100 : 0;
-            const remaining = Math.max(0, target - current);
+            // A Done sinking fund (its one-time bill was paid) is complete, whatever is left in it
+            const progress = fund?.done ? 100 : target > 0 ? (current / target) * 100 : 0;
+            const remaining = fund?.done ? 0 : Math.max(0, target - current);
             const regBadge = getRegBadge(goal.registeredType);
 
             return (
@@ -222,7 +223,7 @@ const SavingsPage = () => {
               >
                 <div>
                   <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-base font-semibold text-zinc-100">
                           {goal.name}
@@ -241,7 +242,7 @@ const SavingsPage = () => {
                           <Receipt size={11} className="shrink-0" />
                           <span className="truncate">
                             For {bill.title}
-                            {fund.dueDate ? ` · due ${formatShortDate(fund.dueDate)}` : ""}
+                            {fund.dueDate ? ` · due ${fundDateLabel(fund.dueDate)}` : ""}
                           </span>
                         </p>
                       )}
@@ -417,6 +418,20 @@ const SavingsPage = () => {
                           {settingUpId === goal.id
                             ? "Setting up..."
                             : `Set up monthly transfer · ${formatCurrency(fund.monthly)}`}
+                        </button>
+                      )}
+                      {/* Done: archive follows the $0 rule; the dialog offers "Move $X back to Checking" */}
+                      {fund?.done && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveGoalId(goal.id);
+                            setActiveGoal(goal);
+                            setDeleteModalOpen(true);
+                          }}
+                          className="btn-secondary min-h-10 w-full justify-center tabular-nums"
+                        >
+                          {current > 0 ? `Archive goal · ${formatCurrency(current)} left` : "Archive goal"}
                         </button>
                       )}
                     </div>

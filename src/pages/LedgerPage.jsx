@@ -38,6 +38,8 @@ import useMediaQuery from "../hooks/useMediaQuery";
 import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
 import { getTorontoTodayStr } from "../utils/dateUtils";
+import usePayFromFund from "../hooks/usePayFromFund";
+import { billPaidToast } from "../utils/planningAlerts";
 import {
   groupLedgerRows,
   summarizeLedgerGroup,
@@ -108,6 +110,7 @@ const LedgerPage = () => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [lastClickedIndex, setLastClickedIndex] = useState(null);
+  const { askPayFrom, dialog: payFromFundDialog } = usePayFromFund();
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isBulkMarking, setIsBulkMarking] = useState(false);
 
@@ -170,10 +173,14 @@ const LedgerPage = () => {
 
   const handleMarkPaid = async (row) => {
     setSwipeOpen(null);
+    // A bill a savings goal saves for asks "Pay from <fund>" first; cancelling leaves it unpaid
+    const choice = await askPayFrom(row);
+    if (!choice) return;
     try {
       await dashboardService.markBillAsPaid(
         row.id,
-        row.type === "income" ? "Marked as received!" : undefined
+        row.type === "income" ? "Marked as received!" : billPaidToast,
+        { payFromGoalId: choice.payFromGoalId }
       );
       setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_paid: true } : r)));
       refreshRowsQuietly();
@@ -1144,6 +1151,7 @@ const LedgerPage = () => {
           selectedRows.length === 1 ? "" : "s"
         }`}
       />
+      {payFromFundDialog}
     </div>
   );
 };

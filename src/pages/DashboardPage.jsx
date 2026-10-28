@@ -26,6 +26,8 @@ import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
 import SubscriptionSuggestions from "../components/Dashboard/SubscriptionSuggestions";
+import usePayFromFund from "../hooks/usePayFromFund";
+import { billPaidToast } from "../utils/planningAlerts";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
@@ -225,11 +227,13 @@ const DashboardPage = () => {
   };
 
   const markAsPaidMutation = useMutation({
-    mutationFn: (billId) => dashboardService.markBillAsPaid(billId),
+    mutationFn: ({ billId, payFromGoalId }) =>
+      dashboardService.markBillAsPaid(billId, billPaidToast, { payFromGoalId }),
     onSuccess: () => {
       invalidateDashboard();
     },
   });
+  const { askPayFrom, dialog: payFromFundDialog } = usePayFromFund();
 
   const deleteBillMutation = useMutation({
     mutationFn: (billId) => dashboardService.deleteBill(billId),
@@ -247,8 +251,15 @@ const DashboardPage = () => {
     },
   });
 
-  const handleMarkAsPaid = (billId) => {
-    return markAsPaidMutation.mutateAsync(billId);
+  // A bill a savings goal saves for asks "Pay from <fund>" first; cancelling leaves it unpaid
+  const handleMarkAsPaid = async (billId) => {
+    const choice = await askPayFrom(upcomingBills.find((b) => b.id === billId));
+    if (!choice) {
+      const cancelled = new Error("Cancelled");
+      cancelled.cancelled = true;
+      throw cancelled;
+    }
+    return markAsPaidMutation.mutateAsync({ billId, payFromGoalId: choice.payFromGoalId });
   };
 
   const handleDeleteConfirm = () => {
@@ -770,6 +781,7 @@ const DashboardPage = () => {
           onSynced={invalidateDashboard}
         />
       )}
+      {payFromFundDialog}
     </div>
   );
 };

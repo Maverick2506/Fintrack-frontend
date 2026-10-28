@@ -199,10 +199,27 @@ const dashboardService = {
     );
   },
 
-  markBillAsPaid: async (billId, successMessage = "Bill marked as paid!") => {
+  // payFromGoalId: "Pay from <fund>" for a bill a savings goal saves for. successMessage can be a
+  // function of the response (what the fund paid).
+  markBillAsPaid: async (billId, successMessage = "Bill marked as paid!", { payFromGoalId = null } = {}) => {
+    const data = await handleRequest(
+      api.put(`/expenses/${billId}`, { is_paid: true, ...(payFromGoalId ? { payFromGoalId } : {}) }),
+      typeof successMessage === "function" ? null : successMessage
+    );
+    if (typeof successMessage === "function") toast.success(successMessage(data));
+    return data;
+  },
+
+  // One-time bills a savings goal can save for
+  fetchOneOffBills: async () => {
+    return api.get("/savings-goals/one-off-bills").then((res) => res.data);
+  },
+
+  // "Pay statement balance" / "Pay full balance" on a scheduled card payment above what is owed
+  setScheduledCardPayment: async (cardId, transactionId, pay) => {
     return handleRequest(
-      api.put(`/expenses/${billId}`, { is_paid: true }),
-      successMessage
+      api.post(`/credit-cards/${cardId}/scheduled-payment`, { transactionId, pay }),
+      pay === "statement" ? "Payment set to the statement balance." : "Payment set to the full balance."
     );
   },
 

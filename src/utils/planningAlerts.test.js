@@ -9,6 +9,13 @@ import {
   billOptions,
   suggestionText,
   suggestionAcceptedToast,
+  oneOffBillOptions,
+  linkPayload,
+  fundForBill,
+  payFromFundLabel,
+  payFromFundSplit,
+  billPaidToast,
+  scheduledPaymentLines,
 } from "./planningAlerts.js";
 
 let failed = 0;
@@ -53,7 +60,10 @@ assert(statementDayLabel(1) === "Closes on the 1st" && statementDayLabel(22) ===
 assert(statementDayLabel(31) === "Closes on the 31st (or the month's last day)", "Day 31 mentions short months");
 
 const fund = { linkedBill: { title: "Car insurance", ended: false }, dueDate: "2027-02-05", monthly: 300, remaining: 1200, ready: false, overdue: false, monthlyTransfer: null };
-assert(sinkingFundLine(fund).text === "Save $300.00/month to be ready by Feb 5", `Goal line (got ${sinkingFundLine(fund).text})`);
+assert(
+  sinkingFundLine(fund, "2026-10-28").text === "Save $300.00/month to be ready by Feb 5, 2027",
+  `Goal line, with the year when it's next year (got ${sinkingFundLine(fund, "2026-10-28").text})`
+);
 assert(sinkingFundNote(fund) === "Safe to Spend sets this aside each month." && canSetUpTransfer(fund), "Planned in Safe to Spend; transfer offered");
 const withTransfer = { ...fund, monthlyTransfer: { amount: 300 } };
 assert(sinkingFundNote(withTransfer) === "Monthly transfer $300.00 is set up." && !canSetUpTransfer(withTransfer), "Transfer set up: not offered again");
@@ -71,7 +81,7 @@ assert(
   sinkingFundNote(soon) === "Safe to Spend already counts this bill on Nov 7." && canSetUpTransfer(soon),
   `A bill already in Safe to Spend's window isn't set aside again (got ${sinkingFundNote(soon)})`
 );
-assert(sinkingFundLine({ ...fund, ready: true, monthly: 0 }).text === "Ready for Car insurance on Feb 5", "Ready");
+assert(sinkingFundLine({ ...fund, ready: true, monthly: 0 }, "2027-01-04").text === "Ready for Car insurance on Feb 5", "Ready (same year: no year)");
 assert(sinkingFundLine({ ...fund, overdue: true, dueDate: "2026-10-01", remaining: 100 }).tone === "warn", "Overdue warns");
 assert(sinkingFundLine(null) === null, "A plain goal has no sinking-fund line");
 
@@ -90,6 +100,81 @@ assert(
 assert(
   suggestionAcceptedToast({ ...sug, title: "SPOTIFY 10/22" }, { title: "Spotify", nextDate: "2026-11-22" }).startsWith("Spotify is now"),
   "The toast uses the series name the server saved"
+);
+
+console.log("--- Paying a bill from its fund; scheduled card payments ---");
+const goals = [
+  { id: "g1", name: "Tires Fund", current_amount: "200", linkedRecurringGroupId: "s1", sinkingFund: { done: false } },
+  { id: "g2", name: "Empty Fund", current_amount: "0", linkedRecurringGroupId: "s2", sinkingFund: { done: false } },
+  { id: "g3", name: "Plain", current_amount: "50", linkedRecurringGroupId: null, sinkingFund: null },
+];
+const tires = { id: "b1", type: "EXPENSE", recurringGroupId: "s1", isCleared: false, amount: "500" };
+const tiresFund = fundForBill(goals, tires);
+assert(tiresFund && tiresFund.goalId === "g1" && tiresFund.saved === 200, "A bill's fund is found by its series");
+assert(payFromFundLabel(tiresFund) === "Pay from Tires Fund ($200.00 saved)", `Checkbox label (got ${payFromFundLabel(tiresFund)})`);
+assert(
+  !fundForBill(goals, { ...tires, recurringGroupId: "s2" }) && !fundForBill(goals, { ...tires, isCleared: true }) &&
+    !fundForBill(goals, { ...tires, type: "income" }) && !fundForBill(goals, { ...tires, recurringGroupId: null }) &&
+    fundForBill(goals, { ...tires, type: "expense", is_paid: false })?.goalId === "g1",
+  "No offer for an empty fund, a paid bill, income or a bill with no series (Ledger rows work too)"
+);
+assert(
+  !fundForBill([{ ...goals[0], sinkingFund: { done: true } }], tires),
+  "A Done fund isn't offered"
+);
+assert(
+  payFromFundSplit(tiresFund, 500) === "Tires Fund pays $200.00; $300.00 comes from Checking." &&
+    payFromFundSplit(tiresFund, 150) === "Tires Fund pays all $150.00, so Checking doesn't change.",
+  "The split says what Checking pays"
+);
+assert(
+  billPaidToast({ sinkingFund: { paidFromFund: { amount: 200, shortfall: 300, goalName: "Tires Fund" }, rolledOver: [] } }) ===
+    "Paid $200.00 from Tires Fund and $300.00 from Checking." &&
+    billPaidToast(
+      { sinkingFund: { paidFromFund: { amount: 600, shortfall: 0, goalName: "Insurance" }, rolledOver: [{ dueDate: "2027-11-02" }] } },
+      "2026-11-02"
+    ) === "Paid $600.00 from Insurance. The fund now saves for Nov 2, 2027." &&
+    billPaidToast({ sinkingFund: null }) === "Bill marked as paid!",
+  "Toasts after paying"
+);
+assert(
+  sinkingFundLine({ ...tiresFund, linkedBill: { title: "Roof repair" }, done: true, paidOn: "2026-11-12" }, "2026-11-12").text ===
+    "Done: Roof repair was paid Nov 12" && !canSetUpTransfer({ done: true, monthly: 0 }) && sinkingFundNote({ done: true, monthly: 5 }) === null,
+  "A paid one-time bill: Done, no transfer offered"
+);
+assert(
+  linkPayload("bill:abc").linkedBillId === "abc" && linkPayload("s1").linkedRecurringGroupId === "s1" &&
+    linkPayload(null).linkedRecurringGroupId === null,
+  "A one-time bill links by its id, a series by its series id"
+);
+const once = oneOffBillOptions([{ id: "t1", title: "Roof repair", amount: 250, date: "2026-11-12", recurringGroupId: null }]);
+assert(once[0].value === "bill:t1" && once[0].label === "Roof repair · $250.00 on Nov 12", `One-time bill option (got ${once[0].label})`);
+
+const stmt = { statementBalance: 600, scheduledPayment: { id: "p1", amount: 900, toNewCharges: 300, excess: 0, projectedBalance: 900 } };
+const pl = scheduledPaymentLines(stmt);
+assert(
+  pl.explanation === "Scheduled $900.00 · statement $600.00 · $300.00 goes to new charges" && pl.warning === null && pl.fixes.length === 0,
+  `Above the statement but within the balance: explained, no warning (got ${pl.explanation})`
+);
+const over = scheduledPaymentLines({ statementBalance: 600, scheduledPayment: { id: "p1", amount: 1500, toNewCharges: 300, excess: 600, projectedBalance: 900 } });
+assert(
+  over.warning === "This payment is $600.00 more than you owe" &&
+    over.fixes.map((f) => f.pay).join() === "statement,full" && over.fixes[1].label === "Pay full balance · $900.00",
+  "Above the full balance: warning with both one-tap fixes"
+);
+assert(
+  scheduledPaymentLines({ statementBalance: 600, scheduledPayment: { id: "p1", amount: 400, toNewCharges: 0, excess: 0, projectedBalance: 900 } }).explanation === null &&
+    scheduledPaymentLines({ statementBalance: 600, scheduledPayment: null }) === null,
+  "A payment at or below the statement needs no explanation; nothing scheduled, no lines"
+);
+assert(
+  scheduledPaymentLines({ statementBalance: 0, scheduledPayment: { id: "p1", amount: 100, toNewCharges: 0, excess: 100, projectedBalance: 0 } }).fixes.length === 0,
+  "Nothing owed: no fix that would set the payment to $0"
+);
+const allOnStatement = scheduledPaymentLines({ statementBalance: 320.55, scheduledPayment: { id: "p1", date: "2026-10-31", amount: 900, toNewCharges: 0, excess: 579.45, projectedBalance: 320.55 } });
+assert(
+  allOnStatement.explanation === "Scheduled $900.00 on Oct 31" && allOnStatement.fixes.map((f) => f.pay).join() === "full",
+  "Everything owed is on the statement: no \"$0 goes to new charges\", and one fix, not two of the same amount"
 );
 
 if (failed > 0) {
