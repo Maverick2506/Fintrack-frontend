@@ -11,6 +11,7 @@ const AddCreditCardPaymentModal = ({
   refreshData,
   cardId,
   card,
+  initialAmount = null,
 }) => {
   const [amount, setAmount] = useState("");
   const [error, setError] = useState(null);
@@ -21,7 +22,8 @@ const AddCreditCardPaymentModal = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    setAmount("");
+    // A shared card payment opens with its amount filled in
+    setAmount(initialAmount > 0 ? String(initialAmount) : "");
     setError(null);
     setIsSubmitting(false);
     setFundChecks(defaultFundChecks(card?.fundBills));
@@ -31,7 +33,7 @@ const AddCreditCardPaymentModal = ({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose, card?.fundBills]);
+  }, [isOpen, onClose, card?.fundBills, initialAmount]);
 
   const effectiveCardId = cardId || card?.id;
   const cardName = card?.name || "Credit Card";

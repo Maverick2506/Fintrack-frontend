@@ -1,5 +1,13 @@
 /* global process */
-import { shareTextToQuickAdd, readSharedQuickAdd, findSharedCard, withoutShareParams, isShareParams } from "./shareTarget.js";
+import {
+  shareTextToQuickAdd,
+  readSharedQuickAdd,
+  findSharedCard,
+  withoutShareParams,
+  isShareParams,
+  findMatchingBill,
+  cardPaymentLink,
+} from "./shareTarget.js";
 import { parseQuickAddTextParam, restoreLinkList } from "./quickAddLink.js";
 import { parseQuickAdd } from "./quickAddParser.js";
 import { SHARE_TARGET } from "../constants/shareTarget.js";
@@ -132,7 +140,8 @@ for (const t of [
   "TD: Your payment of $250.00 has been received. Thank you.",
   "You made a payment of $120.00 to your TD Visa ending 1234",
 ]) {
-  assert(shareTextToQuickAdd(t, CARDS) === null, `Card payment isn't filled: "${t.slice(0, 45)}…"`);
+  const out = shareTextToQuickAdd(t, CARDS);
+  assert(out && out.kind === "cardPayment" && out.line === null, `Card payment isn't filled as spending: "${t.slice(0, 45)}…"`);
 }
 const merchantPayment = shareTextToQuickAdd("Your payment of $8.99 to NETFLIX.COM on your Visa ending 1234 was approved.", CARDS);
 assert(merchantPayment && merchantPayment.line === "8.99 Netflix.com visa", `A payment to a merchant is still spending (got "${merchantPayment?.line}")`);
@@ -155,5 +164,54 @@ assert(isShareParams("?title=Example%20page&text=https%3A%2F%2Fexample.com%2Fa")
 assert(isShareParams("?text=https%3A%2F%2Fexample.com%2Fa") === true, "A bare URL share is a share");
 assert(readSharedQuickAdd("?title=Example%20page&text=https%3A%2F%2Fexample.com%2Fa", CARDS) === null, "…and isn't read as an alert");
 assert(isShareParams("?text=23.40%20lunch%20visa") === false, "A Quick Add link is not a share");
+
+console.log("\n--- Test 6: Maverick's follow-ups (card payments, bill payments, debit, Check the card) ---");
+const charged = shareTextToQuickAdd("Netflix $16.49 was charged to your Visa", CARDS);
+const chargedParsed = parseQuickAdd(charged?.line || "", CARDS, TODAY);
+assert(
+  charged.kind === "expense" && charged.line === "16.49 Netflix visa" && chargedParsed.name === "Netflix" && chargedParsed.creditCardId === "c1" && !charged.cardUnsure,
+  `"charged to your Visa" is a Visa expense "Netflix" (got "${charged?.line}")`
+);
+const chargedPayment = shareTextToQuickAdd("Your payment of $16.49 was charged to your Visa by NETFLIX", CARDS);
+assert(chargedPayment.kind === "expense", "Purchase words win over payment words");
+
+const bill = shareTextToQuickAdd("Bill payment to HYDRO ONE $88.10 posted", CARDS);
+const billParsed = parseQuickAdd(bill?.line || "", CARDS, TODAY);
+assert(
+  bill.kind === "expense" && bill.billPayment && bill.line === "88.10 Hydro One" && billParsed.creditCardId === null && billParsed.accountName === "Primary Checking" && !bill.cardUnsure,
+  `A bill payment is a Checking expense to the payee (got "${bill?.line}")`
+);
+const ledger = [
+  { id: "b0", type: "expense", name: "Hydro", amount: 88.1, is_paid: true },
+  { id: "b1", type: "expense", name: "Rent", amount: 88.1, is_paid: false },
+  { id: "b2", type: "expense", name: "Hydro", amount: 92.0, is_paid: false },
+  { id: "b3", type: "expense", name: "Hydro", amount: 88.1, is_paid: false },
+];
+assert(findMatchingBill(ledger, bill.payee, bill.amount)?.id === "b3", "An unpaid bill with the same payee and amount is offered (Mark Hydro paid?)");
+assert(findMatchingBill(ledger.slice(0, 3), bill.payee, bill.amount) === null, "No offer when no unpaid bill matches both payee and amount");
+
+const received = shareTextToQuickAdd("Payment of $500.00 received on your Visa", CARDS);
+assert(received.kind === "cardPayment" && received.line === null && received.card.id === "c1" && received.amount === 500, "A card payment fills nothing and names the card");
+assert(cardPaymentLink(received, CARDS) === "/credit-cards?pay=c1&amount=500", `The Pay button opens that card's Pay dialog with $500 (got ${cardPaymentLink(received, CARDS)})`);
+assert(
+  cardPaymentLink(shareTextToQuickAdd("Thank you for your payment of $75.25", CARDS), CARDS) === "/credit-cards?amount=75.25",
+  "Card not named: Credit Cards opens with the amount"
+);
+assert(shareTextToQuickAdd("Thank you for your payment of $75.25", [CARDS[0]]).kind === "cardPayment" && cardPaymentLink(shareTextToQuickAdd("Thank you for your payment of $75.25", [CARDS[0]]), [CARDS[0]]) === "/credit-cards?pay=c1&amount=75.25", "With one card, that card's Pay dialog opens");
+assert(shareTextToQuickAdd("Your payment of $300 to TD Visa has been sent", CARDS).kind === "cardPayment", '"payment to <card name>" is a card payment');
+
+const debit = shareTextToQuickAdd("Debit card ending 1234 purchase $6.45 at TIM HORTONS", CARDS);
+const debitParsed = parseQuickAdd(debit?.line || "", CARDS, TODAY);
+assert(
+  debit.line === "6.45 Tim Hortons" && debitParsed.accountName === "Primary Checking" && debit.cardUnsure === false && debit.card === null,
+  `Debit card wording is Checking with no note, even when 1234 is on a credit card (got "${debit?.line}")`
+);
+const debitUnknown = shareTextToQuickAdd("Purchase of $4.00 at SUBWAY with debit ending 7777", CARDS);
+assert(debitUnknown.card === null && debitUnknown.cardUnsure === false, "A last 4 next to debit matching no card: Checking, no note");
+
+const unknown = shareTextToQuickAdd("You spent $12.00 at SHELL with your Visa ending 9999", CARDS);
+assert(unknown.cardUnsure === true && unknown.last4 === "9999", '"Visa ending 9999" with no such card shows Check the card');
+const noAmex = shareTextToQuickAdd("$30.00 was charged to your Amex at UBER", CARDS.filter((c) => c.id !== "c2"));
+assert(noAmex.cardUnsure === true && noAmex.last4 === null && noAmex.card === null, "A brand on none of the cards shows Check the card");
 
 console.log("\nAll Share to FinTrack tests passed.");

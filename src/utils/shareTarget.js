@@ -53,6 +53,8 @@ const PAYEE_PATTERNS = [
   new RegExp(`\\b(?:at|@)\\s+(?!\\d{1,2}:\\d{2})(.+?)${PAYEE_END}`, "i"),
   new RegExp(`\\bby\\s+(.+?)${PAYEE_END}`, "i"),
   new RegExp(`\\b(?:to|from)\\s+(?!your\\b|the\\b|my\\b)(.+?)${PAYEE_END}`, "i"),
+  // "Netflix $16.49 was charged to your Visa" (after an optional "TD Alert:" prefix)
+  /^(?:[\w&' .-]{0,30}?:\s*)?(.+?)\s+(?:CA)?\$\s?[\d,]+(?:\.\d{1,2})?\s+(?:was\s+|has\s+been\s+)?(?:charged|authori[sz]ed|spent)\b/i,
 ];
 
 // Store numbers, phone numbers, dates and reference numbers come off, like the server's displayPayeeTitle
@@ -126,39 +128,125 @@ export const cardWordFor = (card, cards = []) =>
   cardKeywords(card).find((k) => cards.find((c) => cardKeywords(c).includes(k)) === card) || null;
 
 const INCOME_WORDS = /\b(?:you\s+received|deposit(?:ed)?\s+(?:of|to)|direct\s+deposit|payroll\s+deposit|has\s+been\s+deposited)\b/i;
-const DEBIT_WORDS = /\b(?:debit\s+(?:card|purchase)|interac|chequing|checking)\b/i;
+// Debit wording means Primary Checking, even when its last 4 digits look like a card's
+const DEBIT_WORDS = /\b(?:debit|interac|chequing|checking)\b/i;
 // Money coming back isn't spending; Quick Add can't record a refund, so these aren't filled in
 const REFUND_WORDS = /\b(?:refund(?:ed)?|credit(?:ed)?\s+to\s+your|reversal|returned)\b/i;
-// A payment to a card or loan is a transfer, not spending ("A payment of $500 was applied to your
-// Mastercard"), so it isn't filled in either; pay the card from Credit Cards instead
-const CARD_PAYMENT_WORDS =
-  /\bpayment\b(?:[^.]|\.\d)*?\b(?:applied|received|posted|credited)\b|\bpayment\b(?:[^.]|\.\d)*?\bto\s+your\s+(?:[\w-]+\s+){0,3}(?:card|visa|mastercard|amex|account|loan|line\s+of\s+credit)\b/i;
+// Purchase words win over anything that looks like a card payment: "charged to your Visa" is spending
+const PURCHASE_WORDS = /\b(?:charged|purchase[ds]?|spent|authori[sz]ed)\b/i;
+// "of $500.00" between "payment" and the rest
+const AMT = String.raw`(?:of\s+)?(?:(?:CA)?\$\s?[\d,]+(?:\.\d{1,2})?|CAD\s?[\d,]+(?:\.\d{1,2})?|[\d,]+(?:\.\d{1,2})?\s?\$)\s+`;
+const GAP = String.raw`(?:[^.]|\.\d){0,60}?`;
+// A payment to a credit card is a transfer, not spending. Only payment-to-card phrasing counts.
+const CARD_PAYMENT_PATTERNS = [
+  /\bthank\s+you\s+for\s+your\s+payment\b/i,
+  new RegExp(String.raw`\bpayment\s+(?:${AMT})?(?:has\s+been\s+|was\s+)?received\b`, "i"),
+  new RegExp(String.raw`\bpayment\b${GAP}\b(?:applied|posted)\s+(?:to|on)\s+your\b`, "i"),
+  new RegExp(String.raw`\bpayment\s+(?:${AMT})?to\s+your\s+(?:[\w-]+\s+){0,3}?(?:card|visa|mastercard|amex|credit\s+card)\b`, "i"),
+];
+// "payment to TD Visa": a payment to one of your cards by name
+const PAYMENT_TO = new RegExp(String.raw`\bpayment\s+(?:${AMT})?to\s+((?:(?!(?:on|with|was|has|is|using|from|at)\b)[\w-]+\s*){1,4})`, "i");
+// "Bill payment to HYDRO ONE $88.10 posted": paid from Checking to that payee
+const BILL_PAYMENT = new RegExp(
+  String.raw`\bbill\s+payment\s+(?:${AMT})?to\s+(.+?)(?=\s+(?:CA)?\$|\s+\d|\s+(?:of|for|in\s+the\s+amount|was|has|is|posted|on|from)\b|\s*[.,;!]|$)`,
+  "i"
+);
+const CREDIT_CARD_WORDS = /\b(?:visa|mastercard|amex|american\s+express|credit\s+card)\b/i;
+
+const isCardPayment = (text, cards) => {
+  if (PURCHASE_WORDS.test(text) || /\bbill\s+payment\b/i.test(text)) return false;
+  if (CARD_PAYMENT_PATTERNS.some((re) => re.test(text))) return true;
+  const to = text.match(PAYMENT_TO);
+  if (!to) return false;
+  const words = wordsOf(to[1]);
+  return words.some((w) => cards.some((c) => cardKeywords(c).includes(w))) || CREDIT_CARD_WORDS.test(to[1]);
+};
+
+const amountText = (amount) => (Number.isInteger(amount) ? String(amount) : amount.toFixed(2));
+const cardRef = (card) => (card ? { id: card.id, name: card.name } : null);
 
 /**
- * A shared notification as a Quick Add line, or null when it doesn't look like one
- * (no dollar amount, a refund, or a card payment). Returns { line, amount, payee, card, income, cardUnsure, last4 }.
- * cardUnsure: the alert gave last 4 digits that no card's name holds.
+ * A shared notification for Quick Add, or null when it doesn't look like one (no dollar amount, or a
+ * refund). Returns { kind, line, amount, payee, card, income, billPayment, cardUnsure, last4 }:
+ * - kind "expense" / "income": line is the Quick Add text to fill in.
+ * - kind "cardPayment": a payment to a credit card. line is null; Quick Add points to Credit Cards → Pay.
+ * - billPayment: "Bill payment to <payee>", from Checking (Quick Add offers to mark a matching bill paid).
+ * - cardUnsure: a credit card was named (by last 4 or brand) that matches none of the cards; last4 when given.
  */
 export const shareTextToQuickAdd = (sharedText, cards = []) => {
   const text = String(sharedText || "").slice(0, MAX_SHARED_LENGTH).replace(/[\u00a0\t]/g, " ").trim();
-  if (!text || REFUND_WORDS.test(text) || CARD_PAYMENT_WORDS.test(text)) return null;
+  if (!text || REFUND_WORDS.test(text)) return null;
   const amount = parseAmount(text);
   if (!amount) return null;
-  const income = INCOME_WORDS.test(text);
-  const payee = findPayee(text) || (income ? "Deposit" : "");
+  const last4Given = (text.match(LAST4) || [])[1] || null;
+
+  if (isCardPayment(text, cards)) {
+    const card = findSharedCard(text, cards);
+    return { kind: "cardPayment", line: null, amount, payee: "", card: cardRef(card), income: false, billPayment: false, cardUnsure: false, last4: null };
+  }
+
+  const billMatch = text.match(BILL_PAYMENT);
+  const billPayee = billMatch ? cleanPayee(billMatch[1]) : "";
+  const billPayment = Boolean(billPayee);
+  const income = !billPayment && INCOME_WORDS.test(text);
+  const payee = billPayee || findPayee(text) || (income ? "Deposit" : "");
   if (!payee) return null;
 
-  const card = income || DEBIT_WORDS.test(text) ? null : findSharedCard(text, cards);
+  const debit = billPayment || DEBIT_WORDS.test(text);
+  const card = income || debit ? null : findSharedCard(text, cards);
   const cardWord = card ? cardWordFor(card, cards) : null;
   // A payee word that names an account would steal the account pick, so say checking when it isn't a card
   const payeeNamesAccount = wordsOf(payee).some((w) => CHECKING_WORDS.test(w) || cards.some((c) => cardKeywords(c).includes(w)));
   const accountWord = cardWord || (!income && payeeNamesAccount ? "debit" : "");
-  const amountText = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
-  const line = [`${income ? "+" : ""}${amountText}`, payee, accountWord].filter(Boolean).join(" ");
-  // Last 4 digits that no card name holds: the card was guessed from its name (or not found), so say so
-  const last4 = (text.match(LAST4) || [])[1] || null;
-  const cardUnsure = Boolean(!income && last4 && !(card && new RegExp(`(?<!\\d)${last4}(?!\\d)`).test(card.name || "")));
-  return { line, amount, payee, card: card ? { id: card.id, name: card.name } : null, income, last4: cardUnsure ? last4 : null, cardUnsure };
+  const line = [`${income ? "+" : ""}${amountText(amount)}`, payee, accountWord].filter(Boolean).join(" ");
+
+  // "Check the card" only when a credit card is named that matches none of yours: its last 4 digits
+  // are in no card's name, or its brand is on no card. Debit and income never ask.
+  const holdsLast4 = (c) => c && new RegExp(`(?<!\\d)${last4Given}(?!\\d)`).test(c.name || "");
+  const unknownLast4 = Boolean(last4Given && !holdsLast4(card));
+  const unknownBrand = !card && CREDIT_CARD_WORDS.test(text);
+  const cardUnsure = !income && !debit && (unknownLast4 || unknownBrand);
+  return {
+    kind: income ? "income" : "expense",
+    line,
+    amount,
+    payee,
+    card: cardRef(card),
+    income,
+    billPayment,
+    cardUnsure,
+    last4: cardUnsure && unknownLast4 ? last4Given : null,
+  };
+};
+
+const significantWords = (text) => wordsOf(text).filter((w) => w.length > 2 && !/^\d+$/.test(w));
+
+/**
+ * The unpaid bill a bill-payment alert paid: same amount (to the cent) and a payee that shares a word
+ * with the bill's name ("Hydro One" pays "Hydro"). rows are Ledger rows (GET /expenses/all). null if none.
+ */
+export const findMatchingBill = (rows = [], payee, amount) => {
+  const payeeWords = new Set(significantWords(payee));
+  return (
+    rows.find(
+      (r) =>
+        r &&
+        r.type === "expense" &&
+        !r.is_paid &&
+        Math.abs((parseFloat(r.amount) || 0) - amount) < 0.005 &&
+        significantWords(r.name).some((w) => payeeWords.has(w))
+    ) || null
+  );
+};
+
+/** Credit Cards → Pay for a shared card payment: the card's Pay dialog with the amount filled in */
+export const cardPaymentLink = (shared, cards = []) => {
+  const card = shared?.card || (cards.length === 1 ? cards[0] : null);
+  const params = new URLSearchParams();
+  if (card) params.set("pay", card.id);
+  if (shared?.amount) params.set("amount", amountText(shared.amount));
+  const qs = params.toString();
+  return `/credit-cards${qs ? `?${qs}` : ""}`;
 };
 
 /**
