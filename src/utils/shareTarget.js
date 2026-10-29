@@ -12,23 +12,36 @@ const MAX_PAYEE_LENGTH = 60;
 
 // "$1,234.56", "$ 23.40", "CAD 23.40", "23.40 CAD", "23,40 $" (French Canadian)
 const AMOUNT_PATTERNS = [
-  /(?:CA)?\$\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?!\d)/i,
-  /\bCAD\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?!\d)/i,
-  /(?<![\d.,])(\d{1,3}(?:[ \u00a0]\d{3})*(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s?(?:\$|CAD\b)/i,
+  { re: /(?:CA)?\$\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?!\d)/gi, decimalComma: false },
+  { re: /\bCAD\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?!\d)/gi, decimalComma: false },
+  { re: /(?<![\d.,])(\d{1,3}(?:[ \u00a0]\d{3})*(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s?(?:\$|CAD\b)/gi, decimalComma: true },
 ];
+// An amount right after these words is a balance or limit, not what was spent
+const NOT_SPENT_BEFORE = /\b(?:balance|available|limit|remaining|owing|minimum)\b[^.$\d]{0,25}$/i;
+// An amount right after these words is the purchase itself
+const SPENT_BEFORE = /\b(?:spent|purchase|charged?|transaction|payment|sent|received|withdrawal|of|for)\b[^.$\d]{0,25}$/i;
 
-const parseAmount = (text) => {
-  for (const re of AMOUNT_PATTERNS) {
-    const m = text.match(re);
-    if (!m) continue;
-    let digits = m[1];
-    // "23,40 $" uses a decimal comma; "1,234.56" uses a thousands comma
-    if (re === AMOUNT_PATTERNS[2]) digits = digits.replace(/[ \u00a0]/g, "").replace(",", ".");
-    else digits = digits.replace(/,/g, "");
-    const amount = parseFloat(digits);
-    if (amount > 0) return Math.round(amount * 100) / 100;
+// Every amount in the text, in order, with where it starts
+const amountsIn = (text) => {
+  const found = [];
+  for (const { re, decimalComma } of AMOUNT_PATTERNS) {
+    for (const m of text.matchAll(re)) {
+      // "23,40 $" uses a decimal comma; "1,234.56" uses a thousands comma
+      const digits = decimalComma ? m[1].replace(/[ \u00a0]/g, "").replace(",", ".") : m[1].replace(/,/g, "");
+      const amount = parseFloat(digits);
+      if (amount > 0 && !found.some((f) => f.index === m.index)) {
+        found.push({ amount: Math.round(amount * 100) / 100, index: m.index });
+      }
+    }
   }
-  return null;
+  return found.sort((a, b) => a.index - b.index);
+};
+
+// The amount spent: the first one after a spending word, else the first that isn't a balance or limit
+const parseAmount = (text) => {
+  const candidates = amountsIn(text).filter((a) => !NOT_SPENT_BEFORE.test(text.slice(0, a.index)));
+  const spent = candidates.find((a) => SPENT_BEFORE.test(text.slice(0, a.index))) || candidates[0];
+  return spent ? spent.amount : null;
 };
 
 // Words after the payee that end it: "at TIM HORTONS with your Visa", "at COSTCO on your card"
@@ -36,7 +49,8 @@ const PAYEE_END =
   "(?=\\s+(?:with|using|on|from|via|for|was|has|is|in\\s+the\\s+amount|approved|declined)\\b|\\s*[.,;!(]\\s|\\s*[.;!]?$|\\s*\\n)";
 const PAYEE_PATTERNS = [
   new RegExp(`\\bmerchant\\s*[:-]\\s*(.+?)${PAYEE_END}`, "i"),
-  new RegExp(`\\b(?:at|@)\\s+(.+?)${PAYEE_END}`, "i"),
+  // "at 9:14 AM" is a time, not a payee, so that "at" is skipped
+  new RegExp(`\\b(?:at|@)\\s+(?!\\d{1,2}:\\d{2})(.+?)${PAYEE_END}`, "i"),
   new RegExp(`\\bby\\s+(.+?)${PAYEE_END}`, "i"),
   new RegExp(`\\b(?:to|from)\\s+(?!your\\b|the\\b|my\\b)(.+?)${PAYEE_END}`, "i"),
 ];
@@ -47,6 +61,7 @@ const cleanPayee = (raw) => {
   const cleaned = String(raw || "")
     .replace(/\s+/g, " ")
     .replace(/\(?\b\d{3}\)?[-. ]?\d{3}[-. ]\d{4}\b/g, " ")
+    .replace(/\b\d{1,2}:\d{2}(?:\s*[ap]\.?m\.?)?(?![\w])/gi, " ")
     .replace(/\b\d{4}-\d{1,2}-\d{1,2}\b/g, " ")
     .replace(/\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/g, " ")
     .replace(new RegExp(`\\b(?:${MONTHS})[a-z]*\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?\\b`, "gi"), " ")
@@ -114,14 +129,19 @@ const INCOME_WORDS = /\b(?:you\s+received|deposit(?:ed)?\s+(?:of|to)|direct\s+de
 const DEBIT_WORDS = /\b(?:debit\s+(?:card|purchase)|interac|chequing|checking)\b/i;
 // Money coming back isn't spending; Quick Add can't record a refund, so these aren't filled in
 const REFUND_WORDS = /\b(?:refund(?:ed)?|credit(?:ed)?\s+to\s+your|reversal|returned)\b/i;
+// A payment to a card or loan is a transfer, not spending ("A payment of $500 was applied to your
+// Mastercard"), so it isn't filled in either; pay the card from Credit Cards instead
+const CARD_PAYMENT_WORDS =
+  /\bpayment\b(?:[^.]|\.\d)*?\b(?:applied|received|posted|credited)\b|\bpayment\b(?:[^.]|\.\d)*?\bto\s+your\s+(?:[\w-]+\s+){0,3}(?:card|visa|mastercard|amex|account|loan|line\s+of\s+credit)\b/i;
 
 /**
  * A shared notification as a Quick Add line, or null when it doesn't look like one
- * (no dollar amount, or a refund). Returns { line, amount, payee, card, income }.
+ * (no dollar amount, a refund, or a card payment). Returns { line, amount, payee, card, income, cardUnsure, last4 }.
+ * cardUnsure: the alert gave last 4 digits that no card's name holds.
  */
 export const shareTextToQuickAdd = (sharedText, cards = []) => {
   const text = String(sharedText || "").slice(0, MAX_SHARED_LENGTH).replace(/[\u00a0\t]/g, " ").trim();
-  if (!text || REFUND_WORDS.test(text)) return null;
+  if (!text || REFUND_WORDS.test(text) || CARD_PAYMENT_WORDS.test(text)) return null;
   const amount = parseAmount(text);
   if (!amount) return null;
   const income = INCOME_WORDS.test(text);
@@ -135,7 +155,10 @@ export const shareTextToQuickAdd = (sharedText, cards = []) => {
   const accountWord = cardWord || (!income && payeeNamesAccount ? "debit" : "");
   const amountText = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
   const line = [`${income ? "+" : ""}${amountText}`, payee, accountWord].filter(Boolean).join(" ");
-  return { line, amount, payee, card: card ? { id: card.id, name: card.name } : null, income };
+  // Last 4 digits that no card name holds: the card was guessed from its name (or not found), so say so
+  const last4 = (text.match(LAST4) || [])[1] || null;
+  const cardUnsure = Boolean(!income && last4 && !(card && new RegExp(`(?<!\\d)${last4}(?!\\d)`).test(card.name || "")));
+  return { line, amount, payee, card: card ? { id: card.id, name: card.name } : null, income, last4: cardUnsure ? last4 : null, cardUnsure };
 };
 
 /**
@@ -148,6 +171,17 @@ export const readSharedQuickAdd = (search, cards = []) => {
   const shared = [params.get(titleParam), params.get(textParam)].filter(Boolean).join(" \n");
   if (!shared) return null;
   return shareTextToQuickAdd(shared, cards);
+};
+
+// A share rather than a Quick Add link: it has a title (Gem links never do), or its text is only
+// web addresses (sharing a page). One that isn't a bank alert fills nothing.
+export const isShareParams = (search) => {
+  const params = new URLSearchParams(search || "");
+  if (params.get(SHARE_TARGET.params.title)) return true;
+  const lines = String(params.get(SHARE_TARGET.params.text) || "")
+    .split(/\s+/)
+    .filter(Boolean);
+  return lines.length > 0 && lines.every((w) => /^https?:\/\//i.test(w));
 };
 
 // The query string without the share's title (the text param is removed with the link's)

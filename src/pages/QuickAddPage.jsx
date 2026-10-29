@@ -37,7 +37,7 @@ import {
   restoreLinkList,
   TEXT_PARAM,
 } from "../utils/quickAddLink";
-import { readSharedQuickAdd, withoutShareParams, shareTextToQuickAdd } from "../utils/shareTarget";
+import { readSharedQuickAdd, withoutShareParams, shareTextToQuickAdd, isShareParams } from "../utils/shareTarget";
 import { SHARE_TARGET } from "../constants/shareTarget";
 
 const RECENT_KEY = "fintrack_recent_quick_add";
@@ -94,6 +94,8 @@ const QuickAddPage = () => {
   const [linkIndex, setLinkIndex] = useState(() => (storedLink ? storedLink.index : 0));
   // Set when the entry came from Share -> FinTrack (a bank notification), for the banner's wording
   const [sharedFrom, setSharedFrom] = useState(() => (storedLink ? storedLink.sharedFrom || null : null));
+  // Last 4 digits from a shared alert that no card name holds, so the banner asks to check the card
+  const [shareCardNote, setShareCardNote] = useState(null);
   // The share's query and the line made from it, so the card can be filled in once the cards load
   const sharedSourceRef = useRef(null);
 
@@ -114,15 +116,18 @@ const QuickAddPage = () => {
     if (!params.has(TEXT_PARAM) && !params.has(SHARE_TARGET.params.title)) return;
     // Share -> FinTrack: a bank notification becomes one Quick Add line (cards from the last visit)
     const shared = readSharedQuickAdd(location.search, readCached(OFFLINE_CARDS_KEY) || []);
-    const lines = shared ? [shared.line] : parseQuickAddTextParam(location.search);
+    // A share that isn't a bank alert (e.g. a web page) fills nothing; only Quick Add links fill line by line
+    const share = Boolean(shared) || isShareParams(location.search);
+    const lines = shared ? [shared.line] : share ? [] : parseQuickAddTextParam(location.search);
     if (lines.length > 0) {
       setLinkItems(lines.map((text) => ({ text, status: "pending" })));
       setLinkIndex(0);
       setInput(lines[0]);
       setSharedFrom(shared ? "share" : null);
+      setShareCardNote(shared?.cardUnsure ? shared.last4 : null);
       sharedSourceRef.current = shared ? { search: location.search, line: shared.line } : null;
       pendingRef.current = null;
-    } else if (params.get(SHARE_TARGET.params.title)) {
+    } else if (share) {
       toast("FinTrack couldn't find an amount in what you shared. Type it in.");
     }
     // Clear ?text= (and a share's title) so a refresh or a screenshot of the URL doesn't bring it back
@@ -140,6 +145,7 @@ const QuickAddPage = () => {
     const next = readSharedQuickAdd(source.search, creditCards);
     if (!next || next.line === source.line) return;
     sharedSourceRef.current = { ...source, line: next.line };
+    setShareCardNote(next.cardUnsure ? next.last4 : null);
     setInput((current) => (current === source.line ? next.line : current));
     setLinkItems((items) => items.map((it) => (it.text === source.line && it.status === "pending" ? { ...it, text: next.line } : it)));
   }, [creditCards]);
@@ -217,6 +223,7 @@ const QuickAddPage = () => {
       setLinkItems([]);
       setLinkIndex(0);
       setSharedFrom(null);
+      setShareCardNote(null);
       setInput("");
     } else {
       setLinkItems(items);
@@ -231,6 +238,7 @@ const QuickAddPage = () => {
     setLinkItems([]);
     setLinkIndex(0);
     setSharedFrom(null);
+    setShareCardNote(null);
     setInput("");
   };
 
@@ -406,6 +414,12 @@ const QuickAddPage = () => {
                 <p className="text-xs text-zinc-400">
                   Check it, then tap Save. Nothing is saved until you do.
                 </p>
+                {shareCardNote && (
+                  <p className="text-xs text-amber-300/90 mt-1">
+                    Check the card: none of your card names end in {shareCardNote}. Add the last 4 digits to the
+                    card's name so shares pick it.
+                  </p>
+                )}
               </div>
             </div>
             <button

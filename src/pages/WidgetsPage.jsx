@@ -243,6 +243,7 @@ const WidgetsPage = () => {
             <li>Check it and tap Save. Nothing is saved until you do.</li>
           </Steps>
           <p className="text-[11px] text-zinc-500 mt-3">
+            Put the last 4 digits in each card’s name (e.g. “TD Visa 1234”) so a share picks the right card.
             Android can’t share a notification itself. Copy its text and paste it into Quick Add instead; it’s
             filled in the same way. If FinTrack isn’t in the Share list, remove FinTrack from your home screen and
             install it again from Chrome so Android picks up the new share option.

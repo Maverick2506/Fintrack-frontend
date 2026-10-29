@@ -1,5 +1,5 @@
 /* global process */
-import { shareTextToQuickAdd, readSharedQuickAdd, findSharedCard, withoutShareParams } from "./shareTarget.js";
+import { shareTextToQuickAdd, readSharedQuickAdd, findSharedCard, withoutShareParams, isShareParams } from "./shareTarget.js";
 import { parseQuickAddTextParam, restoreLinkList } from "./quickAddLink.js";
 import { parseQuickAdd } from "./quickAddParser.js";
 import { SHARE_TARGET } from "../constants/shareTarget.js";
@@ -124,5 +124,36 @@ assert(
   restoreLinkList(JSON.stringify({ items: [{ text: "23.40 Tim Hortons visa", status: "pending" }], index: 0, sharedFrom: "share" })).sharedFrom === "share",
   "A shared entry is still marked as shared after a reload or re-login"
 );
+
+console.log("\n--- Test 5: review fixes ---");
+// 1. A card payment is a transfer, not spending
+for (const t of [
+  "A payment of $500.00 from CHEQUING was applied to your Mastercard.",
+  "TD: Your payment of $250.00 has been received. Thank you.",
+  "You made a payment of $120.00 to your TD Visa ending 1234",
+]) {
+  assert(shareTextToQuickAdd(t, CARDS) === null, `Card payment isn't filled: "${t.slice(0, 45)}…"`);
+}
+const merchantPayment = shareTextToQuickAdd("Your payment of $8.99 to NETFLIX.COM on your Visa ending 1234 was approved.", CARDS);
+assert(merchantPayment && merchantPayment.line === "8.99 Netflix.com visa", `A payment to a merchant is still spending (got "${merchantPayment?.line}")`);
+// 2. A time before the payee is skipped
+const timed = shareTextToQuickAdd("You spent $5.00 on Oct 28 at 9:14 AM at STARBUCKS with your TD Cash Back Visa.", CARDS);
+assert(timed && timed.line === "5 Starbucks visa", `A time isn't the payee (got "${timed?.line}")`);
+// 3. A balance before the purchase isn't the amount
+const balanced = shareTextToQuickAdd("Your available balance is $1,234.56. You spent $23.40 at LOBLAWS with your Visa ending 1234.", CARDS);
+assert(balanced && balanced.amount === 23.4 && balanced.line === "23.40 Loblaws visa", `The amount spent wins over a balance (got "${balanced?.line}")`);
+const after = shareTextToQuickAdd("You spent $23.40 at LOBLAWS. Available credit: $4,100.00", CARDS);
+assert(after && after.amount === 23.4, `A balance after the purchase is ignored (got ${after?.amount})`);
+// 4. Last 4 digits that no card has: the card is a guess, so the page asks to check it
+const unsure = shareTextToQuickAdd("You spent $9.00 at A&W with your Visa ending 5555", CARDS);
+assert(unsure.cardUnsure === true && unsure.last4 === "5555" && unsure.card.id === "c1", "Unknown last 4: card guessed by name and flagged");
+const sure = shareTextToQuickAdd(SAMPLES[0].text, CARDS);
+assert(sure.cardUnsure === false && sure.last4 === null, "Known last 4: no flag");
+assert(shareTextToQuickAdd("You spent $9.00 at A&W with your Visa", CARDS).cardUnsure === false, "No last 4 in the alert: no flag");
+// 5. Sharing a web page is a share, so it doesn't fill the box as a link
+assert(isShareParams("?title=Example%20page&text=https%3A%2F%2Fexample.com%2Fa") === true, "A page share (title + URL) is a share");
+assert(isShareParams("?text=https%3A%2F%2Fexample.com%2Fa") === true, "A bare URL share is a share");
+assert(readSharedQuickAdd("?title=Example%20page&text=https%3A%2F%2Fexample.com%2Fa", CARDS) === null, "…and isn't read as an alert");
+assert(isShareParams("?text=23.40%20lunch%20visa") === false, "A Quick Add link is not a share");
 
 console.log("\nAll Share to FinTrack tests passed.");
