@@ -22,6 +22,7 @@ const TrashPage = lazy(() => import("./pages/TrashPage"));
 const ImportPage = lazy(() => import("./pages/ImportPage"));
 const ReviewPage = lazy(() => import("./pages/ReviewPage"));
 const RulesPage = lazy(() => import("./pages/RulesPage"));
+const WidgetsPage = lazy(() => import("./pages/WidgetsPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 
 const PageFallback = () => (
@@ -140,6 +141,14 @@ function AppLayout() {
               element={
                 <ProtectedRoute>
                   <RulesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/widgets"
+              element={
+                <ProtectedRoute>
+                  <WidgetsPage />
                 </ProtectedRoute>
               }
             />

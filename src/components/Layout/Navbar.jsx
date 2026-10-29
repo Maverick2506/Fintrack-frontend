@@ -17,6 +17,7 @@ import {
   Upload,
   Inbox,
   Wand2,
+  LayoutGrid,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { logout } from "../../utils/auth";
@@ -61,6 +62,7 @@ const Navbar = () => {
     "/import",
     "/review",
     "/rules",
+    "/widgets",
   ].includes(location.pathname);
 
   const handleLogout = () => {
@@ -261,6 +263,12 @@ const Navbar = () => {
                   label: "Quick Add",
                   icon: Zap,
                   desc: "Natural language transaction entry",
+                },
+                {
+                  to: "/widgets",
+                  label: "Widgets",
+                  icon: LayoutGrid,
+                  desc: "Home-screen widget, shortcut and Share",
                 },
                 {
                   to: "/import",

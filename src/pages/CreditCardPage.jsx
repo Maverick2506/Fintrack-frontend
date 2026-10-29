@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, CreditCard, Wifi, RefreshCw } from "lucide-react";
 import AddCreditCardModal from "../components/Modals/AddCreditCardModal";
 import AddCreditCardPaymentModal from "../components/Modals/AddCreditCardPaymentModal";
@@ -24,6 +25,10 @@ const CreditCardPage = () => {
   const [syncTarget, setSyncTarget] = useState(null);
 
   const [fixingId, setFixingId] = useState(null);
+  // Amount for the Pay dialog when it opens from a shared card payment (/credit-cards?pay=<id>&amount=)
+  const [payAmount, setPayAmount] = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // "Pay statement balance" / "Pay full balance": edits only that scheduled payment
   const handleFixPayment = async (cardId, transactionId, pay) => {
@@ -55,6 +60,22 @@ const CreditCardPage = () => {
     fetchCreditCards();
   }, []);
 
+  // Share → FinTrack sends a card payment here: open that card's Pay dialog with the amount filled in
+  // (never paid until Record is tapped). ?amount= alone just waits for you to pick a card's Pay.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (loading || (!params.has("pay") && !params.has("amount"))) return;
+    const amount = parseFloat(params.get("amount"));
+    const card = cards.find((c) => c.id === params.get("pay"));
+    if (amount > 0) setPayAmount(amount);
+    if (card) {
+      setActiveCardId(card.id);
+      setActiveCard(card);
+      setModals((prev) => ({ ...prev, addPayment: true }));
+    }
+    navigate({ pathname: location.pathname, search: "" }, { replace: true });
+  }, [loading, cards, location.pathname, location.search, navigate]);
+
   const openModal = (type, cardId = null, card = null) => {
     setActiveCardId(cardId);
     if (type === "editCard" || type === "addPayment") setActiveCard(card);
@@ -63,6 +84,7 @@ const CreditCardPage = () => {
 
   const closeModal = (type) => {
     setModals((prev) => ({ ...prev, [type]: false }));
+    if (type === "addPayment") setPayAmount(null);
     setActiveCardId(null);
     if (type === "editCard" || type === "addPayment") setActiveCard(null);
   };
@@ -359,6 +381,7 @@ const CreditCardPage = () => {
         refreshData={fetchCreditCards}
         cardId={activeCardId}
         card={activeCard}
+        initialAmount={payAmount}
       />
       <EditCreditCardModal
         isOpen={modals.editCard}

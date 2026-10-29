@@ -24,7 +24,7 @@ import { parseQuickAdd } from "../utils/quickAddParser";
 import { applyRulesToQuickAdd } from "../utils/csvImport";
 import { buildExampleChips, cleanRecentChips } from "../utils/quickAddExamples";
 import { getTorontoTodayStr } from "../utils/dateUtils";
-import { formatCurrency } from "../utils/formatUtils";
+import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import { getClientRef } from "../utils/pendingSubmission";
 import { shouldQueueSave, queueBadgeText } from "../utils/offlineQueue";
 import { queueQuickAddSave } from "../services/offlineSync";
@@ -37,6 +37,15 @@ import {
   restoreLinkList,
   TEXT_PARAM,
 } from "../utils/quickAddLink";
+import {
+  readSharedQuickAdd,
+  withoutShareParams,
+  shareTextToQuickAdd,
+  isShareParams,
+  findMatchingBill,
+  cardPaymentLink,
+} from "../utils/shareTarget";
+import { SHARE_TARGET } from "../constants/shareTarget";
 
 const RECENT_KEY = "fintrack_recent_quick_add";
 // The link list in progress, so a reload or a re-login mid-list picks up where it left off
@@ -90,34 +99,112 @@ const QuickAddPage = () => {
   // They only fill the input, one at a time; each needs its own Save.
   const [linkItems, setLinkItems] = useState(() => (storedLink ? storedLink.items : []));
   const [linkIndex, setLinkIndex] = useState(() => (storedLink ? storedLink.index : 0));
+  // Set when the entry came from Share -> FinTrack (a bank notification), for the banner's wording
+  const [sharedFrom, setSharedFrom] = useState(() => (storedLink ? storedLink.sharedFrom || null : null));
+  // A shared alert named a credit card that matches none of yours: its last 4 digits, or "" when only
+  // its brand was named. null: nothing to check.
+  const [shareCardNote, setShareCardNote] = useState(null);
+  // A shared payment to a credit card: nothing is filled; it points to Credit Cards → Pay instead
+  const [cardPaymentShare, setCardPaymentShare] = useState(null);
+  // A shared bill payment that matches an unpaid bill: { bill, line } for "Mark <bill> paid?"
+  const [billOffer, setBillOffer] = useState(null);
+  // The share's query and the line made from it, so the card can be filled in once the cards load
+  const sharedSourceRef = useRef(null);
 
   useEffect(() => {
     try {
       if (linkItems.length > 0) {
-        sessionStorage.setItem(LINK_LIST_KEY, JSON.stringify({ items: linkItems, index: linkIndex }));
+        sessionStorage.setItem(LINK_LIST_KEY, JSON.stringify({ items: linkItems, index: linkIndex, sharedFrom }));
       } else {
         sessionStorage.removeItem(LINK_LIST_KEY);
       }
     } catch {
       // Ignore storage errors; the list still works for this page view
     }
-  }, [linkItems, linkIndex]);
+  }, [linkItems, linkIndex, sharedFrom]);
+
+  // A bill payment alert may be the payment of a bill already in FinTrack: offer to mark it paid
+  const offerMatchingBill = (shared) => {
+    setBillOffer(null);
+    if (!shared?.billPayment) return;
+    dashboardService
+      .fetchLedger()
+      .then((page) => {
+        const bill = findMatchingBill(page?.rows || [], shared.payee, shared.amount);
+        if (bill) setBillOffer({ bill, line: shared.line });
+      })
+      .catch((err) => console.error("Could not look for a matching bill:", err));
+  };
+
+  // Fills Quick Add from a shared or pasted alert (never saves). A card payment fills nothing.
+  const applyShared = (shared, search = null) => {
+    pendingRef.current = null;
+    if (shared.kind === "cardPayment") {
+      setCardPaymentShare(shared);
+      setBillOffer(null);
+      setShareCardNote(null);
+      // Cards may not be cached yet on a first share: name the card once they load
+      sharedSourceRef.current = search ? { search, line: null, kind: "cardPayment" } : null;
+      return;
+    }
+    setCardPaymentShare(null);
+    setLinkItems([{ text: shared.line, status: "pending" }]);
+    setLinkIndex(0);
+    setInput(shared.line);
+    setSharedFrom("share");
+    setShareCardNote(shared.cardUnsure ? shared.last4 || "" : null);
+    sharedSourceRef.current = search ? { search, line: shared.line } : null;
+    offerMatchingBill(shared);
+  };
 
   useEffect(() => {
-    if (!new URLSearchParams(location.search).has(TEXT_PARAM)) return;
-    const lines = parseQuickAddTextParam(location.search);
-    if (lines.length > 0) {
+    const params = new URLSearchParams(location.search);
+    if (!params.has(TEXT_PARAM) && !params.has(SHARE_TARGET.params.title)) return;
+    // Share -> FinTrack: a bank notification becomes one Quick Add line (cards from the last visit)
+    const shared = readSharedQuickAdd(location.search, readCached(OFFLINE_CARDS_KEY) || []);
+    // A share that isn't a bank alert (e.g. a web page) fills nothing; only Quick Add links fill line by line
+    const share = Boolean(shared) || isShareParams(location.search);
+    const lines = share ? [] : parseQuickAddTextParam(location.search);
+    if (shared) {
+      applyShared(shared, location.search);
+    } else if (lines.length > 0) {
       setLinkItems(lines.map((text) => ({ text, status: "pending" })));
       setLinkIndex(0);
       setInput(lines[0]);
+      setSharedFrom(null);
+      setShareCardNote(null);
+      setCardPaymentShare(null);
+      setBillOffer(null);
+      sharedSourceRef.current = null;
       pendingRef.current = null;
+    } else if (share) {
+      toast("FinTrack couldn't find an amount in what you shared. Type it in.");
     }
-    // Clear ?text= so a refresh or a shared screenshot of the URL doesn't bring it back
+    // Clear ?text= (and a share's title) so a refresh or a screenshot of the URL doesn't bring it back
     navigate(
-      { pathname: location.pathname, search: withoutTextParam(location.search) },
+      { pathname: location.pathname, search: withoutShareParams(withoutTextParam(location.search)) },
       { replace: true }
     );
+    // applyShared only sets state; it doesn't need to re-run when it changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search, navigate]);
+
+  // A share opened before the cards were ever loaded on this phone: pick the card once they arrive,
+  // unless the line was already edited
+  useEffect(() => {
+    const source = sharedSourceRef.current;
+    if (!source || creditCards.length === 0) return;
+    const next = readSharedQuickAdd(source.search, creditCards);
+    if (next?.kind === "cardPayment" && source.kind === "cardPayment") {
+      if (next.card) setCardPaymentShare((current) => (current && !current.card ? { ...current, card: next.card } : current));
+      return;
+    }
+    if (!next || next.kind === "cardPayment" || source.kind === "cardPayment" || next.line === source.line) return;
+    sharedSourceRef.current = { ...source, line: next.line };
+    setShareCardNote(next.cardUnsure ? next.last4 || "" : null);
+    setInput((current) => (current === source.line ? next.line : current));
+    setLinkItems((items) => items.map((it) => (it.text === source.line && it.status === "pending" ? { ...it, text: next.line } : it)));
+  }, [creditCards]);
 
   useEffect(() => {
     if (!isSubmitting) return undefined;
@@ -191,6 +278,9 @@ const QuickAddPage = () => {
       }
       setLinkItems([]);
       setLinkIndex(0);
+      setSharedFrom(null);
+      setShareCardNote(null);
+      setBillOffer(null);
       setInput("");
     } else {
       setLinkItems(items);
@@ -204,6 +294,9 @@ const QuickAddPage = () => {
     pendingRef.current = null;
     setLinkItems([]);
     setLinkIndex(0);
+    setSharedFrom(null);
+    setShareCardNote(null);
+    setBillOffer(null);
     setInput("");
   };
 
@@ -322,6 +415,27 @@ const QuickAddPage = () => {
     if (inputRef.current) inputRef.current.focus();
   };
 
+  // A pasted bank alert ("You spent $23.40 at TIM HORTONS...") becomes a Quick Add line, like a share.
+  // Anything else pastes as usual.
+  const handlePaste = (e) => {
+    if (input.trim()) return;
+    const shared = shareTextToQuickAdd(e.clipboardData?.getData("text") || "", creditCards);
+    if (!shared) return;
+    e.preventDefault();
+    applyShared(shared);
+  };
+
+  const markOfferedBillPaid = async () => {
+    if (!billOffer) return;
+    try {
+      await dashboardService.markBillAsPaid(billOffer.bill.id, `Marked ${billOffer.bill.name} paid`);
+      setBillOffer(null);
+      stopLink();
+    } catch (err) {
+      console.error("Could not mark the bill paid:", err);
+    }
+  };
+
   const handleChipClick = (chip) => {
     setInput(chip);
     if (inputRef.current) inputRef.current.focus();
@@ -351,6 +465,41 @@ const QuickAddPage = () => {
         </p>
       )}
 
+      {/* A shared payment to a credit card: a transfer, recorded from Credit Cards → Pay, not here */}
+      {cardPaymentShare && (
+        <div className="glass-panel p-4 mb-4 border border-amber-500/25 bg-amber-950/10">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0">
+              <CreditCard size={15} className="text-amber-300 mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-zinc-100">
+                  This looks like a payment to your {cardPaymentShare.card ? cardPaymentShare.card.name : "credit card"}
+                </p>
+                <p className="text-xs text-zinc-400">
+                  Record it from Credit Cards → Pay, so it isn't counted as spending.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCardPaymentShare(null)}
+              aria-label="Dismiss card payment"
+              className="shrink-0 min-h-[40px] min-w-[40px] -mr-2 -mt-2 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(cardPaymentLink(cardPaymentShare, creditCards))}
+            className="btn-primary min-h-10 px-3.5 mt-3"
+          >
+            <CreditCard size={13} />
+            <span>Pay {formatCurrency(cardPaymentShare.amount)}{cardPaymentShare.card ? ` to ${cardPaymentShare.card.name}` : ""}</span>
+          </button>
+        </div>
+      )}
+
       {/* Entries from a Quick Add link: never saved until Save is tapped */}
       {linkItems.length > 0 && (
         <div className="glass-panel p-4 mb-4 border border-sky-500/25 bg-sky-950/10">
@@ -361,18 +510,44 @@ const QuickAddPage = () => {
                 <p className="text-sm font-semibold text-zinc-100">
                   {isLinkList
                     ? `From a link: entry ${linkIndex + 1} of ${linkItems.length}`
+                    : sharedFrom
+                    ? "Filled from what you shared"
                     : "Filled from a link"}
                 </p>
                 <p className="text-xs text-zinc-400">
                   Check it, then tap Save. Nothing is saved until you do.
                 </p>
+                {shareCardNote !== null && (
+                  <p className="text-xs text-amber-300/90 mt-1">
+                    {shareCardNote
+                      ? `Check the card: none of your card names end in ${shareCardNote}. Add the last 4 digits to the card's name so shares pick it.`
+                      : "Check the card: the alert names a card that none of yours match."}
+                  </p>
+                )}
+                {billOffer && input === billOffer.line && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <p className="text-xs text-zinc-300">
+                      This looks like your {billOffer.bill.name} bill ({formatCurrency(billOffer.bill.amount)}, due{" "}
+                      {formatShortDate(billOffer.bill.date)}).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={markOfferedBillPaid}
+                      disabled={isSubmitting}
+                      className="btn-secondary min-h-10 px-3 disabled:opacity-50"
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>Mark {billOffer.bill.name} paid?</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <button
               type="button"
               onClick={stopLink}
               disabled={isSubmitting}
-              aria-label="Dismiss link entries"
+              aria-label={sharedFrom ? "Dismiss shared entry" : "Dismiss link entries"}
               className="shrink-0 min-h-[40px] min-w-[40px] -mr-2 -mt-2 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 disabled:opacity-50"
             >
               <X size={16} />
@@ -428,6 +603,7 @@ const QuickAddPage = () => {
               id="quickInput"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={handlePaste}
               placeholder={`e.g. ${exampleChips[0]}, ${exampleChips[1]}`}
               className="w-full bg-transparent text-base sm:text-lg text-zinc-100 placeholder-zinc-600 focus:outline-none"
               autoComplete="off"
