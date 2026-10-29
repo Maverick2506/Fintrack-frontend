@@ -214,4 +214,30 @@ assert(unknown.cardUnsure === true && unknown.last4 === "9999", '"Visa ending 99
 const noAmex = shareTextToQuickAdd("$30.00 was charged to your Amex at UBER", CARDS.filter((c) => c.id !== "c2"));
 assert(noAmex.cardUnsure === true && noAmex.last4 === null && noAmex.card === null, "A brand on none of the cards shows Check the card");
 
+console.log("\n--- Test 7: re-review 2 nits ---");
+// 1. A payee that shares a word with a card ("Rogers Wireless" / "Rogers Mastercard 4821") isn't a card payment
+const rogers = shareTextToQuickAdd("Your payment to ROGERS WIRELESS of $85.00 was received.", CARDS);
+const rogersParsed = parseQuickAdd(rogers?.line || "", CARDS, TODAY);
+assert(
+  rogers && rogers.kind === "expense" && rogersParsed.amount === 85 && /^Rogers Wireless/.test(rogersParsed.name) && rogersParsed.creditCardId === null,
+  `"payment to ROGERS WIRELESS" is a Checking expense, not a Pay for Rogers Mastercard (got "${rogers?.line}")`
+);
+assert(shareTextToQuickAdd("Your payment of $85.00 to Rogers Mastercard was received.", CARDS).kind === "cardPayment", "…but a payment to the Mastercard is still a card payment");
+assert(shareTextToQuickAdd("Your payment of $85.00 to card 4821 was received.", CARDS).kind === "cardPayment", "…and so is one to a card's last 4 digits");
+// 2. An e-Transfer you received is income, not a card payment
+const etransfer = shareTextToQuickAdd("Payment received: $75.00 from JOHN SMITH via Interac e-Transfer", CARDS);
+const etParsed = parseQuickAdd(etransfer?.line || "", CARDS, TODAY);
+assert(
+  etransfer && etransfer.kind === "income" && etransfer.line === "+75 John Smith" && etParsed.type === "income" && !etransfer.cardUnsure,
+  `A received e-Transfer is income "+75 John Smith" (got "${etransfer?.line}")`
+);
+assert(
+  shareTextToQuickAdd("Interac e-Transfer: You sent $40.00 to JANE DOE", CARDS).kind === "expense",
+  "An e-Transfer you sent is still spending"
+);
+// 3. A card payment shared before the cards are cached names its card once they load (Quick Add re-reads it)
+const paySearch = "?title=Alert&text=" + encodeURIComponent("Payment of $500.00 received on your Visa");
+assert(readSharedQuickAdd(paySearch, []).card === null, "With no cards cached, the card payment names no card yet");
+assert(readSharedQuickAdd(paySearch, CARDS).card.id === "c1", "Re-read with the loaded cards, it names TD Visa");
+
 console.log("\nAll Share to FinTrack tests passed.");

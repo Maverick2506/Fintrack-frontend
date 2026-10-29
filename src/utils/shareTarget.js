@@ -46,7 +46,7 @@ const parseAmount = (text) => {
 
 // Words after the payee that end it: "at TIM HORTONS with your Visa", "at COSTCO on your card"
 const PAYEE_END =
-  "(?=\\s+(?:with|using|on|from|via|for|was|has|is|in\\s+the\\s+amount|approved|declined)\\b|\\s*[.,;!(]\\s|\\s*[.;!]?$|\\s*\\n)";
+  "(?=\\s+(?:of\\s+)?(?:CA)?\\$\\s?\\d|\\s+(?:with|using|on|from|via|for|was|has|is|in\\s+the\\s+amount|approved|declined)\\b|\\s*[.,;!(]\\s|\\s*[.;!]?$|\\s*\\n)";
 const PAYEE_PATTERNS = [
   new RegExp(`\\bmerchant\\s*[:-]\\s*(.+?)${PAYEE_END}`, "i"),
   // "at 9:14 AM" is a time, not a payee, so that "at" is skipped
@@ -103,13 +103,15 @@ const LAST4 = /(?:ending(?:\s+in)?|last\s*(?:4|four)(?:\s*digits)?\s*[:-]?|\*+|\
 const wordsOf = (text) => String(text || "").toLowerCase().split(/[^\p{L}\d]+/u).filter(Boolean);
 
 // The card a notification names: by its last 4 digits (when a card's name has them), else by name words
-export const findSharedCard = (text, cards = []) => {
+export const findSharedCard = (text, cards = [], payee = "") => {
   const last4 = (text.match(LAST4) || [])[1];
   if (last4) {
     const byDigits = cards.find((c) => new RegExp(`(?<!\\d)${last4}(?!\\d)`).test(c.name || ""));
     if (byDigits) return byDigits;
   }
-  const words = new Set(wordsOf(text));
+  // Words of the payee don't pick a card: "ROGERS WIRELESS" isn't "Rogers Mastercard"
+  const payeeWords = new Set(wordsOf(payee));
+  const words = new Set(wordsOf(text).filter((w) => !payeeWords.has(w)));
   let best = null;
   let bestScore = 0;
   for (const card of cards) {
@@ -127,6 +129,9 @@ export const findSharedCard = (text, cards = []) => {
 export const cardWordFor = (card, cards = []) =>
   cardKeywords(card).find((k) => cards.find((c) => cardKeywords(c).includes(k)) === card) || null;
 
+// An Interac e-Transfer coming in: received or deposited (not "you sent")
+const E_TRANSFER_IN =
+  /\b(?:received|deposited|accepted)\b(?:[^.]|\.\d)*?\be-?transfer\b|\be-?transfer\b(?:[^.]|\.\d)*?\b(?:received|deposited|accepted)\b/i;
 const INCOME_WORDS = /\b(?:you\s+received|deposit(?:ed)?\s+(?:of|to)|direct\s+deposit|payroll\s+deposit|has\s+been\s+deposited)\b/i;
 // Debit wording means Primary Checking, even when its last 4 digits look like a card's
 const DEBIT_WORDS = /\b(?:debit|interac|chequing|checking)\b/i;
@@ -155,11 +160,17 @@ const CREDIT_CARD_WORDS = /\b(?:visa|mastercard|amex|american\s+express|credit\s
 
 const isCardPayment = (text, cards) => {
   if (PURCHASE_WORDS.test(text) || /\bbill\s+payment\b/i.test(text)) return false;
+  // Money in by e-Transfer ("Payment received: $75.00 from JOHN SMITH via Interac e-Transfer") isn't a
+  // card payment, unless the alert names a credit card
+  if (E_TRANSFER_IN.test(text) && !CREDIT_CARD_WORDS.test(text)) return false;
   if (CARD_PAYMENT_PATTERNS.some((re) => re.test(text))) return true;
+  // "payment to <card>": a brand word or one of your cards' last 4 digits. A shared name word alone
+  // isn't enough ("payment to ROGERS WIRELESS" isn't a payment to "Rogers Mastercard 4821").
   const to = text.match(PAYMENT_TO);
   if (!to) return false;
-  const words = wordsOf(to[1]);
-  return words.some((w) => cards.some((c) => cardKeywords(c).includes(w))) || CREDIT_CARD_WORDS.test(to[1]);
+  if (CREDIT_CARD_WORDS.test(to[1])) return true;
+  const digits = to[1].match(/(?<!\d)\d{4}(?!\d)/g) || [];
+  return digits.some((d) => cards.some((c) => new RegExp(`(?<!\\d)${d}(?!\\d)`).test(c.name || "")));
 };
 
 const amountText = (amount) => (Number.isInteger(amount) ? String(amount) : amount.toFixed(2));
@@ -188,12 +199,12 @@ export const shareTextToQuickAdd = (sharedText, cards = []) => {
   const billMatch = text.match(BILL_PAYMENT);
   const billPayee = billMatch ? cleanPayee(billMatch[1]) : "";
   const billPayment = Boolean(billPayee);
-  const income = !billPayment && INCOME_WORDS.test(text);
+  const income = !billPayment && (INCOME_WORDS.test(text) || E_TRANSFER_IN.test(text));
   const payee = billPayee || findPayee(text) || (income ? "Deposit" : "");
   if (!payee) return null;
 
   const debit = billPayment || DEBIT_WORDS.test(text);
-  const card = income || debit ? null : findSharedCard(text, cards);
+  const card = income || debit ? null : findSharedCard(text, cards, payee);
   const cardWord = card ? cardWordFor(card, cards) : null;
   // A payee word that names an account would steal the account pick, so say checking when it isn't a card
   const payeeNamesAccount = wordsOf(payee).some((w) => CHECKING_WORDS.test(w) || cards.some((c) => cardKeywords(c).includes(w)));

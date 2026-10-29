@@ -143,7 +143,8 @@ const QuickAddPage = () => {
       setCardPaymentShare(shared);
       setBillOffer(null);
       setShareCardNote(null);
-      sharedSourceRef.current = null;
+      // Cards may not be cached yet on a first share: name the card once they load
+      sharedSourceRef.current = search ? { search, line: null, kind: "cardPayment" } : null;
       return;
     }
     setCardPaymentShare(null);
@@ -194,7 +195,11 @@ const QuickAddPage = () => {
     const source = sharedSourceRef.current;
     if (!source || creditCards.length === 0) return;
     const next = readSharedQuickAdd(source.search, creditCards);
-    if (!next || next.kind === "cardPayment" || next.line === source.line) return;
+    if (next?.kind === "cardPayment" && source.kind === "cardPayment") {
+      if (next.card) setCardPaymentShare((current) => (current && !current.card ? { ...current, card: next.card } : current));
+      return;
+    }
+    if (!next || next.kind === "cardPayment" || source.kind === "cardPayment" || next.line === source.line) return;
     sharedSourceRef.current = { ...source, line: next.line };
     setShareCardNote(next.cardUnsure ? next.last4 || "" : null);
     setInput((current) => (current === source.line ? next.line : current));
