@@ -23,13 +23,18 @@ export const WIDGET_FORMULAS = [
   { field: "card1_balance", label: "Card 1 balance", example: "$1,235" },
   { field: "card1_pct", label: "Card 1 used (bar)", example: "25", bar: true },
   { field: "card1_due", label: "Card 1 due", example: "Nov 10" },
+  { field: "debt1_name", label: "Debt 1 name", example: "Car loan" },
+  { field: "debt1_balance", label: "Debt 1 balance", example: "$7,500" },
+  { field: "debt1_due", label: "Debt 1 due", example: "Nov 15" },
+  { field: "debt1_pct_paid", label: "Debt 1 paid off (bar)", example: "25", bar: true },
   { field: "goal1_name", label: "Goal 1 name", example: "Trip" },
   { field: "goal1_pct", label: "Goal 1 saved (bar)", example: "25", bar: true },
   { field: "as_of", label: "Updated at", example: "Oct 28, 9:14 am" },
 ];
 
-// Bills, cards and goals go up to 3: bill2_title, card3_balance, goal2_pct...
-export const SLOT_NOTE = "Change the 1 to 2 or 3 for the next bill, card or goal (bill2_title, card3_balance, goal2_pct).";
+// Bills, cards, debts and goals go up to 3: bill2_title, card3_balance, debt2_due, goal2_pct...
+export const SLOT_NOTE =
+  "Change the 1 to 2 or 3 for the next bill, card, debt or goal (bill2_title, card3_balance, debt2_due, debt3_pct_paid, goal2_pct).";
 
 // The feed allows 30 downloads an hour, and KWGT shares one download between formulas
 export const SUGGESTED_REFRESH_MINUTES = 30;
