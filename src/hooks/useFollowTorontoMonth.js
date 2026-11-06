@@ -6,7 +6,9 @@ import { followCurrentMonth } from "../utils/dateUtils";
 // selected is the page's "YYYY-MM"; onMove gets the new "YYYY-MM". Returns Toronto's current "YYYY-MM".
 const useFollowTorontoMonth = (selected, onMove) => {
   const currentMonth = useTorontoMonth();
-  const [lastCurrentMonth, setLastCurrentMonth] = useState(currentMonth);
+  // Pages open on the current month, so start from what they opened on: a first render
+  // that straddles midnight still moves on to the new month.
+  const [lastCurrentMonth, setLastCurrentMonth] = useState(selected);
   if (lastCurrentMonth !== currentMonth) {
     setLastCurrentMonth(currentMonth);
     const next = followCurrentMonth(selected, lastCurrentMonth, currentMonth);
