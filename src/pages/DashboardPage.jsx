@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { logout } from "../utils/auth";
-import { getTorontoTodayStr, getTorontoYearMonth } from "../utils/dateUtils";
+import { getTorontoYearMonth, monthKey } from "../utils/dateUtils";
+import useFollowTorontoMonth from "../hooks/useFollowTorontoMonth";
+import { useTorontoToday } from "../hooks/useTorontoMonth";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import UpcomingBills from "../components/Dashboard/UpcomingBills";
@@ -36,9 +38,17 @@ import ExpectedPayModal from "../components/Modals/ExpectedPayModal";
 const DashboardPage = () => {
   const queryClient = useQueryClient();
   // "This month" is Toronto's month, whatever the device's time zone
-  const now = getTorontoYearMonth();
-  const [selectedYear, setSelectedYear] = useState(now.year);
-  const [selectedMonth, setSelectedMonth] = useState(now.month); // 1-12
+  const [selectedYear, setSelectedYear] = useState(() => getTorontoYearMonth().year);
+  const [selectedMonth, setSelectedMonth] = useState(() => getTorontoYearMonth().month); // 1-12
+  const currentMonth = useFollowTorontoMonth(monthKey(selectedYear, selectedMonth), (next) => {
+    const [y, m] = next.split("-").map(Number);
+    setSelectedYear(y);
+    setSelectedMonth(m);
+  });
+  // Re-renders at Toronto midnight, so "overdue" / "next payment" in Upcoming Bills moves on too
+  const torontoToday = useTorontoToday();
+  const [nowYear, nowMonth] = currentMonth.split("-").map(Number);
+  const now = { year: nowYear, month: nowMonth };
 
   const isCurrentMonth =
     selectedYear === now.year && selectedMonth === now.month;
@@ -104,12 +114,12 @@ const DashboardPage = () => {
       const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
       const endStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
       return inMonth(
-        debtPaymentRows(dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary, getTorontoTodayStr()),
+        debtPaymentRows(dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary, torontoToday),
         startStr,
         endStr
       );
     },
-    [dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary, selectedYear, selectedMonth]
+    [dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary, selectedYear, selectedMonth, torontoToday]
   );
 
   const selectedMonthStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;

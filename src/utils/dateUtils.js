@@ -28,6 +28,43 @@ export const getTorontoTodayDate = (now = new Date()) => {
  */
 export const dueDateOnOpen = ({ entered, saved, today }) => entered || saved || today;
 
+/** Toronto's month as "YYYY-MM", whatever the device's time zone. */
+export const getTorontoMonthKey = (now = new Date()) => getTorontoTodayStr(now).slice(0, 7);
+
+/** "YYYY-MM" for a year and a 1-12 month. */
+export const monthKey = (year, month) => `${year}-${String(month).padStart(2, "0")}`;
+
+/**
+ * The month a page should show after Toronto's month changes from lastCurrent to nowCurrent
+ * (all "YYYY-MM"). A page on the old current month moves to the new one; a month the user
+ * picked themselves stays.
+ */
+export const followCurrentMonth = (selected, lastCurrent, nowCurrent) =>
+  selected === lastCurrent ? nowCurrent : selected;
+
+/**
+ * Edit Debt's Next Payment Date field, kept as { value, edited }.
+ * openDueDate: on open, a date typed in this sitting wins, then the saved date, then today.
+ * typeDueDate: the user picked a date.
+ * closeDueDate: closing without saving drops the typed date, so the next open shows the saved one.
+ */
+export const openDueDate = (field, { saved, today }) => ({
+  value: dueDateOnOpen({ entered: field.edited ? field.value : null, saved, today }),
+  edited: field.edited,
+});
+export const typeDueDate = (value) => ({ value, edited: true });
+export const closeDueDate = (field) => ({ ...field, edited: false });
+
+/**
+ * What Edit Debt does to its date field whenever isOpen or the debt changes:
+ * closed -> drop a typed date; open -> openDueDate with the debt's saved date.
+ */
+export const dueDateOnDialogChange = (field, { isOpen, debt, today }) => {
+  if (!isOpen) return closeDueDate(field);
+  if (!debt) return field;
+  return openDueDate(field, { saved: debt.next_due_date || debt.dueDate, today });
+};
+
 /** Adds whole days to a YYYY-MM-DD string. */
 export const addDaysToDateStr = (dateStr, days) => {
   const [y, m, d] = String(dateStr).slice(0, 10).split("-").map(Number);
