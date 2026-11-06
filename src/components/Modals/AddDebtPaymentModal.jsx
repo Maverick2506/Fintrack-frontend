@@ -10,6 +10,7 @@ const AddDebtPaymentModal = ({
   refreshData,
   debtId,
   debt,
+  initialAmount = "",
 }) => {
   const [amount, setAmount] = useState("");
   const [error, setError] = useState(null);
@@ -17,7 +18,7 @@ const AddDebtPaymentModal = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    setAmount("");
+    setAmount(initialAmount || "");
     setError(null);
     setIsSubmitting(false);
 
@@ -26,7 +27,7 @@ const AddDebtPaymentModal = ({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, initialAmount]);
 
   const effectiveDebtId = debtId || debt?.id;
   const debtName = debt?.name || "Debt";

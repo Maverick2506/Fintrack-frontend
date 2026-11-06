@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { formatCurrency } from "../../utils/formatUtils";
+import { mergeUpcoming } from "../../utils/debtPaymentRows";
 import {
   Pencil,
   Trash2,
@@ -9,8 +10,76 @@ import {
   Landmark,
 } from "lucide-react";
 
+const shortDate = (dateStr) =>
+  new Date(dateStr).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+  });
+
+// A debt paid by hand: its next payment (already counted in Safe to Spend) with a Pay button
+const DebtPaymentRow = ({ row, onPay, isSelecting }) => (
+  <li
+    onClick={() => !isSelecting && onPay?.(row)}
+    className={`py-3 flex items-center justify-between gap-2 transition-all duration-200 ${
+      isSelecting ? "opacity-60" : "cursor-pointer hover:bg-white/[0.02] sm:hover:bg-transparent"
+    }`}
+  >
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="w-10 h-10 -ml-2.5 -my-2 flex items-center justify-center shrink-0 text-rose-400/90">
+        <Landmark size={14} />
+      </div>
+      <div className="min-w-0">
+        <span title={row.title} className="text-sm font-medium line-clamp-2 break-words text-zinc-200">
+          {row.title}
+        </span>
+        <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+          <span className="text-xs text-zinc-500 tabular-nums shrink-0">
+            {shortDate(row.overdue && row.dueDate ? row.dueDate : row.date)}
+          </span>
+          {row.overdue ? (
+            <span className="inline-flex items-center whitespace-nowrap text-[10px] font-medium text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded">
+              Overdue
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center whitespace-nowrap text-[10px] font-medium text-zinc-400 bg-white/[0.04] border border-white/10 px-1.5 py-0.5 rounded"
+              title="A debt you pay by hand. Its minimum payment is already counted in Safe to Spend."
+            >
+              Debt
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <div className="flex items-center gap-2 sm:gap-3 shrink-0 pl-2">
+      <span className="text-sm font-medium tabular-nums text-zinc-200">
+        {formatCurrency(row.amount)}
+      </span>
+      {!isSelecting && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPay?.(row);
+          }}
+          title="Log a payment"
+          aria-label={`Pay ${row.title}`}
+          className="inline-flex items-center justify-center gap-1 h-10 min-w-[60px] px-2.5 rounded-lg text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/25 hover:bg-indigo-500/20 transition-colors cursor-pointer"
+        >
+          <Landmark size={13} />
+          <span>Pay</span>
+        </button>
+      )}
+    </div>
+  </li>
+);
+
 const UpcomingBills = ({
   bills,
+  debtPayments = [],
+  onPayDebt,
   onMarkAsPaid,
   onEdit,
   onDelete,
@@ -75,7 +144,7 @@ const UpcomingBills = ({
             Upcoming Bills
           </h2>
           <span className="text-xs font-medium text-zinc-500 tabular-nums">
-            {bills.length} due
+            {bills.length + debtPayments.length} due
           </span>
         </div>
 
@@ -109,9 +178,20 @@ const UpcomingBills = ({
         )}
       </div>
 
-      {bills.length > 0 ? (
+      {bills.length + debtPayments.length > 0 ? (
         <ul className="divide-y divide-white/[0.05]">
-          {bills.map((bill) => {
+          {mergeUpcoming(bills, debtPayments).map((item) => {
+            if (item.kind === "debt") {
+              return (
+                <DebtPaymentRow
+                  key={item.row.key}
+                  row={item.row}
+                  onPay={onPayDebt}
+                  isSelecting={isSelecting}
+                />
+              );
+            }
+            const bill = item.bill;
             const isPaying = paying.has(bill.id);
             const isSelected = selectedIds.has(bill.id);
             return (
@@ -166,11 +246,7 @@ const UpcomingBills = ({
                     </span>
                     <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                       <span className="text-xs text-zinc-500 tabular-nums shrink-0">
-                        {new Date(bill.date).toLocaleDateString("en-US", {
-                          timeZone: "UTC",
-                          month: "short",
-                          day: "numeric",
-                        })}
+                        {shortDate(bill.date)}
                       </span>
                       {bill.fromAccount &&
                       bill.fromAccount.type === "CREDIT_CARD" ? (
