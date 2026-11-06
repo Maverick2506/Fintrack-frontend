@@ -23,10 +23,18 @@ export const debtPaymentRows = (payments, debts, todayStr) =>
     debt: (debts || []).find((d) => d.id === p.debtId) || null,
   }));
 
+/** Rows dated within [startStr, endStr] (the month the Dashboard shows) */
+export const inMonth = (rows, startStr, endStr) =>
+  (rows || []).filter((r) => {
+    const d = String(r.date || "").slice(0, 10);
+    return d >= startStr && d <= endStr;
+  });
+
 /** Amount the Pay dialog opens with: the minimum payment, never more than what's owed. */
 export const debtPayPrefill = (row) => {
-  const owed = Number(row?.debt?.initialBalance ?? row?.balance) || 0;
-  const min = Number(row?.debt?.minimumPayment ?? row?.minimumPayment) || 0;
+  // Same fields the Pay dialog reads, so the prefill never exceeds the balance it checks against
+  const owed = Number(row?.debt?.total_remaining ?? row?.debt?.initialBalance ?? row?.balance) || 0;
+  const min = Number(row?.debt?.monthly_payment ?? row?.debt?.minimumPayment ?? row?.minimumPayment) || 0;
   const amount = owed > 0 ? Math.min(min, owed) : min;
   return amount > 0 ? round2(amount).toFixed(2) : "";
 };
@@ -37,8 +45,8 @@ export const debtPayPrefill = (row) => {
  */
 export const mergeUpcoming = (bills, debtRows) => {
   const items = [
-    ...(bills || []).map((bill) => ({ kind: "bill", date: bill.date || bill.due_date || "", bill })),
-    ...(debtRows || []).map((row) => ({ kind: "debt", date: row.date || "", row })),
+    ...(bills || []).map((bill) => ({ kind: "bill", date: String(bill.date || bill.due_date || "").slice(0, 10), bill })),
+    ...(debtRows || []).map((row) => ({ kind: "debt", date: String(row.date || "").slice(0, 10), row })),
   ];
   const rank = (it) => (it.kind === "debt" && it.row.overdue ? 0 : 1);
   return items

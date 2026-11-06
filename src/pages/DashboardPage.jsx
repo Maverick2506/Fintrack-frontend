@@ -24,7 +24,7 @@ import SyncStatementModal from "../components/Modals/SyncStatementModal";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
-import { debtPaymentRows, debtPayPrefill } from "../utils/debtPaymentRows";
+import { debtPaymentRows, debtPayPrefill, inMonth } from "../utils/debtPaymentRows";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
 import SubscriptionSuggestions from "../components/Dashboard/SubscriptionSuggestions";
@@ -99,8 +99,17 @@ const DashboardPage = () => {
 
   // Next payment of each debt paid by hand (already in Safe to Spend), with a Pay button
   const upcomingDebtPayments = useMemo(
-    () => debtPaymentRows(dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary, getTorontoTodayStr()),
-    [dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary]
+    () => {
+      const startStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-01`;
+      const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+      const endStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      return inMonth(
+        debtPaymentRows(dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary, getTorontoTodayStr()),
+        startStr,
+        endStr
+      );
+    },
+    [dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary, selectedYear, selectedMonth]
   );
 
   const selectedMonthStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
