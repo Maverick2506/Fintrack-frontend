@@ -38,7 +38,7 @@ const UpcomingBills = ({
         await onMarkAsPaid(billId);
       }
     } catch (err) {
-      console.error("Failed to mark bill as paid:", err);
+      if (!err?.cancelled) console.error("Failed to mark bill as paid:", err);
       setPaying((prev) => {
         const next = new Set(prev);
         next.delete(billId);

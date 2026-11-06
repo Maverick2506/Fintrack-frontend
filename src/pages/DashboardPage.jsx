@@ -26,6 +26,11 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
+import SubscriptionSuggestions from "../components/Dashboard/SubscriptionSuggestions";
+import usePayFromFund from "../hooks/usePayFromFund";
+import { billPaidToast } from "../utils/planningAlerts";
+import NextPayLine from "../components/Dashboard/NextPayLine";
+import ExpectedPayModal from "../components/Modals/ExpectedPayModal";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
@@ -72,7 +77,11 @@ const DashboardPage = () => {
       dashboardService.fetchDashboard(selectedYear, selectedMonth),
   });
 
-  const spendingData = useMemo(() => dashboardData?.spendingSummary || [], [dashboardData?.spendingSummary]);
+  // A category that only holds refunds nets below zero: it lowers total spending but has no slice or budget row
+  const spendingData = useMemo(
+    () => (dashboardData?.spendingSummary || []).filter((c) => c.value > 0),
+    [dashboardData?.spendingSummary]
+  );
   const loading = dashboardLoading;
 
   const upcomingBills = useMemo(() => {
@@ -170,6 +179,7 @@ const DashboardPage = () => {
     toEdit: null,
   });
   const [syncingChecking, setSyncingChecking] = useState(false);
+  const [editingExpectedPay, setEditingExpectedPay] = useState(false);
   const [advice, setAdvice] = useState(
     () => localStorage.getItem("fintrack_advice") || ""
   );
@@ -222,11 +232,12 @@ const DashboardPage = () => {
   };
 
   const markAsPaidMutation = useMutation({
-    mutationFn: (billId) => dashboardService.markBillAsPaid(billId),
+    mutationFn: ({ billId, options }) => dashboardService.markBillAsPaid(billId, billPaidToast, options),
     onSuccess: () => {
       invalidateDashboard();
     },
   });
+  const { askPayFrom, dialog: payFromFundDialog } = usePayFromFund();
 
   const deleteBillMutation = useMutation({
     mutationFn: (billId) => dashboardService.deleteBill(billId),
@@ -244,8 +255,16 @@ const DashboardPage = () => {
     },
   });
 
-  const handleMarkAsPaid = (billId) => {
-    return markAsPaidMutation.mutateAsync(billId);
+  // A bill a savings goal saves for asks "Pay from <fund>" first (a card payment, "Use $X from <fund>");
+  // cancelling leaves it unpaid
+  const handleMarkAsPaid = async (billId) => {
+    const choice = await askPayFrom(upcomingBills.find((b) => b.id === billId));
+    if (!choice) {
+      const cancelled = new Error("Cancelled");
+      cancelled.cancelled = true;
+      throw cancelled;
+    }
+    return markAsPaidMutation.mutateAsync({ billId, options: choice });
   };
 
   const handleDeleteConfirm = () => {
@@ -401,6 +420,7 @@ const DashboardPage = () => {
                 Low {formatCurrency(forecastLowestBalance, { maximumFractionDigits: 0 })} · {formatShortDate(forecast?.lowestPoint?.date)}
               </div>
             </div>
+            <NextPayLine forecast={forecast} onOpen={() => setEditingExpectedPay(true)} />
           </div>
 
           {/* 2x2 Compact Metric Grid (~70px cards) */}
@@ -487,6 +507,7 @@ const DashboardPage = () => {
                   ? `until ${formatShortDate(forecast.nextPayday)} (${isNextPaydayEstimated ? "est. payday" : "payday"})`
                   : "for next 60 days"}
               </p>
+              <NextPayLine forecast={forecast} onOpen={() => setEditingExpectedPay(true)} />
             </div>
 
             <div className="mt-2.5 pt-2 border-t border-white/[0.06] text-[11px] text-zinc-500 truncate">
@@ -594,6 +615,7 @@ const DashboardPage = () => {
 
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 flex flex-col gap-6">
+            <SubscriptionSuggestions />
             <MonthlySummary summary={monthlySummary} monthLabel={MONTH_NAMES[selectedMonth - 1]} />
             <UpcomingBills
               bills={upcomingBills}
@@ -754,6 +776,7 @@ const DashboardPage = () => {
         isOpen={modals.geminiModal}
         onClose={() => closeModal("geminiModal")}
       />
+      {editingExpectedPay && <ExpectedPayModal onClose={() => setEditingExpectedPay(false)} />}
       {syncingChecking && dashboardData?.checkingAccount?.id && (
         <SyncStatementModal
           account={{
@@ -766,6 +789,7 @@ const DashboardPage = () => {
           onSynced={invalidateDashboard}
         />
       )}
+      {payFromFundDialog}
     </div>
   );
 };

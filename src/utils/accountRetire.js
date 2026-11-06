@@ -180,7 +180,7 @@ export const getLedgerAccountText = (row) => {
 };
 
 /**
- * True when a Ledger row matches the search text: its name, category or either account. Checking
+ * True when a Ledger row matches the search text: its name, category, either account, notes or tags. Checking
  * counts even when the row names only the other side ("To Amex"), so "checking" finds payments.
  */
 export const ledgerRowMatchesSearch = (row, query) => {
@@ -190,7 +190,16 @@ export const ledgerRowMatchesSearch = (row, query) => {
     ledgerSide(row?.fromAccount, row?.fromAccountType, row?.fromAccountArchived),
     ledgerSide(row?.toAccount, row?.toAccountType, row?.toAccountArchived),
   ];
-  const texts = [row?.name, row?.category, row?.fromAccount, row?.toAccount, getLedgerAccountText(row)];
+  const tags = Array.isArray(row?.tags) ? row.tags : [];
+  const texts = [
+    row?.name,
+    row?.category,
+    row?.fromAccount,
+    row?.toAccount,
+    getLedgerAccountText(row),
+    row?.notes,
+    ...tags.map((tag) => `#${tag}`),
+  ];
   return [...texts, ...sides.map((side) => side?.name)].some(
     (text) => text && String(text).toLowerCase().includes(q)
   );

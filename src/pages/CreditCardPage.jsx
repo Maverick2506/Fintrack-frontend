@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, CreditCard, Wifi, RefreshCw } from "lucide-react";
 import AddCreditCardModal from "../components/Modals/AddCreditCardModal";
 import AddCreditCardPaymentModal from "../components/Modals/AddCreditCardPaymentModal";
@@ -7,6 +8,8 @@ import RetireAccountModal from "../components/Modals/RetireAccountModal";
 import SyncStatementModal from "../components/Modals/SyncStatementModal";
 import dashboardService from "../services/dashboardService";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
+import { statementLines, scheduledPaymentLines } from "../utils/planningAlerts";
+import { getTorontoTodayStr } from "../utils/dateUtils";
 
 const CreditCardPage = () => {
   const [cards, setCards] = useState([]);
@@ -20,6 +23,26 @@ const CreditCardPage = () => {
   const [activeCard, setActiveCard] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [syncTarget, setSyncTarget] = useState(null);
+
+  const [fixingId, setFixingId] = useState(null);
+  // Amount for the Pay dialog when it opens from a shared card payment (/credit-cards?pay=<id>&amount=)
+  const [payAmount, setPayAmount] = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // "Pay statement balance" / "Pay full balance": edits only that scheduled payment
+  const handleFixPayment = async (cardId, transactionId, pay) => {
+    setFixingId(cardId);
+    try {
+      await dashboardService.setScheduledCardPayment(cardId, transactionId, pay);
+      await fetchCreditCards();
+    } catch (err) {
+      // handleRequest already showed the error toast
+      console.error("Failed to change the scheduled payment:", err);
+    } finally {
+      setFixingId(null);
+    }
+  };
 
   const fetchCreditCards = async () => {
     setLoading(true);
@@ -37,6 +60,22 @@ const CreditCardPage = () => {
     fetchCreditCards();
   }, []);
 
+  // Share → FinTrack sends a card payment here: open that card's Pay dialog with the amount filled in
+  // (never paid until Record is tapped). ?amount= alone just waits for you to pick a card's Pay.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (loading || (!params.has("pay") && !params.has("amount"))) return;
+    const amount = parseFloat(params.get("amount"));
+    const card = cards.find((c) => c.id === params.get("pay"));
+    if (amount > 0) setPayAmount(amount);
+    if (card) {
+      setActiveCardId(card.id);
+      setActiveCard(card);
+      setModals((prev) => ({ ...prev, addPayment: true }));
+    }
+    navigate({ pathname: location.pathname, search: "" }, { replace: true });
+  }, [loading, cards, location.pathname, location.search, navigate]);
+
   const openModal = (type, cardId = null, card = null) => {
     setActiveCardId(cardId);
     if (type === "editCard" || type === "addPayment") setActiveCard(card);
@@ -45,6 +84,7 @@ const CreditCardPage = () => {
 
   const closeModal = (type) => {
     setModals((prev) => ({ ...prev, [type]: false }));
+    if (type === "addPayment") setPayAmount(null);
     setActiveCardId(null);
     if (type === "editCard" || type === "addPayment") setActiveCard(null);
   };
@@ -156,6 +196,10 @@ const CreditCardPage = () => {
             const limit = parseFloat(card.creditLimit) || 0;
             const available = Math.max(0, limit - balance);
             const utilization = limit > 0 ? (balance / limit) * 100 : 0;
+            const lines = statementLines(card.statement, getTorontoTodayStr());
+            const payment = scheduledPaymentLines(card.statement);
+            // With a statement day, the due date is the statement's (the next one once this one is paid)
+            const dueDate = lines ? lines.dueDate : card.dueDate;
             const barColor =
               utilization > 70
                 ? "bg-rose-400"
@@ -183,9 +227,9 @@ const CreditCardPage = () => {
                         <h2 className="text-sm font-semibold text-zinc-100 tracking-tight">
                           {card.name}
                         </h2>
-                        <p className="text-[11px] text-zinc-500">
-                          {card.dueDate
-                            ? `Due ${new Date(card.dueDate).toLocaleDateString(
+                        <p className={`text-[11px] ${lines?.overdue ? "text-amber-400" : "text-zinc-500"}`}>
+                          {dueDate
+                            ? `${lines?.overdue ? "Overdue since" : "Due"} ${new Date(dueDate).toLocaleDateString(
                                 "en-US",
                                 {
                                   timeZone: "UTC",
@@ -238,6 +282,48 @@ const CreditCardPage = () => {
                         of ${limit.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </span>
                     </div>
+                    {lines && (
+                      <dl className="mt-3 space-y-1.5 text-xs">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className={`min-w-0 ${lines.overdue ? "text-amber-400" : "text-zinc-400"}`}>
+                            {lines.balanceLabel}
+                          </dt>
+                          <dd
+                            className={`tabular-nums font-medium shrink-0 ${
+                              lines.paid ? "text-emerald-400" : lines.overdue ? "text-amber-400" : "text-zinc-100"
+                            }`}
+                          >
+                            {lines.balance}
+                          </dd>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-zinc-500 min-w-0">{lines.chargesLabel}</dt>
+                          <dd className="tabular-nums text-zinc-300 shrink-0">{lines.charges}</dd>
+                        </div>
+                      </dl>
+                    )}
+                    {/* A scheduled payment above the statement: what the rest pays, and a warning above what's owed */}
+                    {payment?.explanation && (
+                      <p className="mt-2 text-[11px] text-zinc-400 tabular-nums">{payment.explanation}</p>
+                    )}
+                    {payment?.warning && (
+                      <div className="mt-2 rounded-xl bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs">
+                        <p className="text-amber-300 font-medium tabular-nums">{payment.warning}</p>
+                        <div className="mt-2 flex flex-col min-[420px]:flex-row gap-2">
+                          {payment.fixes.map((fix) => (
+                            <button
+                              key={fix.pay}
+                              type="button"
+                              onClick={() => handleFixPayment(card.id, payment.paymentId, fix.pay)}
+                              disabled={fixingId === card.id}
+                              className="btn-secondary min-h-10 justify-center tabular-nums disabled:opacity-50"
+                            >
+                              {fix.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -295,6 +381,7 @@ const CreditCardPage = () => {
         refreshData={fetchCreditCards}
         cardId={activeCardId}
         card={activeCard}
+        initialAmount={payAmount}
       />
       <EditCreditCardModal
         isOpen={modals.editCard}

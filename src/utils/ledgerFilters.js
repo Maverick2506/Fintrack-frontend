@@ -26,7 +26,7 @@ export const monthOptionLabel = (ym) => formatMonthYear(`${ym}-01`);
  * Removable chips for the filters in use, in the order they show under the search row.
  * The sort only gets a chip when it is not the default (newest first).
  */
-export const getActiveFilterChips = ({ typeFilter, categoryFilter, monthFilter, sortKey, sortDir }) => {
+export const getActiveFilterChips = ({ typeFilter, categoryFilter, monthFilter, tagFilter, sortKey, sortDir }) => {
   const chips = [];
   if (typeFilter && typeFilter !== "all") {
     const type = TYPE_OPTIONS.find(([value]) => value === typeFilter);
@@ -34,6 +34,7 @@ export const getActiveFilterChips = ({ typeFilter, categoryFilter, monthFilter, 
   }
   if (categoryFilter && categoryFilter !== "all") chips.push({ id: "category", label: categoryFilter });
   if (monthFilter && monthFilter !== "all") chips.push({ id: "month", label: monthOptionLabel(monthFilter) });
+  if (tagFilter && tagFilter !== "all") chips.push({ id: "tag", label: `#${tagFilter}` });
   if (sortKey && (sortKey !== DEFAULT_SORT.key || sortDir !== DEFAULT_SORT.dir)) {
     const sort = SORT_OPTIONS.find((o) => o.key === sortKey && o.dir === sortDir);
     chips.push({ id: "sort", label: sort ? sort.label : `Sort: ${sortKey}` });

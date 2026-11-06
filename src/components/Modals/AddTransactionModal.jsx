@@ -42,6 +42,9 @@ import {
   SERIES_END_FALLBACK_MESSAGE,
 } from "../../utils/undoDelete";
 import { getTorontoTodayStr, addDaysToDateStr } from "../../utils/dateUtils";
+import NotesTagsField from "./NotesTagsField";
+import ReceiptScanButton from "../Common/ReceiptScanButton";
+import { receiptFormFields, receiptDraftSummary, receiptDraftGaps } from "../../utils/receiptDraft";
 
 const CATEGORY_CONFIG = [
   { name: "Essentials", icon: Home },
@@ -83,7 +86,7 @@ const AddTransactionModal = ({
   const [manualPaidOverride, setManualPaidOverride] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [hasManuallySelectedCategory, setHasManuallySelectedCategory] = useState(false);
-  const [suggestedSource, setSuggestedSource] = useState(null); // "history" | "ai" | null
+  const [suggestedSource, setSuggestedSource] = useState(null); // "rule" | "history" | "ai" | null
   const [recurrence, setRecurrence] = useState("none");
   const [selectedCard, setSelectedCard] = useState("");
   const [selectedTargetAccount, setSelectedTargetAccount] = useState("");
@@ -92,12 +95,21 @@ const AddTransactionModal = ({
   const [openDropdown, setOpenDropdown] = useState(null); // "payment" | "schedule" | "paydown" | null
   const [alreadyInCardBalance, setAlreadyInCardBalance] = useState(false);
   const [manualAlreadyInBalanceOverride, setManualAlreadyInBalanceOverride] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [tags, setTags] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // The receipt the camera read into this form (AI5); shown as a line to check before saving
+  const [receiptDraft, setReceiptDraft] = useState(null);
   const isEditing = !!existingTransaction;
+  // A row opened from a list that didn't load its notes and tags leaves them alone, so a save can't wipe them
+  const notesTagsLoaded =
+    !isEditing || existingTransaction.tags !== undefined || existingTransaction.notes !== undefined;
   // Keeps the same clientRef when the same new transaction is retried (e.g. after a timeout
   // during a cold start), so the server returns the save that already landed instead of a duplicate
   const pendingRef = useRef(null);
+  // Set once the user picks how it was paid, so a rule's card no longer replaces their choice
+  const cardPickedRef = useRef(false);
 
   const { data: creditCards = [] } = useQuery({
     queryKey: ["creditCards"],
@@ -120,11 +132,13 @@ const AddTransactionModal = ({
   useEffect(() => {
     if (isOpen) {
       pendingRef.current = null;
+      cardPickedRef.current = false;
       setOpenDropdown(null);
       setManualPaidOverride(false);
       setManualAlreadyInBalanceOverride(false);
       setAlreadyInCardBalance(false);
       setError(null);
+      setReceiptDraft(null);
       if (isEditing) {
         setName(existingTransaction.name || existingTransaction.title || "");
         const isInc =
@@ -141,7 +155,8 @@ const AddTransactionModal = ({
           existingTransaction.baseAmount !== undefined
             ? existingTransaction.baseAmount
             : existingTransaction.amount;
-        setAmount(initialAmount);
+        // A refund is stored as negative spending; the form edits its size and the server keeps the sign
+        setAmount(parseFloat(initialAmount) < 0 ? String(Math.abs(parseFloat(initialAmount))) : initialAmount);
         setCategory(existingTransaction.category || "Other");
         setHasManuallySelectedCategory(true);
         setSuggestedSource(null);
@@ -167,6 +182,8 @@ const AddTransactionModal = ({
             ? String(existingTransaction.taxRate)
             : "13"
         );
+        setNotes(existingTransaction.notes || "");
+        setTags(Array.isArray(existingTransaction.tags) ? existingTransaction.tags : []);
         setSelectedCard(existingTransaction.creditCardId || "");
         setSelectedTargetAccount(
           existingTransaction.targetAccountId ||
@@ -188,6 +205,8 @@ const AddTransactionModal = ({
         setSelectedCard("");
         setSelectedTargetAccount("");
         setType("expense");
+        setNotes("");
+        setTags([]);
       }
     }
   }, [existingTransaction, isOpen, isEditing, todayStr]);
@@ -255,6 +274,16 @@ const AddTransactionModal = ({
         ) {
           setCategory(res.category);
           setSuggestedSource(res.source || "ai");
+          // A rule can also say which card pays for it
+          if (
+            res.source === "rule" &&
+            res.accountId &&
+            !cardPickedRef.current &&
+            !selectedTargetAccount &&
+            creditCards.some((c) => c.id === res.accountId)
+          ) {
+            setSelectedCard(res.accountId);
+          }
         }
       } catch (err) {
         console.error("Debounced categorize error:", err);
@@ -267,7 +296,36 @@ const AddTransactionModal = ({
       isMounted = false;
       clearTimeout(timer);
     };
+    // creditCards and selectedTargetAccount are read when the suggestion lands, not reasons to ask again
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, type, isOpen, isEditing, hasManuallySelectedCategory]);
+
+  // A receipt photo fills the form; nothing is saved until Save. Your rules already chose the category
+  // on the server when one matches the store; otherwise it is Gemini's.
+  const handleReceiptDraft = (draft) => {
+    const fields = receiptFormFields(draft, todayStr);
+    pendingRef.current = null;
+    setType("expense");
+    if (fields.amount) setAmount(fields.amount);
+    if (fields.name) setName(fields.name);
+    handleDueDateChange(fields.date);
+    if (fields.category) {
+      setCategory(fields.category);
+      setHasManuallySelectedCategory(true);
+      setSuggestedSource(draft.categorySource === "rule" ? "rule" : "ai");
+    }
+    if (
+      draft.accountId &&
+      !cardPickedRef.current &&
+      !selectedTargetAccount &&
+      creditCards.some((c) => c.id === draft.accountId)
+    ) {
+      setSelectedCard(draft.accountId);
+    }
+    setReceiptDraft(draft);
+    const gaps = receiptDraftGaps(draft);
+    if (gaps.length > 0) toast(`Check the ${gaps.join(" and ")}: the receipt didn't show ${gaps.length === 1 ? "it" : "them"} clearly.`);
+  };
 
   const handleSuggestCategory = async () => {
     if (!name) return;
@@ -394,6 +452,7 @@ const AddTransactionModal = ({
             ...(showCardBalanceToggle && !alreadyInCardBalance
               ? { applyToBalance: true }
               : {}),
+            ...(notesTagsLoaded ? { notes: notes.trim() || null, tags } : {}),
           }
         : {
             id: existingTransaction?.id,
@@ -402,6 +461,7 @@ const AddTransactionModal = ({
             payment_date: paymentDate,
             category: "Income",
             recurrence,
+            ...(notesTagsLoaded ? { notes: notes.trim() || null, tags } : {}),
           };
 
       // Setting a recurring row to One-time can end its series (B3, R4): the backend then removes the
@@ -530,6 +590,15 @@ const AddTransactionModal = ({
               </div>
             )}
 
+            {!isEditing && (
+              <ReceiptScanButton
+                onDraft={handleReceiptDraft}
+                disabled={isSubmitting}
+                label="Receipt"
+                className="px-2"
+              />
+            )}
+
             <button
               type="button"
               onClick={onClose}
@@ -590,6 +659,14 @@ const AddTransactionModal = ({
                 }`}
               />
             </div>
+            {receiptDraft && (
+              <p className="text-[11px] text-sky-300/90 mt-1 break-words">
+                {receiptDraftSummary(receiptDraft)}. Check it, then save.
+              </p>
+            )}
+            {type === "expense" && parseFloat(existingTransaction?.amount) < 0 && (
+              <p className="text-[11px] text-emerald-300/90 mt-1">Refund: lowers this category's spending by this amount</p>
+            )}
 
             <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
               <input
@@ -636,6 +713,11 @@ const AddTransactionModal = ({
                     <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                       Category
                     </span>
+                    {suggestedSource === "rule" && (
+                      <span className="text-[10px] text-violet-300 bg-violet-500/10 px-1.5 py-0.5 rounded border border-violet-500/20 font-medium">
+                        From your rule
+                      </span>
+                    )}
                     {suggestedSource === "history" && (
                       <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-medium">
                         Matched from history
@@ -989,6 +1071,7 @@ const AddTransactionModal = ({
                       <button
                         type="button"
                         onClick={() => {
+                          cardPickedRef.current = true;
                           setSelectedCard("");
                           setOpenDropdown(null);
                         }}
@@ -1027,6 +1110,7 @@ const AddTransactionModal = ({
                               key={card.id}
                               type="button"
                               onClick={() => {
+                                cardPickedRef.current = true;
                                 setSelectedCard(card.id);
                                 setOpenDropdown(null);
                                 if (!manualAlreadyInBalanceOverride && dueDate < todayStr) {
@@ -1303,6 +1387,10 @@ const AddTransactionModal = ({
                 )}
               </div>
             </div>
+          )}
+
+          {notesTagsLoaded && (
+            <NotesTagsField notes={notes} onNotesChange={setNotes} tags={tags} onTagsChange={setTags} />
           )}
 
           {/* Action Footer: Delete, and End series for a row of a recurring series */}

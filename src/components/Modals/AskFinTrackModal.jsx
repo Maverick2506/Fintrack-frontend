@@ -84,6 +84,11 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState(() => loadAskHistory(window.sessionStorage));
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  // The answer as it streams in (AI6), and what the server is doing before the first words
+  const [streamText, setStreamText] = useState("");
+  const [streamStatus, setStreamStatus] = useState("");
+  // Aborted when the panel closes, so the server stops working on an answer nobody will see
+  const abortRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const [capDraft, setCapDraft] = useState(null);
@@ -110,8 +115,13 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
   }, [messages]);
 
   useEffect(() => {
+    if (!isOpen) abortRef.current?.abort();
+  }, [isOpen]);
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  useEffect(() => {
     if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, isOpen]);
+  }, [messages, isLoading, isOpen, streamText]);
 
   if (!isOpen) return null;
 
@@ -126,6 +136,8 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
     setMessages(newHistory);
     setInput("");
     setIsLoading(true);
+    setStreamText("");
+    setStreamStatus("");
 
     try {
       // Resilient history slicing: drop error bubbles, take last 8, cap at 4000 chars (C1)
@@ -134,7 +146,13 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
         .slice(-8)
         .map((m) => ({ role: m.role, text: m.text.slice(0, 4000) }));
 
-      const res = await dashboardService.chatAdvisor(textToSend, apiHistory);
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const res = await dashboardService.chatAdvisorStream(textToSend, apiHistory, {
+        onText: setStreamText,
+        onStatus: setStreamStatus,
+        signal: controller.signal,
+      });
       const replyText = res?.reply || "I didn't receive a response. Please try again.";
       // Drafted transactions: shown as cards that open Quick Add; the chat never saves anything
       const proposals = cleanProposals(res?.proposals);
@@ -144,6 +162,11 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
         { role: "model", text: replyText, ...(proposals.length ? { proposals } : {}) },
       ]);
     } catch (err) {
+      if (abortRef.current?.signal.aborted) {
+        // Closed mid-answer: keep the question, say it stopped
+        setMessages((prev) => [...prev, { role: "model", text: "Stopped when the panel closed. Ask again for an answer.", isError: true }]);
+        return;
+      }
       const errMsg =
         err.response?.data?.error ||
         "Failed to reach AI financial advisor. Please check your connection and try again.";
@@ -157,6 +180,8 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
       ]);
     } finally {
       setIsLoading(false);
+      setStreamText("");
+      setStreamStatus("");
       queryClient.invalidateQueries({ queryKey: AI_USAGE_KEY });
     }
   };
@@ -326,10 +351,20 @@ const AskFinTrackModal = ({ isOpen, onClose }) => {
             ))
           )}
 
-          {isLoading && (
+          {isLoading && streamText && (
+            <div className="flex flex-col items-start" aria-live="polite">
+              <div className="max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed bg-zinc-900/90 border border-white/[0.06] text-zinc-200 rounded-bl-none shadow-sm">
+                {renderMarkdown(streamText)}
+                <span className="inline-block w-1.5 h-3 ml-0.5 align-middle bg-emerald-400/80 animate-pulse" aria-hidden="true" />
+              </div>
+              <span className="text-[10px] text-zinc-600 mt-1 px-1">FinTrack Advisor</span>
+            </div>
+          )}
+
+          {isLoading && !streamText && (
             <div className="flex items-center gap-2 text-xs text-zinc-400 p-3 bg-zinc-900/50 rounded-xl border border-white/[0.04] animate-pulse">
               <Loader2 size={14} className="animate-spin text-emerald-400" />
-              <span>Analyzing live cashflow & running mathematical simulation...</span>
+              <span>{streamStatus || "Analyzing live cashflow & running mathematical simulation..."}</span>
             </div>
           )}
 

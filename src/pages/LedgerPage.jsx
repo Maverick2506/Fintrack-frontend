@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -18,6 +18,10 @@ import {
   PiggyBank,
   Wallet,
   CircleStop,
+  Upload,
+  Inbox,
+  StickyNote,
+  Download,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
@@ -35,7 +39,18 @@ import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToas
 import useMediaQuery from "../hooks/useMediaQuery";
 import useEscapeClose from "../hooks/useEscapeClose";
 import { getLedgerAccountLine, ledgerRowMatchesSearch } from "../utils/accountRetire";
+import { collectTags, matchesTag, tagsOf } from "../utils/transactionTags";
+import { ledgerExportQuery, exportFileName } from "../utils/ledgerExport";
+import {
+  ledgerFetchParams,
+  olderWindowFrom,
+  ledgerWindowNote,
+  ledgerMonthOptions,
+  windowFromForMonth,
+} from "../utils/ledgerPaging";
 import { getTorontoTodayStr } from "../utils/dateUtils";
+import usePayFromFund from "../hooks/usePayFromFund";
+import { billPaidToast, bulkPayOptions } from "../utils/planningAlerts";
 import {
   groupLedgerRows,
   summarizeLedgerGroup,
@@ -86,15 +101,29 @@ const AccountName = ({ side, className = "min-w-0" }) => {
 
 const LedgerPage = () => {
   const [rows, setRows] = useState([]);
+  // The page loaded (R5): the oldest day, whether older rows exist, and the rows still waiting in
+  // Review new across all history (the header's count)
+  const [windowFrom, setWindowFrom] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  // A search runs on the server across all history; its rows replace the page while it is on
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchRows, setSearchRows] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const debouncedSearchRef = useRef("");
+  debouncedSearchRef.current = debouncedSearch;
   const [sortKey, setSortKey] = useState(DEFAULT_SORT.key);
   const [sortDir, setSortDir] = useState(DEFAULT_SORT.dir);
   const [typeFilter, setTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
@@ -104,6 +133,7 @@ const LedgerPage = () => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [lastClickedIndex, setLastClickedIndex] = useState(null);
+  const { askPayFrom, defaultPayFrom, dialog: payFromFundDialog } = usePayFromFund();
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isBulkMarking, setIsBulkMarking] = useState(false);
 
@@ -114,12 +144,23 @@ const LedgerPage = () => {
   // From 1024 px the filters sit inline; below that they live in the Filter sheet
   const isWide = useMediaQuery("(min-width: 1024px)");
 
+  const applyPage = useCallback((data) => {
+    setRows(data.rows || []);
+    setWindowFrom(data.from || null);
+    setHasMore(Boolean(data.hasMore));
+    setReviewCount(data.reviewCount || 0);
+  }, []);
+
+  // The window only grows with "Load older", so a reload keeps the rows already loaded
+  const windowFromRef = useRef(null);
+  windowFromRef.current = windowFrom;
+
   const loadLedger = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await dashboardService.fetchLedger();
-      setRows(data);
+      const data = await dashboardService.fetchLedger(ledgerFetchParams({ windowFrom: windowFromRef.current }));
+      applyPage(data);
       setSelectedIds(new Set());
       setLastClickedIndex(null);
     } catch (err) {
@@ -132,19 +173,71 @@ const LedgerPage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyPage]);
 
   useEffect(() => {
     loadLedger();
   }, [loadLedger]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const searchSeq = useRef(0);
+  const runSearch = useCallback((q, { quiet = false } = {}) => {
+    const seq = ++searchSeq.current;
+    if (!q) {
+      setSearchRows(null);
+      setIsSearching(false);
+      return;
+    }
+    if (!quiet) setIsSearching(true);
+    dashboardService
+      .fetchLedger(ledgerFetchParams({ search: q }))
+      .then((data) => {
+        if (seq === searchSeq.current) setSearchRows(data.rows || []);
+      })
+      .catch((err) => console.error("Ledger search failed:", err))
+      .finally(() => {
+        if (seq === searchSeq.current) setIsSearching(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    runSearch(debouncedSearch);
+  }, [debouncedSearch, runSearch]);
+
   // Re-reads the ledger without the loading screen, e.g. after marking a row paid
   const refreshRowsQuietly = useCallback(() => {
     dashboardService
-      .fetchLedger()
-      .then(setRows)
+      .fetchLedger(ledgerFetchParams({ windowFrom: windowFromRef.current }))
+      .then(applyPage)
       .catch((err) => console.error("Failed to refresh ledger:", err));
+    runSearch(debouncedSearchRef.current, { quiet: true });
+  }, [applyPage, runSearch]);
+
+  // A change to rows on screen (paid, deleted) goes to the page and to the search results alike
+  const updateRows = useCallback((fn) => {
+    setRows(fn);
+    setSearchRows((prev) => (prev ? fn(prev) : prev));
   }, []);
+
+  // "Load older": 3 more months (or back to a picked month), read as one page so sorting still covers
+  // everything loaded
+  const loadOlder = async (target) => {
+    if (!windowFrom || isLoadingOlder) return;
+    setIsLoadingOlder(true);
+    try {
+      const from = typeof target === "string" ? target : olderWindowFrom(windowFrom);
+      applyPage(await dashboardService.fetchLedger(ledgerFetchParams({ windowFrom: from })));
+    } catch (err) {
+      console.error("Failed to load older rows:", err);
+      toast.error("Couldn't load older transactions. Try again.");
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  };
 
   // Undo (toast) or Trash restores rows: show them again
   useEffect(() => {
@@ -166,12 +259,16 @@ const LedgerPage = () => {
 
   const handleMarkPaid = async (row) => {
     setSwipeOpen(null);
+    // A bill a savings goal saves for asks "Pay from <fund>" first; cancelling leaves it unpaid
+    const choice = await askPayFrom(row);
+    if (!choice) return;
     try {
       await dashboardService.markBillAsPaid(
         row.id,
-        row.type === "income" ? "Marked as received!" : undefined
+        row.type === "income" ? "Marked as received!" : billPaidToast,
+        choice
       );
-      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_paid: true } : r)));
+      updateRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_paid: true } : r)));
       refreshRowsQuietly();
     } catch (err) {
       // handleRequest already showed the error toast
@@ -182,7 +279,7 @@ const LedgerPage = () => {
   useEffect(() => {
     setSelectedIds(new Set());
     setLastClickedIndex(null);
-  }, [search, typeFilter, categoryFilter, monthFilter]);
+  }, [search, typeFilter, categoryFilter, monthFilter, tagFilter]);
 
   const setSort = (key, dir) => {
     setSortKey(key);
@@ -193,20 +290,44 @@ const LedgerPage = () => {
     setTypeFilter("all");
     setCategoryFilter("all");
     setMonthFilter("all");
+    setTagFilter("all");
     setSort(DEFAULT_SORT.key, DEFAULT_SORT.dir);
+  };
+
+  // Downloads the rows the filters and search show, in the same order, as a CSV from the server
+  const exportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const query = ledgerExportQuery({ typeFilter, categoryFilter, monthFilter, tagFilter, search, sortKey, sortDir, windowFrom });
+      const { blob, contentDisposition } = await dashboardService.downloadLedgerCsv(query);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = exportFileName(contentDisposition, getTorontoTodayStr());
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Ledger CSV export failed:", err);
+      toast.error("Couldn't export the CSV. Try again.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const removeChip = (id) => {
     if (id === "type") setTypeFilter("all");
     if (id === "category") setCategoryFilter("all");
     if (id === "month") setMonthFilter("all");
+    if (id === "tag") setTagFilter("all");
     if (id === "sort") setSort(DEFAULT_SORT.key, DEFAULT_SORT.dir);
   };
 
   // Deletes one row; the toast offers Undo, so the swipe Delete skips the confirm step
   const deleteRow = async (row) => {
     await dashboardService.deleteBill(row.id);
-    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    updateRows((prev) => prev.filter((r) => r.id !== row.id));
     setSelectedIds((prev) => {
       const next = new Set(prev);
       next.delete(row.id);
@@ -241,7 +362,7 @@ const LedgerPage = () => {
     try {
       await dashboardService.bulkDeleteTransactions(ids);
       const idSet = new Set(ids);
-      setRows((prev) => prev.filter((r) => !idSet.has(r.id)));
+      updateRows((prev) => prev.filter((r) => !idSet.has(r.id)));
       setIsBulkDeleteModalOpen(false);
       exitSelection();
     } catch (err) {
@@ -256,9 +377,22 @@ const LedgerPage = () => {
     if (targets.length === 0 || isBulkMarking) return;
     setIsBulkMarking(true);
     const done = [];
+    let fromFunds = 0;
+    let fromFundsTotal = 0;
+    const cardsPaid = new Set();
     for (const row of targets) {
       try {
-        await dashboardService.markBillAsPaid(row.id, null);
+        // A bill a savings goal saves for is paid from it, the same default as the single "Paid" dialog.
+        // A card's fund bills go with its first payment in the batch that goes through.
+        const { options, cardId } = bulkPayOptions(defaultPayFrom(row), row, cardsPaid);
+        const result = await dashboardService.markBillAsPaid(row.id, null, options);
+        if (cardId) cardsPaid.add(cardId);
+        const paid = [
+          ...(result?.sinkingFund?.paidFromFund?.amount > 0 ? [result.sinkingFund.paidFromFund] : []),
+          ...(result?.cardFunds || []).filter((f) => f.amount > 0),
+        ];
+        fromFunds += paid.length;
+        fromFundsTotal += paid.reduce((sum, f) => sum + f.amount, 0);
         done.push(row);
       } catch (err) {
         // handleRequest already showed the error toast for this row
@@ -268,35 +402,58 @@ const LedgerPage = () => {
     setIsBulkMarking(false);
     if (done.length > 0) {
       const doneIds = new Set(done.map((r) => r.id));
-      setRows((prev) => prev.map((r) => (doneIds.has(r.id) ? { ...r, is_paid: true } : r)));
+      updateRows((prev) => prev.map((r) => (doneIds.has(r.id) ? { ...r, is_paid: true } : r)));
       const word = done.every((r) => r.type === "income") ? "received" : "paid";
-      toast.success(`Marked ${done.length} transaction${done.length === 1 ? "" : "s"} as ${word}`);
+      const fundNote =
+        fromFunds > 0
+          ? ` (${formatCurrency(fromFundsTotal)} from ${fromFunds === 1 ? "a savings goal" : `${fromFunds} savings goals`})`
+          : "";
+      toast.success(`Marked ${done.length} transaction${done.length === 1 ? "" : "s"} as ${word}${fundNote}`);
       refreshRowsQuietly();
       exitSelection();
     }
   };
 
+  // While a search is on, its server results (all history); else the loaded page
+  const searching = Boolean(search.trim()) && Boolean(debouncedSearch) && searchRows !== null;
+  const baseRows = searching ? searchRows : rows;
+
   const availableCategories = useMemo(() => {
-    const set = new Set(rows.map((r) => r.category).filter(Boolean));
+    const set = new Set(baseRows.map((r) => r.category).filter(Boolean));
     return Array.from(set).sort();
-  }, [rows]);
+  }, [baseRows]);
+
+  const availableTags = useMemo(() => collectTags(baseRows), [baseRows]);
+  // A tag whose last row was deleted stays in the list while it is the filter, so the select shows it
+  const tagOptions =
+    tagFilter === "all" || availableTags.includes(tagFilter) ? availableTags : [...availableTags, tagFilter];
 
   const availableMonths = useMemo(() => {
-    const set = new Set(
-      rows
-        .map((r) => (r.date ? String(r.date).slice(0, 7) : null))
-        .filter(Boolean)
+    const loaded = Array.from(
+      new Set(baseRows.map((r) => (r.date ? String(r.date).slice(0, 7) : null)).filter(Boolean))
     );
-    return Array.from(set).sort().reverse();
-  }, [rows]);
+    // Months before the loaded window are offered too while older rows exist; picking one loads it
+    return ledgerMonthOptions(loaded, {
+      windowFrom,
+      hasMore: hasMore && !searching,
+      todayStr: getTorontoTodayStr(),
+    });
+  }, [baseRows, windowFrom, hasMore, searching]);
+
+  const chooseMonth = (ym) => {
+    setMonthFilter(ym);
+    const from = windowFromForMonth(ym, windowFrom);
+    if (from && hasMore && !searching) loadOlder(from);
+  };
 
   const filtered = useMemo(() => {
-    let data = rows;
+    let data = baseRows;
     if (typeFilter !== "all") data = data.filter((r) => r.type === typeFilter);
     if (categoryFilter !== "all")
       data = data.filter((r) => r.category === categoryFilter);
     if (monthFilter !== "all")
       data = data.filter((r) => String(r.date).startsWith(monthFilter));
+    if (tagFilter !== "all") data = data.filter((r) => matchesTag(r, tagFilter));
     // Account names count too (card, debt, goal and Checking, even when the row shows "To Amex")
     if (search) data = data.filter((r) => ledgerRowMatchesSearch(r, search));
     return [...data].sort((a, b) => {
@@ -318,7 +475,7 @@ const LedgerPage = () => {
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [rows, search, sortKey, sortDir, typeFilter, categoryFilter, monthFilter]);
+  }, [baseRows, search, sortKey, sortDir, typeFilter, categoryFilter, monthFilter, tagFilter]);
 
   const todayStr = getTorontoTodayStr();
   const groups = useMemo(
@@ -462,6 +619,14 @@ const LedgerPage = () => {
         </span>
       );
     }
+    if (row.amount < 0) {
+      // A refund: negative spending
+      return (
+        <span className="text-emerald-400" title="Refund">
+          +{formatCurrency(Math.abs(row.amount))}
+        </span>
+      );
+    }
     return <span className="text-zinc-100">{formatCurrency(-Math.abs(row.amount))}</span>;
   };
 
@@ -481,6 +646,7 @@ const LedgerPage = () => {
     const isSelected = selectedIds.has(row.id);
     const tag = getLedgerRowTag(row, todayStr);
     const { from, to, direction } = getLedgerAccountLine(row);
+    const rowTags = tagsOf(row);
     const dim = isUpcoming && !isSelected ? "opacity-75" : "";
     return (
       <div
@@ -550,6 +716,18 @@ const LedgerPage = () => {
               </>
             )}
           </div>
+          {(rowTags.length > 0 || row.notes) && (
+            <div className="flex items-center gap-1 mt-0.5 text-[11px] min-w-0">
+              {row.notes && (
+                <StickyNote size={11} className="shrink-0 text-zinc-500" aria-hidden="true" />
+              )}
+              {rowTags.length > 0 && (
+                <span className="truncate text-sky-300/80" title={rowTags.map((t) => `#${t}`).join(" ")}>
+                  {rowTags.map((t) => `#${t}`).join(" ")}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className={`text-sm font-medium tabular-nums text-right whitespace-nowrap shrink-0 ${dim}`}>
           {renderAmount(row)}
@@ -702,7 +880,7 @@ const LedgerPage = () => {
     );
   };
 
-  const chips = getActiveFilterChips({ typeFilter, categoryFilter, monthFilter, sortKey, sortDir });
+  const chips = getActiveFilterChips({ typeFilter, categoryFilter, monthFilter, tagFilter, sortKey, sortDir });
   const activeFilterCount = chips.filter((c) => c.id !== "sort").length;
   const currentSortValue = `${sortKey}:${sortDir}`;
   const inlineSelect =
@@ -744,6 +922,26 @@ const LedgerPage = () => {
           </h1>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
+          {reviewCount > 0 && (
+            <Link
+              to="/review"
+              className="btn-secondary h-10 px-3 shrink-0 text-sky-300"
+              title="Imported rows waiting for review"
+              aria-label={`Review ${reviewCount} new`}
+            >
+              <Inbox size={14} />
+              <span className="tabular-nums">{reviewCount}</span>
+              <span className="hidden sm:inline">to review</span>
+            </Link>
+          )}
+          <Link
+            to="/import"
+            className="btn-secondary h-10 px-3.5 shrink-0 hidden sm:inline-flex"
+            title="Import transactions from a bank or card CSV"
+          >
+            <Upload size={14} />
+            <span>Import</span>
+          </Link>
           <Link
             to="/trash"
             className="btn-secondary h-10 px-3.5 shrink-0"
@@ -844,7 +1042,7 @@ const LedgerPage = () => {
             </select>
             <select
               value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
+              onChange={(e) => chooseMonth(e.target.value)}
               aria-label="Month"
               className={inlineSelect}
             >
@@ -855,6 +1053,21 @@ const LedgerPage = () => {
                 </option>
               ))}
             </select>
+            {(availableTags.length > 0 || tagFilter !== "all") && (
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                aria-label="Tag"
+                className={inlineSelect}
+              >
+                <option value="all">All Tags</option>
+                {tagOptions.map((t) => (
+                  <option key={t} value={t}>
+                    #{t}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="inline-flex rounded-xl bg-zinc-900/80 border border-white/[0.06]">
               {TYPE_OPTIONS.map(([value, label]) => (
                 <button
@@ -887,6 +1100,16 @@ const LedgerPage = () => {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={isExporting || filtered.length === 0}
+              title="Download the rows shown as a CSV"
+              className="h-10 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-xl text-xs font-medium border bg-zinc-900/80 text-zinc-300 border-white/[0.07] hover:text-zinc-100 disabled:opacity-50 cursor-pointer"
+            >
+              <Download size={14} />
+              {isExporting ? "Exporting…" : "Export CSV"}
+            </button>
           </>
         ) : (
           <button
@@ -960,16 +1183,24 @@ const LedgerPage = () => {
                 <ReceiptText size={16} />
               </div>
               <p className="text-zinc-300 text-xs font-medium mb-1">
-                {rows.length === 0
+                {baseRows.length === 0 && !hasMore && !searching
                   ? "No transactions recorded yet"
+                  : baseRows.length === 0 && !searching
+                  ? "Nothing in these months"
                   : "No matching transactions"}
               </p>
               <p className="text-zinc-500 text-[11px] max-w-xs mb-4">
-                {rows.length === 0
+                {baseRows.length === 0 && !hasMore && !searching
                   ? "Log your first expense or paycheck to start building your ledger."
+                  : baseRows.length === 0 && !searching
+                  ? "Older transactions are a tap away."
+                  : searching
+                  ? "Searched all your history. Try other words or clear a filter."
+                  : hasMore
+                  ? "Try adjusting your filters, or load older months."
                   : "Try adjusting your search query or filters."}
               </p>
-              {rows.length === 0 && (
+              {baseRows.length === 0 && !hasMore && !searching && (
                 <button
                   onClick={() => {
                     setEditingTx(null);
@@ -986,6 +1217,20 @@ const LedgerPage = () => {
         ) : (
           <div>{groups.map(renderGroup)}</div>
         )}
+        {!searching && hasMore && (
+          <div className="border-t border-white/[0.05] px-4 py-3 flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={loadOlder}
+              disabled={isLoadingOlder}
+              className="min-h-10 px-4 rounded-xl border border-white/[0.08] bg-zinc-900 text-xs font-semibold text-zinc-200 hover:border-white/20 hover:text-zinc-50 disabled:opacity-60 inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <ChevronDown size={14} className={isLoadingOlder ? "animate-bounce" : ""} aria-hidden="true" />
+              {isLoadingOlder ? "Loading older…" : "Load older"}
+            </button>
+            <p className="text-[11px] text-zinc-500">{ledgerWindowNote({ from: windowFrom, hasMore })}</p>
+          </div>
+        )}
         <div className="border-t border-white/[0.05] px-4 py-2.5 flex items-center justify-between gap-3">
           <p className="text-[11px] text-zinc-500 min-w-0">
             {isSelecting
@@ -997,7 +1242,7 @@ const LedgerPage = () => {
               : "Click a row to edit it"}
           </p>
           <p className="text-[11px] text-zinc-500 tabular-nums shrink-0">
-            {filtered.length} transactions
+            {isSearching ? "Searching…" : `${filtered.length} transactions`}
           </p>
         </div>
       </div>
@@ -1077,12 +1322,17 @@ const LedgerPage = () => {
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
         monthFilter={monthFilter}
-        setMonthFilter={setMonthFilter}
+        setMonthFilter={chooseMonth}
+        tags={tagOptions}
+        tagFilter={tagFilter}
+        setTagFilter={setTagFilter}
         sortKey={sortKey}
         sortDir={sortDir}
         setSort={setSort}
         onReset={resetFilters}
         resultCount={filtered.length}
+        onExport={exportCsv}
+        isExporting={isExporting}
       />
       <AddTransactionModal
         isOpen={isTxModalOpen}
@@ -1112,6 +1362,7 @@ const LedgerPage = () => {
           selectedRows.length === 1 ? "" : "s"
         }`}
       />
+      {payFromFundDialog}
     </div>
   );
 };

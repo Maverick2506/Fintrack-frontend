@@ -147,6 +147,32 @@ onPhoneIn("America/Vancouver", () => {
   assert.strictEqual(parseAt("90 hydro due 1/5", new Date("2026-12-20T17:00:00Z")).date, "2027-01-05", "[PASS] Vancouver, Dec 20: 1/5 -> 2027");
 });
 
+// --- Account words count only as whole tokens; the last one wins (Maverick's ruling, 2026-10-28) ---
+console.log("\n--- Account words: whole tokens only, last one wins ---");
+const tok1 = parseQuickAdd("25 VISA-Shop", mockCards, fixedToday);
+assert.strictEqual(tok1.creditCardId, null, "[PASS] 25 VISA-Shop: no card (joined by -)");
+assert.strictEqual(tok1.accountMentioned, false, "[PASS] 25 VISA-Shop: no account named");
+assert.strictEqual(tok1.name, "VISA-Shop", "[PASS] 25 VISA-Shop: the word stays in the description");
+const tok2 = parseQuickAdd("25 VISA-Shop amex", mockCards, fixedToday);
+assert.strictEqual(tok2.creditCardId, "card-2", "[PASS] 25 VISA-Shop amex: Amex");
+assert.strictEqual(tok2.name, "VISA-Shop", "[PASS] 25 VISA-Shop amex: description VISA-Shop");
+const tok3 = parseQuickAdd("12.50 lunch visa", mockCards, fixedToday);
+assert.strictEqual(tok3.creditCardId, "card-1", "[PASS] 12.50 lunch visa: Visa");
+assert.strictEqual(tok3.name, "Lunch", "[PASS] 12.50 lunch visa: description Lunch");
+const tok4 = parseQuickAdd("40 visa visa", mockCards, fixedToday);
+assert.strictEqual(tok4.creditCardId, "card-1", "[PASS] 40 visa visa: Visa");
+assert.strictEqual(tok4.name.toLowerCase(), "visa", "[PASS] 40 visa visa: description visa (only the last token is taken)");
+const tok5 = parseQuickAdd("18 visa.ca debit-card", mockCards, fixedToday);
+assert.strictEqual(tok5.creditCardId, null, "[PASS] visa.ca and debit-card name no account");
+assert.strictEqual(tok5.name, "Visa.ca debit-card", "[PASS] visa.ca debit-card stays in the description");
+const tok6 = parseQuickAdd("30 groceries visa debit", mockCards, fixedToday);
+assert.strictEqual(tok6.creditCardId, null, "[PASS] visa debit: the last token (debit) wins, so Checking");
+assert.strictEqual(tok6.accountMentioned, true, "[PASS] visa debit: an account was named");
+assert.strictEqual(tok6.name, "Groceries visa", "[PASS] visa debit: only debit is taken out");
+const tok7 = parseQuickAdd("30 groceries debit visa", mockCards, fixedToday);
+assert.strictEqual(tok7.creditCardId, "card-1", "[PASS] debit visa: the last token (visa) wins");
+console.log("  [PASS] Account words are whole tokens and the last one wins");
+
 console.log("\n==================================================");
 console.log("   ALL QUICK-ADD PARSER TESTS PASSED              ");
 console.log("==================================================");

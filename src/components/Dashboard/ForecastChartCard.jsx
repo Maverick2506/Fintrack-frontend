@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   LineChart,
   Line,
@@ -9,7 +10,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, AlertTriangle, Shield, Check, Pencil, X, Sparkles, ChevronDown } from "lucide-react";
+import { TrendingUp, AlertTriangle, Shield, Check, Pencil, X, Sparkles, ChevronDown, CalendarDays } from "lucide-react";
 import { formatCurrency, formatShortDate } from "../../utils/formatUtils";
 
 const CustomForecastTooltip = ({ active, payload, label, buffer }) => {
@@ -47,18 +48,22 @@ const CustomForecastTooltip = ({ active, payload, label, buffer }) => {
                 key={idx}
                 className="flex items-center justify-between gap-2 text-[11px]"
               >
-                <span className="text-zinc-300 truncate max-w-[170px]" title={it.title}>
+                {/* A bill a savings goal covers says so in full: "Car insurance $1,200 (fund covers $1,150)" */}
+                <span
+                  className={`text-zinc-300 max-w-[170px] ${it.fundCovers ? "break-words" : "truncate"}`}
+                  title={it.title}
+                >
                   {it.title}
                   {it.estimated && !it.title?.toLowerCase().includes("estimated") && (
                     <span className="text-zinc-500 font-normal ml-1">(est.)</span>
                   )}
                 </span>
                 <span
-                  className={`tabular-nums font-medium ${
-                    it.amount >= 0 ? "text-emerald-400" : "text-rose-400"
+                  className={`tabular-nums font-medium shrink-0 ${
+                    it.amount === 0 ? "text-zinc-400" : it.amount > 0 ? "text-emerald-400" : "text-rose-400"
                   }`}
                 >
-                  {it.amount >= 0 ? "+" : ""}
+                  {it.amount > 0 ? "+" : ""}
                   {formatCurrency(it.amount)}
                 </span>
               </div>
@@ -112,26 +117,36 @@ const ForecastChartCard = ({
 
   return (
     <div>
-      {/* Mobile Collapsible Header (M5, n1, n2) */}
-      <button
-        type="button"
-        onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-        className="sm:hidden glass-panel px-4 py-3 w-full flex items-center justify-between text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2">
-          <TrendingUp size={15} className="text-emerald-400" />
-          <span>60-Day Cashflow Forecast</span>
-        </div>
-        <div className="flex items-center gap-1 text-zinc-400">
-          <span className="text-[11px] font-medium text-emerald-400">
-            {isMobileExpanded ? "Hide" : "Open"}
-          </span>
-          <ChevronDown
-            size={14}
-            className={`transition-transform duration-200 ${isMobileExpanded ? "rotate-180" : ""}`}
-          />
-        </div>
-      </button>
+      {/* Mobile Collapsible Header (M5, n1, n2), with the Calendar beside it */}
+      <div className="sm:hidden flex items-stretch gap-2">
+        <button
+          type="button"
+          onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+          className="glass-panel px-4 py-3 flex-1 min-w-0 flex items-center justify-between text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <TrendingUp size={15} className="text-emerald-400" />
+            <span>60-Day Cashflow Forecast</span>
+          </div>
+          <div className="flex items-center gap-1 text-zinc-400">
+            <span className="text-[11px] font-medium text-emerald-400">
+              {isMobileExpanded ? "Hide" : "Open"}
+            </span>
+            <ChevronDown
+              size={14}
+              className={`transition-transform duration-200 ${isMobileExpanded ? "rotate-180" : ""}`}
+            />
+          </div>
+        </button>
+        <Link
+          to="/calendar"
+          aria-label="Open the cash-flow calendar"
+          className="glass-panel px-3 min-h-[40px] shrink-0 flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300"
+        >
+          <CalendarDays size={15} />
+          Calendar
+        </Link>
+      </div>
 
       <div className={`glass-panel p-4 sm:p-6 space-y-4 ${isMobileExpanded ? "block mt-3" : "hidden sm:block"}`}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -157,6 +172,13 @@ const ForecastChartCard = ({
 
         {/* Controls: Buffer & Estimated Paycheques Toggle */}
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <Link
+            to="/calendar"
+            className="hidden sm:inline-flex items-center gap-1.5 h-10 px-3 rounded-lg border border-white/[0.08] bg-zinc-900/80 text-[11px] font-medium text-emerald-300 hover:text-emerald-200 hover:border-white/[0.16]"
+          >
+            <CalendarDays size={13} />
+            Calendar
+          </Link>
           {/* Include Estimated Paycheques Toggle */}
           <button
             type="button"
@@ -321,8 +343,22 @@ const ForecastChartCard = ({
             Includes estimated paycheques:{" "}
             <span className="text-zinc-200 font-medium">
               {formatCurrency(forecast.estimatedIncome.amount)} {forecast.estimatedIncome.cadence}
-            </span>{" "}
-            (based on your last {forecast.estimatedIncome.basedOn}).
+            </span>
+            {forecast.estimatedIncome.typicalAmount != null &&
+              forecast.estimatedIncome.typicalAmount !== forecast.estimatedIncome.amount && (
+                <> (cautious; typical {formatCurrency(forecast.estimatedIncome.typicalAmount)})</>
+              )}
+            , based on your last {forecast.estimatedIncome.basedOn}.
+          </span>
+        </div>
+      )}
+      {forecast.incomeSource === "expected-pay" && (
+        <div className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-900/50 rounded-lg px-3 py-2 border border-white/[0.06]">
+          <Sparkles size={13} className="text-emerald-400 shrink-0" />
+          <span>
+            Includes your Expected pay:{" "}
+            <span className="text-zinc-200 font-medium">{formatCurrency(forecast.planningAmount)}</span> per paycheque,
+            until 2 paycheques are logged.
           </span>
         </div>
       )}

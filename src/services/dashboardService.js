@@ -1,11 +1,13 @@
 import axios from "axios";
 import { isAiCapError } from "../utils/aiUsage";
 import toast from "react-hot-toast";
+import { cardPaidToast } from "../utils/planningAlerts";
 import { getToken, isLoggedIn, logout } from "../utils/auth";
 import { queryClient } from "../utils/queryClient";
 import { isDuplicateClientRefError, isTimeoutError } from "../utils/pendingSubmission";
 import { buildLoginPath } from "../utils/quickAddLink";
 import { deletedIdsFrom, restoreResultMessages } from "../utils/undoDelete";
+import { readChatStream } from "../utils/chatStream";
 import {
   showUndoDeleteToast,
   TRANSACTIONS_RESTORED_EVENT,
@@ -19,13 +21,17 @@ const api = axios.create({
   timeout: 60000,
 });
 
+const sendToLogin = () => {
+  logout();
+  if (window.location.pathname !== "/login") {
+    window.location.replace(buildLoginPath(window.location.pathname, window.location.search));
+  }
+};
+
 api.interceptors.request.use(
   (config) => {
     if (!isLoggedIn()) {
-      logout();
-      if (window.location.pathname !== "/login") {
-        window.location.replace(buildLoginPath(window.location.pathname, window.location.search));
-      }
+      sendToLogin();
       return Promise.reject(new axios.Cancel("Session expired"));
     }
     const token = getToken();
@@ -43,10 +49,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      logout();
-      if (window.location.pathname !== "/login") {
-        window.location.replace(buildLoginPath(window.location.pathname, window.location.search));
-      }
+      sendToLogin();
     }
     return Promise.reject(error);
   }
@@ -147,11 +150,11 @@ const dashboardService = {
     );
   },
 
+  // paymentData: { amount, fundBills? } ("Use $X from <fund>" boxes); the toast says what funds paid
   payCreditCard: async (cardId, paymentData) => {
-    return handleRequest(
-      api.post(`/credit-cards/${cardId}/pay`, paymentData),
-      "Card payment successful!"
-    );
+    const data = await handleRequest(api.post(`/credit-cards/${cardId}/pay`, paymentData), null);
+    toast.success(cardPaidToast(data));
+    return data;
   },
 
   // What archiving or deleting a card, debt or goal would affect (read, so no handleRequest)
@@ -199,10 +202,32 @@ const dashboardService = {
     );
   },
 
-  markBillAsPaid: async (billId, successMessage = "Bill marked as paid!") => {
+  // payFromGoalId: "Pay from <fund>" for a bill a savings goal saves for. successMessage can be a
+  // function of the response (what the fund paid).
+  // payFromGoalId: "Pay from <fund>" on a bill; fundBills: "Use $X from <fund>" on a card payment
+  markBillAsPaid: async (billId, successMessage = "Bill marked as paid!", { payFromGoalId = null, fundBills = null } = {}) => {
+    const data = await handleRequest(
+      api.put(`/expenses/${billId}`, {
+        is_paid: true,
+        ...(payFromGoalId ? { payFromGoalId } : {}),
+        ...(fundBills && fundBills.length > 0 ? { fundBills } : {}),
+      }),
+      typeof successMessage === "function" ? null : successMessage
+    );
+    if (typeof successMessage === "function") toast.success(successMessage(data));
+    return data;
+  },
+
+  // One-time bills a savings goal can save for
+  fetchOneOffBills: async () => {
+    return api.get("/savings-goals/one-off-bills").then((res) => res.data);
+  },
+
+  // "Pay statement balance" / "Pay full balance" on a scheduled card payment above what is owed
+  setScheduledCardPayment: async (cardId, transactionId, pay) => {
     return handleRequest(
-      api.put(`/expenses/${billId}`, { is_paid: true }),
-      successMessage
+      api.post(`/credit-cards/${cardId}/scheduled-payment`, { transactionId, pay }),
+      pay === "statement" ? "Payment set to the statement balance." : "Payment set to the full balance."
     );
   },
 
@@ -255,6 +280,13 @@ const dashboardService = {
     );
   },
 
+  // Sends one save from the offline Quick Add queue (F10). No toast and no refresh here: the sync
+  // refreshes once after the whole queue. A 409 for its clientRef counts as saved (postWithClientRef).
+  sendQueuedSave: async (item) => {
+    const endpoint = item.kind === "income" ? "/paycheques" : "/expenses";
+    return postWithClientRef(endpoint, item.payload).then((res) => res.data);
+  },
+
   addPaycheque: async (paychequeData) => {
     return handleRequest(
       postWithClientRef("/paycheques", paychequeData),
@@ -282,8 +314,35 @@ const dashboardService = {
     );
   },
 
-  chatAdvisor: async (message, history = []) => {
-    return api.post("/chat-advisor", { message, history }).then((res) => res.data);
+  // Receipt photo -> draft (AI5). Saves nothing on the server, so it isn't a handleRequest write.
+  categorizeReceipt: async (image, fileName = "receipt.jpg") => {
+    const form = new FormData();
+    form.append("image", image, fileName);
+    return api.post("/categorize-receipt", form).then((res) => res.data);
+  },
+
+  chatAdvisor: async (message, history = [], { signal } = {}) => {
+    return api.post("/chat-advisor", { message, history }, { signal }).then((res) => res.data);
+  },
+
+  // The same chat, streamed (AI6): onText(textSoFar) as the answer arrives, onStatus while a tool runs.
+  // Falls back to chatAdvisor (one JSON answer) when the stream can't start.
+  chatAdvisorStream: async (message, history = [], { onText, onStatus, signal } = {}) => {
+    if (!isLoggedIn()) {
+      sendToLogin();
+      throw new axios.Cancel("Session expired");
+    }
+    return readChatStream({
+      fetchImpl: typeof fetch === "function" ? fetch.bind(window) : undefined,
+      url: `${API_URL}/chat-advisor`,
+      token: getToken(),
+      body: { message, history },
+      onText,
+      onStatus,
+      fallback: () => dashboardService.chatAdvisor(message, history, { signal }),
+      onUnauthorized: sendToLogin,
+      signal,
+    });
   },
 
   // Today's AI requests (against the daily cap) and tokens
@@ -341,12 +400,38 @@ const dashboardService = {
     );
   },
 
-  fetchLedger: async () => {
-    return api.get("/expenses/all").then((res) => res.data);
+  // One page of the Ledger (R5): { rows, hasMore, from, to, reviewCount }. params: from, to, search,
+  // needsReview, and the other Ledger filters. Without from= the server sends the last 3 months.
+  fetchLedger: async (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
+    ).toString();
+    return api.get(`/expenses/all${qs ? `?${qs}` : ""}`).then((res) => res.data);
   },
 
   fetchSubscriptions: async () => {
     return api.get("/subscriptions").then((res) => res.data);
+  },
+
+  // "Make this a subscription?" cards on the Dashboard
+  fetchSubscriptionSuggestions: async () => {
+    return api.get("/alerts/subscription-suggestions").then((res) => res.data);
+  },
+
+  acceptSubscriptionSuggestion: async (id) => {
+    return handleRequest(api.post(`/alerts/subscription-suggestions/${id}/accept`, {}), null);
+  },
+
+  dismissSubscriptionSuggestion: async (id) => {
+    return handleRequest(api.post(`/alerts/subscription-suggestions/${id}/dismiss`, {}), null);
+  },
+
+  // Sinking fund: a monthly transfer from Checking for the goal's monthly amount
+  setUpGoalMonthlyTransfer: async (goalId) => {
+    return handleRequest(
+      api.post(`/savings-goals/${goalId}/monthly-transfer`, {}),
+      "Monthly transfer set up."
+    );
   },
 
   cancelSubscription: async (id) => {
@@ -425,6 +510,25 @@ const dashboardService = {
     );
   },
 
+  // Widgets page: the KWGT feed URL and its Hide amounts setting (read, so no handleRequest)
+  fetchWidgetConfig: async () => {
+    return api.get("/export/widget-config").then((res) => res.data);
+  },
+
+  regenerateWidgetKey: async () => {
+    return handleRequest(
+      api.post("/export/regenerate-widget-key"),
+      "New widget link made. Update it in KWGT."
+    );
+  },
+
+  setWidgetHideAmounts: async (hideAmounts) => {
+    return handleRequest(
+      api.put("/export/widget-settings", { hideAmounts }),
+      hideAmounts ? "The widget now hides amounts." : "The widget now shows amounts."
+    );
+  },
+
   fetchBudgets: async (month) => {
     const url = month ? `/budgets?month=${encodeURIComponent(month)}` : "/budgets";
     const data = await api.get(url).then((res) => res.data);
@@ -497,14 +601,106 @@ const dashboardService = {
     );
   },
 
+  // Pay for the forecast: the detected pay series, income names and Expected pay (read, so no handleRequest)
+  fetchPaySettings: async () => {
+    return api.get("/settings/pay").then((res) => res.data);
+  },
+
+  updateExpectedPay: async ({ nextDate, cadence, amount }) => {
+    return handleRequest(
+      api.put("/settings/expected-pay", { nextDate, cadence, amount }),
+      "Expected pay saved"
+    );
+  },
+
+  clearExpectedPay: async () => {
+    return handleRequest(api.delete("/settings/expected-pay"), "Expected pay removed");
+  },
+
+  // title: an income name from fetchPaySettings().incomeNames, or null to detect the pay automatically
+  updatePayTitle: async (title) => {
+    return handleRequest(api.put("/settings/pay-title", { title }), "Pay updated");
+  },
+
   updateForecastBuffer: async (buffer) => {
     return handleRequest(
       api.put("/settings/forecast-buffer", { buffer }),
       "Forecast buffer updated!"
     );
   },
+  // Bank CSV import. Preview saves nothing, so it skips handleRequest and its refresh.
+  fetchImportAccounts: async () => {
+    return api.get("/import/accounts").then((res) => res.data);
+  },
+
+  previewImport: async ({ accountId, file, mapping }) => {
+    const form = new FormData();
+    form.append("accountId", accountId);
+    if (mapping) form.append("mapping", JSON.stringify(mapping));
+    form.append("file", file);
+    return api.post("/import/preview", form).then((res) => res.data);
+  },
+
+  commitImport: async ({ accountId, mapping, rows }) => {
+    // The page shows its own summary and error
+    return handleRequest(api.post("/import/commit", { accountId, mapping, rows }), null, true, false);
+  },
+
+  fetchReviewInbox: async () => {
+    return api.get("/import/review").then((res) => res.data);
+  },
+
+  confirmReviewed: async (ids) => {
+    return handleRequest(
+      api.post("/import/review/confirm", { ids }),
+      ids.length === 1 ? "Confirmed" : `Confirmed ${ids.length}`
+    );
+  },
+
+  // Sets the category on several rows (e.g. the Review rows a new rule matches), one refresh at the end
+  setCategoryOnRows: async (ids, category) => {
+    const requests = ids.reduce(
+      (chain, id) => chain.then(() => api.put(`/expenses/${id}`, { category })),
+      Promise.resolve()
+    );
+    return handleRequest(requests.then(() => ({ data: { updated: ids.length } })), null);
+  },
+
+  // Category and account rules
+  fetchRules: async () => {
+    return api.get("/rules").then((res) => res.data);
+  },
+
+  saveRule: async (rule) => {
+    const { id, ...body } = rule;
+    return handleRequest(
+      id ? api.put(`/rules/${id}`, body) : api.post("/rules", body),
+      id ? "Rule updated" : "Rule added"
+    );
+  },
+
+  deleteRule: async (id) => {
+    return handleRequest(api.delete(`/rules/${id}`), "Rule deleted");
+  },
+
   fetchNetWorthHistory: async (months = 12) => {
     return api.get(`/net-worth-history?months=${months}`).then((res) => res.data);
+  },
+
+  // Ledger CSV download of the filtered rows (a read: nothing changes on the server)
+  downloadLedgerCsv: async (query) => {
+    const res = await api.get(`/expenses/export.csv?${query}`, { responseType: "blob" });
+    return { blob: res.data, contentDisposition: res.headers?.["content-disposition"] };
+  },
+
+  // Month close (Reports). The commentary call may write and cache Gemini's lines on the server, but it
+  // changes no money, so it is a read here (no handleRequest refresh).
+  fetchMonthClose: async (month) => {
+    return api.get(`/reports/month-close?month=${encodeURIComponent(month)}`).then((res) => res.data);
+  },
+
+  fetchMonthCloseCommentary: async (month) => {
+    return api.get(`/reports/month-close/commentary?month=${encodeURIComponent(month)}`).then((res) => res.data);
   },
 };
 

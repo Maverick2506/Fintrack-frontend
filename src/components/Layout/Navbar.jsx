@@ -14,6 +14,10 @@ import {
   X,
   Sparkles,
   Trash2,
+  Upload,
+  Inbox,
+  Wand2,
+  LayoutGrid,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { logout } from "../../utils/auth";
@@ -41,6 +45,13 @@ const Navbar = () => {
     staleTime: 60000,
   });
   const isAiAvailable = healthData?.ai ?? true;
+  // Imported rows waiting in Review new, for the badge on the More sheet
+  const { data: reviewRows } = useQuery({
+    queryKey: ["reviewInbox"],
+    queryFn: () => dashboardService.fetchReviewInbox(),
+    staleTime: 60000,
+  });
+  const reviewCount = Array.isArray(reviewRows) ? reviewRows.length : 0;
 
   const isMoreActive = [
     "/savings",
@@ -48,6 +59,10 @@ const Navbar = () => {
     "/subscriptions",
     "/quick",
     "/trash",
+    "/import",
+    "/review",
+    "/rules",
+    "/widgets",
   ].includes(location.pathname);
 
   const handleLogout = () => {
@@ -250,6 +265,31 @@ const Navbar = () => {
                   desc: "Natural language transaction entry",
                 },
                 {
+                  to: "/widgets",
+                  label: "Widgets",
+                  icon: LayoutGrid,
+                  desc: "Home-screen widget, shortcut and Share",
+                },
+                {
+                  to: "/import",
+                  label: "Import CSV",
+                  icon: Upload,
+                  desc: "Add transactions from your bank or card",
+                },
+                {
+                  to: "/review",
+                  label: "Review new",
+                  icon: Inbox,
+                  desc: "Imported rows waiting for a look",
+                  badge: reviewCount,
+                },
+                {
+                  to: "/rules",
+                  label: "Rules",
+                  icon: Wand2,
+                  desc: "Categories and cards set by title",
+                },
+                {
                   to: "/trash",
                   label: "Trash",
                   icon: Trash2,
@@ -272,7 +312,7 @@ const Navbar = () => {
                     <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-white/[0.08] flex items-center justify-center text-zinc-300 shrink-0">
                       <Icon size={17} />
                     </div>
-                    <div className="flex flex-col text-left">
+                    <div className="flex flex-col text-left min-w-0 flex-1">
                       <span className="text-sm font-medium text-zinc-200">
                         {item.label}
                       </span>
@@ -280,6 +320,11 @@ const Navbar = () => {
                         {item.desc}
                       </span>
                     </div>
+                    {item.badge > 0 && (
+                      <span className="shrink-0 min-w-6 h-6 px-1.5 rounded-full bg-sky-500/15 border border-sky-500/25 text-sky-300 text-[11px] font-semibold tabular-nums flex items-center justify-center">
+                        {item.badge}
+                      </span>
+                    )}
                   </NavLink>
                 );
               })}

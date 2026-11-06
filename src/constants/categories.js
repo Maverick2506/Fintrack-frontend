@@ -33,6 +33,7 @@ export const CATEGORY_STYLES = {
   Interest: { icon: "Percent", tint: "bg-orange-500/15 text-orange-300" },
   Adjustment: { icon: "SlidersHorizontal", tint: "bg-indigo-500/15 text-indigo-300" },
   "Savings Transfer": { icon: "PiggyBank", tint: "bg-teal-500/15 text-teal-300" },
+  Refund: { icon: "Undo2", tint: "bg-emerald-500/15 text-emerald-300" },
 };
 
 export const INCOME_STYLE = { icon: "Banknote", tint: "bg-emerald-500/15 text-emerald-300" };

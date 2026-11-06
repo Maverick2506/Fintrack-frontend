@@ -16,6 +16,11 @@ console.log("==================================================");
 
 const none = { typeFilter: "all", categoryFilter: "all", monthFilter: "all", sortKey: "date", sortDir: "desc" };
 assert(getActiveFilterChips(none).length === 0, "no filters and the default sort show no chips");
+assert(
+  getActiveFilterChips({ ...none, tagFilter: "work" }).map((c) => `${c.id}:${c.label}`).join(",") === "tag:#work",
+  "a tag filter shows a #tag chip"
+);
+assert(getActiveFilterChips({ ...none, tagFilter: "all" }).length === 0, "no tag filter, no chip");
 
 const all = getActiveFilterChips({
   typeFilter: "expense",
