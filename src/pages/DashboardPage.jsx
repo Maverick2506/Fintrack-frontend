@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { logout } from "../utils/auth";
-import { getTorontoYearMonth } from "../utils/dateUtils";
+import { getTorontoTodayStr, getTorontoYearMonth } from "../utils/dateUtils";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import UpcomingBills from "../components/Dashboard/UpcomingBills";
@@ -24,6 +24,7 @@ import SyncStatementModal from "../components/Modals/SyncStatementModal";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 import { formatCurrency, formatShortDate } from "../utils/formatUtils";
+import { debtPaymentRows, debtPayPrefill } from "../utils/debtPaymentRows";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import ForecastChartCard from "../components/Dashboard/ForecastChartCard";
 import SubscriptionSuggestions from "../components/Dashboard/SubscriptionSuggestions";
@@ -95,6 +96,12 @@ const DashboardPage = () => {
       return d && d >= startStr && d <= endStr;
     });
   }, [dashboardData?.upcomingBills, selectedYear, selectedMonth]);
+
+  // Next payment of each debt paid by hand (already in Safe to Spend), with a Pay button
+  const upcomingDebtPayments = useMemo(
+    () => debtPaymentRows(dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary, getTorontoTodayStr()),
+    [dashboardData?.upcomingDebtPayments, dashboardData?.debtSummary]
+  );
 
   const selectedMonthStr = `${selectedYear}-${String(selectedMonth).padStart(2, "0")}`;
   const { data: serverBudgets = [] } = useQuery({
@@ -174,6 +181,7 @@ const DashboardPage = () => {
   const [active, setActive] = useState({
     debtId: null,
     debt: null,
+    debtAmount: "",
     goalId: null,
     toDelete: null,
     toEdit: null,
@@ -200,7 +208,7 @@ const DashboardPage = () => {
 
   const closeModal = (type) => {
     setModals((prev) => ({ ...prev, [type]: false }));
-    setActive({ debtId: null, debt: null, goalId: null, toDelete: null, toEdit: null });
+    setActive({ debtId: null, debt: null, debtAmount: "", goalId: null, toDelete: null, toEdit: null });
   };
 
   // Global keyboard shortcut: press "n" (outside inputs) to open New Transaction
@@ -619,6 +627,10 @@ const DashboardPage = () => {
             <MonthlySummary summary={monthlySummary} monthLabel={MONTH_NAMES[selectedMonth - 1]} />
             <UpcomingBills
               bills={upcomingBills}
+              debtPayments={upcomingDebtPayments}
+              onPayDebt={(row) =>
+                openModal("debt", { debtId: row.debtId, debt: row.debt, debtAmount: debtPayPrefill(row) })
+              }
               onMarkAsPaid={handleMarkAsPaid}
               onEdit={(bill) => openModal("transaction", { toEdit: bill })}
               onDelete={(billId) => openModal("delete", { toDelete: billId })}
@@ -737,6 +749,7 @@ const DashboardPage = () => {
         refreshData={invalidateDashboard}
         debtId={active.debtId}
         debt={active.debt}
+        initialAmount={active.debtAmount}
       />
       <AddDebtModal
         isOpen={modals.addDebt}
