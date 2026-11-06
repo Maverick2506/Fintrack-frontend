@@ -493,14 +493,18 @@ const ReportsPage = () => {
                       const limit = budgets[cat.name];
                       const over = limit && cat.value > limit;
                       return (
-                        <div key={cat.name} className="flex items-center justify-between text-xs py-1">
+                        <div
+                          key={cat.name}
+                          className={`flex items-center justify-between text-xs py-1 ${editingBudget === cat.name ? "flex-wrap gap-y-1" : ""}`}
+                        >
                           <span className="text-zinc-300 font-medium w-32 min-w-0 truncate">{cat.name}</span>
                           <span className={`tabular-nums whitespace-nowrap ${over ? "text-rose-400 font-medium" : "text-zinc-400"}`}>
                             {formatCurrency(cat.value)}
                             {limit && <span className="text-zinc-500"> / {formatCurrency(limit)}</span>}
                           </span>
                           {editingBudget === cat.name ? (
-                            <div className="flex items-center gap-1">
+                            // On phones the editor takes its own line so the name and amount stay readable
+                            <div className="flex items-center justify-end gap-1 w-full sm:w-auto">
                               <input
                                 type="number"
                                 placeholder="Limit"

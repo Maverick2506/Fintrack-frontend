@@ -4,6 +4,10 @@ import { useLayoutEffect, useRef, useState } from "react";
  * The box a Recharts ResponsiveContainer sits in. The chart is only rendered while the box has a
  * size, so a chart in a section hidden on phones (display: none) doesn't render at 0×0 and log
  * Recharts' width(0)/height(0) warning. It appears as soon as its section is shown.
+ *
+ * Give the frame a fixed height (h-44, style height: 260, ...): a frame whose height comes only
+ * from its content would measure 0 and never draw. The ResizeObserver callback runs before the
+ * browser paints, so a visible chart appears in the same frame, without a flash.
  */
 const ChartFrame = ({ className, style, children }) => {
   const ref = useRef(null);

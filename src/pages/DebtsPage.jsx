@@ -391,6 +391,11 @@ const DebtsPage = () => {
                             {freq !== "monthly" && (
                               <span className="text-zinc-600"> ({freq})</span>
                             )}
+                            {noRateSet ? (
+                              <span className="text-zinc-500"> · no interest counted</span>
+                            ) : parseFloat(debt.interest_rate) === 0 ? (
+                              <span className="text-zinc-500"> · 0% APR</span>
+                            ) : null}
                           </p>
                         ) : null}
                         {!isInsolvent && noRateSet && (
