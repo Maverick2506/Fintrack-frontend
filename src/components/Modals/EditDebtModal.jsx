@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { X, Calendar, Repeat, Landmark, AlertCircle } from "lucide-react";
-import { getTorontoTodayStr, dueDateOnOpen } from "../../utils/dateUtils";
+import { getTorontoTodayStr, openDueDate, typeDueDate, closeDueDate } from "../../utils/dateUtils";
 import dashboardService from "../../services/dashboardService";
 
 const FREQUENCIES = [
@@ -16,9 +16,9 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   const [monthlyPayment, setMonthlyPayment] = useState("");
   const [interestRate, setInterestRate] = useState("");
   const [autoPay, setAutoPay] = useState(false);
-  const [nextDueDate, setNextDueDate] = useState("");
-  // True once the user picks a date for this debt, so a refetch or reopen keeps it
-  const dueDateEdited = useRef(false);
+  // { value, edited }: a date typed while the dialog is open survives a refetch; cancel drops it
+  const [dueDate, setDueDate] = useState({ value: "", edited: false });
+  const nextDueDate = dueDate.value;
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
   const [totalRemaining, setTotalRemaining] = useState("");
   const [initialTotalRemaining, setInitialTotalRemaining] = useState("");
@@ -45,15 +45,19 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
 
   // A different debt starts from its own saved date
   useEffect(() => {
-    dueDateEdited.current = false;
+    setDueDate(closeDueDate);
   }, [debt?.id]);
 
-  // Default the date on each open, so a page left open past Toronto midnight shows the new today
+  // On each open: the saved date, or Toronto's today if there is none (worked out at open,
+  // so a page left open past midnight shows the new day). Closing without saving drops a typed date.
   useEffect(() => {
-    if (!isOpen || !debt) return;
-    setNextDueDate((current) =>
-      dueDateOnOpen({
-        entered: dueDateEdited.current ? current : null,
+    if (!isOpen) {
+      setDueDate(closeDueDate);
+      return;
+    }
+    if (!debt) return;
+    setDueDate((field) =>
+      openDueDate(field, {
         saved: debt.next_due_date || debt.dueDate,
         today: getTorontoTodayStr(),
       })
@@ -285,8 +289,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
                     type="date"
                     value={nextDueDate}
                     onChange={(e) => {
-                      dueDateEdited.current = true;
-                      setNextDueDate(e.target.value);
+                      setDueDate(typeDueDate(e.target.value));
                     }}
                     className="w-full bg-zinc-900 border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none tabular-nums"
                     required

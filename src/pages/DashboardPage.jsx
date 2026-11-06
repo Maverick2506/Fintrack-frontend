@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { logout } from "../utils/auth";
-import { getTorontoYearMonth } from "../utils/dateUtils";
+import { followCurrentMonth, monthKey } from "../utils/dateUtils";
+import useTorontoMonth from "../hooks/useTorontoMonth";
 import Header from "../components/Layout/Header";
 import MonthlySummary from "../components/Dashboard/MonthlySummary";
 import UpcomingBills from "../components/Dashboard/UpcomingBills";
@@ -35,9 +36,23 @@ import ExpectedPayModal from "../components/Modals/ExpectedPayModal";
 const DashboardPage = () => {
   const queryClient = useQueryClient();
   // "This month" is Toronto's month, whatever the device's time zone
-  const now = getTorontoYearMonth();
+  const currentMonth = useTorontoMonth();
+  const [nowYear, nowMonth] = currentMonth.split("-").map(Number);
+  const now = { year: nowYear, month: nowMonth };
   const [selectedYear, setSelectedYear] = useState(now.year);
   const [selectedMonth, setSelectedMonth] = useState(now.month); // 1-12
+
+  // A tab left open past Toronto's 1st moves on to the new month, unless another month was picked
+  const [lastCurrentMonth, setLastCurrentMonth] = useState(currentMonth);
+  if (lastCurrentMonth !== currentMonth) {
+    setLastCurrentMonth(currentMonth);
+    const next = followCurrentMonth(monthKey(selectedYear, selectedMonth), lastCurrentMonth, currentMonth);
+    if (next !== monthKey(selectedYear, selectedMonth)) {
+      const [y, m] = next.split("-").map(Number);
+      setSelectedYear(y);
+      setSelectedMonth(m);
+    }
+  }
 
   const isCurrentMonth =
     selectedYear === now.year && selectedMonth === now.month;

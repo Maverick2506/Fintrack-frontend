@@ -5,6 +5,12 @@ import {
   getTorontoTodayDate,
   addDaysToDateStr,
   dueDateOnOpen,
+  getTorontoMonthKey,
+  monthKey,
+  followCurrentMonth,
+  openDueDate,
+  typeDueDate,
+  closeDueDate,
 } from "./dateUtils.js";
 import { simulate } from "./debtMath.js";
 import { calculatePacing } from "./savingsPacing.js";
@@ -132,5 +138,34 @@ assert(dueDateOnOpen({ entered: "2026-11-15", today: openedToday }) === "2026-11
 assert(dueDateOnOpen({ saved: "2026-11-20", today: openedToday }) === "2026-11-20", "Edit Debt: the saved date wins over today");
 assert(dueDateOnOpen({ entered: "2026-11-15", saved: "2026-11-20", today: openedToday }) === "2026-11-15", "Edit Debt: a date the user entered wins over the saved one");
 assert(dueDateOnOpen({ entered: "", saved: null, today: openedToday }) === "2026-11-01", "Edit Debt: no saved date and a cleared field -> today");
+
+console.log("\n--- Test 7: a Dashboard/Reports tab left open past Toronto's 1st ---");
+const lastMinuteOfOctober = new Date("2026-11-01T03:59:00Z"); // Oct 31, 23:59 Toronto
+const firstMinuteOfNovember = new Date("2026-11-01T04:01:00Z"); // Nov 1, 00:01 Toronto
+for (const tz of PHONES) {
+  onPhoneIn(tz, () => {
+    const before = getTorontoMonthKey(lastMinuteOfOctober);
+    const after = getTorontoMonthKey(firstMinuteOfNovember);
+    assert(before === "2026-10" && after === "2026-11", `${tz}: Toronto's month goes from 2026-10 to 2026-11 (got ${before} -> ${after})`);
+    assert(followCurrentMonth(before, before, after) === "2026-11", `${tz}: a page on October moves on to November`);
+    assert(followCurrentMonth("2026-08", before, after) === "2026-08", `${tz}: a page the user moved to August stays on August`);
+    assert(followCurrentMonth(after, after, after) === "2026-11", `${tz}: nothing changes while the month is the same`);
+  });
+}
+assert(monthKey(2026, 3) === "2026-03" && monthKey(2026, 12) === "2026-12", "monthKey pads the month");
+
+console.log("\n--- Test 8: Edit Debt's date after typing and cancelling ---");
+const editCtx = { saved: "2026-11-20", today: "2026-11-06" };
+let field = { value: "", edited: false };
+field = openDueDate(field, editCtx);
+assert(field.value === "2026-11-20", "Opening shows the saved date");
+field = typeDueDate("2026-12-01");
+field = openDueDate(field, editCtx); // the debt list refetched while the dialog is open
+assert(field.value === "2026-12-01", "A refetch while open keeps the typed date");
+field = closeDueDate(field); // Cancel
+field = openDueDate(field, editCtx);
+assert(field.value === "2026-11-20", "Cancel, then reopen: the saved date, not the typed one");
+field = openDueDate(closeDueDate(typeDueDate("")), { saved: null, today: "2026-11-06" });
+assert(field.value === "2026-11-06", "No saved date: today at open");
 
 if (failed > 0) process.exit(1);

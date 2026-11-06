@@ -9,7 +9,8 @@ import SpendingTrendsChart from "../components/Dashboard/SpendingTrendsChart";
 import NetWorthHistoryChart from "../components/Dashboard/NetWorthHistoryChart";
 import CategoryDetailModal from "../components/Modals/CategoryDetailModal";
 import { formatCurrency } from "../utils/formatUtils";
-import { getTorontoYearMonth } from "../utils/dateUtils";
+import { getTorontoYearMonth, followCurrentMonth, monthKey } from "../utils/dateUtils";
+import useTorontoMonth from "../hooks/useTorontoMonth";
 import { TRASH_DELETE_DESCRIPTION } from "../utils/undoDelete";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
 import { TRANSACTIONS_RESTORED_EVENT } from "../components/Common/UndoDeleteToast";
@@ -31,6 +32,15 @@ const ReportsPage = () => {
   const [activeExpenseId, setActiveExpenseId] = useState(null);
   // Starts on Toronto's month, whatever the device's time zone
   const [selectedDate, setSelectedDate] = useState(() => getTorontoYearMonth());
+  // A tab left open past Toronto's 1st moves on to the new month, unless another month was picked
+  const currentMonth = useTorontoMonth();
+  const [lastCurrentMonth, setLastCurrentMonth] = useState(currentMonth);
+  if (lastCurrentMonth !== currentMonth) {
+    setLastCurrentMonth(currentMonth);
+    const next = followCurrentMonth(monthKey(selectedDate.year, selectedDate.month), lastCurrentMonth, currentMonth);
+    const [year, month] = next.split("-").map(Number);
+    if (year !== selectedDate.year || month !== selectedDate.month) setSelectedDate({ year, month });
+  }
   const [isCategoryModalOpen, setCategoryModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
   const [categoryTransactions, setCategoryTransactions] = useState([]);
@@ -80,7 +90,7 @@ const ReportsPage = () => {
     return savingsGoals.filter((g) => Boolean(g.registeredType));
   }, [savingsGoals]);
 
-  const currentYear = getTorontoYearMonth().year;
+  const currentYear = Number(currentMonth.slice(0, 4));
   const availableYears = useMemo(() => {
     const start = 2023;
     const end = Math.max(currentYear + 2, 2027);
