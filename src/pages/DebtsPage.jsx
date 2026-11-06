@@ -271,11 +271,11 @@ const DebtsPage = () => {
                   );
 
                   const freq = debt.payment_frequency || "monthly";
-                  const hasApr =
-                    debt.interest_rate !== null &&
-                    debt.interest_rate !== undefined &&
-                    debt.interest_rate !== "" &&
-                    parseFloat(debt.interest_rate) > 0;
+                  // No rate entered at all (0% is a rate): offer to add one under the estimate
+                  const noRateSet =
+                    debt.interest_rate === null ||
+                    debt.interest_rate === undefined ||
+                    debt.interest_rate === "";
 
                   const singleSim = simulate([debt], 0);
                   const debtDetail = singleSim.perDebt[0];
@@ -300,26 +300,28 @@ const DebtsPage = () => {
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center">
                             <button
                               onClick={() => openModal("edit", debt)}
                               title="Edit debt"
-                              className="btn-ghost-icon"
+                              aria-label="Edit debt"
+                              className="btn-ghost-icon tap-icon"
                             >
                               <Pencil size={14} />
                             </button>
                             <button
                               onClick={() => openModal("delete", debt)}
                               title="Delete debt"
-                              className="btn-ghost-icon hover:text-rose-400"
+                              aria-label="Delete debt"
+                              className="btn-ghost-icon tap-icon hover:text-rose-400"
                             >
                               <Trash2 size={14} />
                             </button>
                             <button
                               onClick={() => openModal("pay", debt)}
-                              className="btn-secondary ml-1"
+                              className="tap-wrap ml-1"
                             >
-                              Pay
+                              <span className="btn-secondary">Pay</span>
                             </button>
                           </div>
                         </div>
@@ -333,10 +335,11 @@ const DebtsPage = () => {
                             No payment recorded for the {formatShortDate(debt.missed_payment_due_date)} due date
                           </p>
                         )}
-                        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-                          <div>
+                        {/* Sync sits under the amount on every card, however long the amount is */}
+                        <div className="mb-4 flex flex-col items-start gap-3">
+                          <div className="min-w-0 max-w-full">
                             <p className="text-xs text-zinc-500 mb-0.5">Remaining</p>
-                            <p className="text-2xl font-semibold text-zinc-100 tabular-nums">
+                            <p className="text-2xl font-semibold text-zinc-100 tabular-nums break-all">
                               {formatCurrency(debt.total_remaining)}
                             </p>
                           </div>
@@ -373,22 +376,6 @@ const DebtsPage = () => {
                           <p className="text-[11px] text-rose-400 font-medium mt-2.5 text-right tabular-nums">
                             This payment never pays off the debt (${debtDetail?.solvencyInterest}/mo interest)
                           </p>
-                        ) : !hasApr ? (
-                          <div className="mt-2.5 flex items-center justify-between text-[11px]">
-                            <button
-                              type="button"
-                              onClick={() => openModal("edit", debt)}
-                              className="text-amber-400 hover:text-amber-300 underline underline-offset-2 flex items-center gap-1 cursor-pointer"
-                            >
-                              <Pencil size={10} />
-                              <span>Add interest rate for accurate estimate</span>
-                            </button>
-                            {payoffMonths && (
-                              <span className="text-zinc-500 tabular-nums">
-                                ~{payoffMonths} mos (0% APR)
-                              </span>
-                            )}
-                          </div>
                         ) : payoffMonths ? (
                           <p className="text-[11px] text-zinc-400 mt-2.5 text-right tabular-nums">
                             Est. payoff in ~{payoffMonths}{" "}
@@ -406,6 +393,18 @@ const DebtsPage = () => {
                             )}
                           </p>
                         ) : null}
+                        {!isInsolvent && noRateSet && (
+                          <div className="mt-1 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => openModal("edit", debt)}
+                              className="min-h-10 -mb-2.5 text-[11px] text-amber-400 hover:text-amber-300 underline underline-offset-2 inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Pencil size={10} />
+                              <span>No interest rate set. Add one</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -495,18 +494,20 @@ const DebtsPage = () => {
                                 ✓ Paid in Full
                               </span>
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center">
                               <button
                                 onClick={() => openModal("edit", debt)}
                                 title="Edit debt"
-                                className="btn-ghost-icon"
+                                aria-label="Edit debt"
+                                className="btn-ghost-icon tap-icon"
                               >
                                 <Pencil size={14} />
                               </button>
                               <button
                                 onClick={() => openModal("delete", debt)}
                                 title="Delete debt"
-                                className="btn-ghost-icon hover:text-rose-400"
+                                aria-label="Delete debt"
+                                className="btn-ghost-icon tap-icon hover:text-rose-400"
                               >
                                 <Trash2 size={14} />
                               </button>

@@ -265,11 +265,12 @@ const SavingsPage = () => {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+                    <div className="flex items-center flex-shrink-0 ml-3">
                       <button
                         onClick={() => handleOpenEditModal(goal)}
                         title="Edit goal"
-                        className="btn-ghost-icon"
+                        aria-label="Edit goal"
+                        className="btn-ghost-icon tap-icon"
                       >
                         <Pencil size={14} />
                       </button>
@@ -280,15 +281,16 @@ const SavingsPage = () => {
                           setDeleteModalOpen(true);
                         }}
                         title="Delete goal"
-                        className="btn-ghost-icon hover:text-rose-400"
+                        aria-label="Delete goal"
+                        className="btn-ghost-icon tap-icon hover:text-rose-400"
                       >
                         <Trash2 size={14} />
                       </button>
                       <button
                         onClick={() => handleOpenSavingsModal(goal.id)}
-                        className="btn-secondary ml-1"
+                        className="tap-wrap ml-1"
                       >
-                        + Add
+                        <span className="btn-secondary">+ Add</span>
                       </button>
                     </div>
                   </div>

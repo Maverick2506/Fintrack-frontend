@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { TrendingUp, AlertTriangle, Shield, Check, Pencil, X, Sparkles, ChevronDown, CalendarDays } from "lucide-react";
 import { formatCurrency, formatShortDate } from "../../utils/formatUtils";
+import ChartFrame from "../Common/ChartFrame";
 
 const CustomForecastTooltip = ({ active, payload, label, buffer }) => {
   if (!active || !payload || !payload.length) return null;
@@ -261,7 +262,7 @@ const ForecastChartCard = ({
       </div>
 
       {/* Chart */}
-      <div className="w-full h-44 sm:h-64 pt-2">
+      <ChartFrame className="w-full h-44 sm:h-64 pt-2">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={forecast.days}
@@ -333,7 +334,7 @@ const ForecastChartCard = ({
             />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </ChartFrame>
 
       {/* Estimated Income Explanation */}
       {forecast.estimatedIncome && (

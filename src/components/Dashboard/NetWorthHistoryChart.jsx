@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { TrendingUp, History } from "lucide-react";
 import { formatCurrency, formatShortDate } from "../../utils/formatUtils";
+import ChartFrame from "../Common/ChartFrame";
 
 const CustomNetWorthTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
@@ -136,7 +137,7 @@ const NetWorthHistoryChart = ({ snapshots = [], change30Days = null }) => {
           </p>
         </div>
       ) : (
-        <div style={{ width: "100%", height: 260 }}>
+        <ChartFrame style={{ width: "100%", height: 260 }}>
           <ResponsiveContainer>
             <AreaChart
               data={chartData}
@@ -178,7 +179,7 @@ const NetWorthHistoryChart = ({ snapshots = [], change30Days = null }) => {
               />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </ChartFrame>
       )}
     </div>
   );

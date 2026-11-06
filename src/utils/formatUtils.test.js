@@ -3,6 +3,7 @@ import {
   formatCurrency,
   formatNumber,
   formatShortDate,
+  formatShortDateWithYear,
   formatMonthYear,
 } from "./formatUtils.js";
 
@@ -59,6 +60,22 @@ console.log("\n--- Test 3: Date Formatters ---");
 assert(
   formatShortDate("2026-10-22") === "Oct 22",
   "formatShortDate produces 'Oct 22'"
+);
+assert(
+  formatShortDateWithYear("2026-12-01", "2026-11-06") === "Dec 1",
+  "formatShortDateWithYear leaves out the year for a date this year"
+);
+assert(
+  formatShortDateWithYear("2027-01-05", "2026-11-06") === "Jan 5, 2027",
+  "formatShortDateWithYear adds the year for a date in another year"
+);
+assert(
+  formatShortDateWithYear("2025-12-31", "2026-01-02") === "Dec 31, 2025",
+  "formatShortDateWithYear adds the year for a date last year"
+);
+assert(
+  ["2026-10-22", "2025-12-31"].map(formatShortDate).join(", ") === "Oct 22, Dec 31",
+  "formatShortDate never adds a year, even as a map() callback"
 );
 assert(
   formatMonthYear("2026-10-22") === "Oct 2026",

@@ -242,18 +242,20 @@ const CreditCardPage = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center">
                       <button
                         onClick={() => openModal("editCard", card.id, card)}
                         title="Edit card"
-                        className="btn-ghost-icon"
+                        aria-label="Edit card"
+                        className="btn-ghost-icon tap-icon"
                       >
                         <Pencil size={13} />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(card)}
                         title="Delete card"
-                        className="btn-ghost-icon hover:text-rose-400"
+                        aria-label="Delete card"
+                        className="btn-ghost-icon tap-icon hover:text-rose-400"
                       >
                         <Trash2 size={13} />
                       </button>

@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "recharts";
 import { PieChart as PieChartIcon } from "lucide-react";
+import ChartFrame from "../Common/ChartFrame";
 
 const COLORS = [
   "#e4e4e7", // zinc-200
@@ -61,7 +62,7 @@ const SpendingChartCard = ({ data = [], onCategoryClick }) => {
           </p>
         </div>
       ) : (
-        <div style={{ width: "100%", height: 240 }}>
+        <ChartFrame style={{ width: "100%", height: 240 }}>
           <ResponsiveContainer>
             <PieChart>
               <Pie
@@ -95,7 +96,7 @@ const SpendingChartCard = ({ data = [], onCategoryClick }) => {
               />
             </PieChart>
           </ResponsiveContainer>
-        </div>
+        </ChartFrame>
       )}
     </div>
   );

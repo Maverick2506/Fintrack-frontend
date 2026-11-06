@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { comparePlans } from "../../utils/debtMath";
 import { formatCurrency, formatMonthYear } from "../../utils/formatUtils";
+import ChartFrame from "../Common/ChartFrame";
 
 const CustomPlannerTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
@@ -264,7 +265,7 @@ const DebtPayoffPlanner = ({ debts = [], onEditDebt }) => {
               Green = with {formatCurrency(extraPayment)}/mo extra · Gray = minimums only
             </span>
           </div>
-          <div style={{ width: "100%", height: 220 }}>
+          <ChartFrame style={{ width: "100%", height: 220 }}>
             <ResponsiveContainer>
               <LineChart
                 data={combinedSeries}
@@ -318,7 +319,7 @@ const DebtPayoffPlanner = ({ debts = [], onEditDebt }) => {
                 />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </ChartFrame>
         </div>
       )}
 
