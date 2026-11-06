@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, PiggyBank, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
+import { getTorontoYearMonth } from "../../utils/dateUtils";
 import LinkedBillField from "./LinkedBillField";
 import { linkPayload } from "../../utils/planningAlerts";
 
@@ -14,7 +15,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
   const [registeredType, setRegisteredType] = useState("");
   const [linkedBillId, setLinkedBillId] = useState(null);
   const [contributionRoom, setContributionRoom] = useState("");
-  const [roomYear, setRoomYear] = useState(new Date().getFullYear().toString());
+  const [roomYear, setRoomYear] = useState(getTorontoYearMonth().year.toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -61,7 +62,7 @@ const AddSavingsGoalModal = ({ isOpen, onClose, refreshData }) => {
       setRegisteredType("");
       setLinkedBillId(null);
       setContributionRoom("");
-      setRoomYear(new Date().getFullYear().toString());
+      setRoomYear(getTorontoYearMonth().year.toString());
       onClose();
       refreshData();
     } catch (err) {

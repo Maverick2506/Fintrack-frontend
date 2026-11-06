@@ -2,7 +2,7 @@ import { formatCurrency } from "../../utils/formatUtils";
 import { useState, useEffect } from "react";
 import { X, Landmark, CheckCircle2, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
-import { getLocalTodayStr } from "../../utils/dateUtils";
+import { getTorontoTodayStr } from "../../utils/dateUtils";
 
 const AddDebtPaymentModal = ({
   isOpen,
@@ -64,7 +64,7 @@ const AddDebtPaymentModal = ({
     try {
       await dashboardService.payDebt(effectiveDebtId, {
         amount: numAmount,
-        payment_date: getLocalTodayStr(),
+        payment_date: getTorontoTodayStr(),
       });
       setAmount("");
       onClose();

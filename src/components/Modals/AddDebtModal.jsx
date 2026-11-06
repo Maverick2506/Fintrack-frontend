@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Calendar, Repeat, Landmark, AlertCircle } from "lucide-react";
-import { getLocalTodayStr } from "../../utils/dateUtils";
+import { getTorontoTodayStr, dueDateOnOpen } from "../../utils/dateUtils";
 import dashboardService from "../../services/dashboardService";
 
 const FREQUENCIES = [
@@ -16,12 +16,23 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
   const [monthlyPayment, setMonthlyPayment] = useState("");
   const [interestRate, setInterestRate] = useState("");
   const [autoPay, setAutoPay] = useState(false);
-  const [nextDueDate, setNextDueDate] = useState(
-    getLocalTodayStr()
-  );
+  const [nextDueDate, setNextDueDate] = useState("");
+  // True once the user picks a date, so reopening keeps it instead of resetting to today
+  const dueDateEdited = useRef(false);
   const [paymentFrequency, setPaymentFrequency] = useState("monthly");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Default the date on each open, so a page left open past Toronto midnight shows the new today
+  useEffect(() => {
+    if (!isOpen) return;
+    setNextDueDate((current) =>
+      dueDateOnOpen({
+        entered: dueDateEdited.current ? current : null,
+        today: getTorontoTodayStr(),
+      })
+    );
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -69,7 +80,8 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
       setMonthlyPayment("");
       setInterestRate("");
       setAutoPay(false);
-      setNextDueDate(getLocalTodayStr());
+      setNextDueDate("");
+      dueDateEdited.current = false;
       setError(null);
       setPaymentFrequency("monthly");
 
@@ -232,7 +244,10 @@ const AddDebtModal = ({ isOpen, onClose, refreshData }) => {
                   <input
                     type="date"
                     value={nextDueDate}
-                    onChange={(e) => setNextDueDate(e.target.value)}
+                    onChange={(e) => {
+                      dueDateEdited.current = true;
+                      setNextDueDate(e.target.value);
+                    }}
                     className="w-full bg-zinc-900 border border-white/[0.08] rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none tabular-nums"
                     required
                   />
