@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Calendar, Repeat, Landmark, AlertCircle } from "lucide-react";
-import { getTorontoTodayStr, openDueDate, typeDueDate, closeDueDate } from "../../utils/dateUtils";
+import { getTorontoTodayStr, typeDueDate, closeDueDate, dueDateOnDialogChange } from "../../utils/dateUtils";
 import dashboardService from "../../services/dashboardService";
 
 const FREQUENCIES = [
@@ -51,17 +51,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   // On each open: the saved date, or Toronto's today if there is none (worked out at open,
   // so a page left open past midnight shows the new day). Closing without saving drops a typed date.
   useEffect(() => {
-    if (!isOpen) {
-      setDueDate(closeDueDate);
-      return;
-    }
-    if (!debt) return;
-    setDueDate((field) =>
-      openDueDate(field, {
-        saved: debt.next_due_date || debt.dueDate,
-        today: getTorontoTodayStr(),
-      })
-    );
+    setDueDate((field) => dueDateOnDialogChange(field, { isOpen, debt, today: getTorontoTodayStr() }));
   }, [isOpen, debt]);
 
   useEffect(() => {

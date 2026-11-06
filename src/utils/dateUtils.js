@@ -55,6 +55,16 @@ export const openDueDate = (field, { saved, today }) => ({
 export const typeDueDate = (value) => ({ value, edited: true });
 export const closeDueDate = (field) => ({ ...field, edited: false });
 
+/**
+ * What Edit Debt does to its date field whenever isOpen or the debt changes:
+ * closed -> drop a typed date; open -> openDueDate with the debt's saved date.
+ */
+export const dueDateOnDialogChange = (field, { isOpen, debt, today }) => {
+  if (!isOpen) return closeDueDate(field);
+  if (!debt) return field;
+  return openDueDate(field, { saved: debt.next_due_date || debt.dueDate, today });
+};
+
 /** Adds whole days to a YYYY-MM-DD string. */
 export const addDaysToDateStr = (dateStr, days) => {
   const [y, m, d] = String(dateStr).slice(0, 10).split("-").map(Number);

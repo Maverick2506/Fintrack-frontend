@@ -11,6 +11,7 @@ import {
   openDueDate,
   typeDueDate,
   closeDueDate,
+  dueDateOnDialogChange,
 } from "./dateUtils.js";
 import { simulate } from "./debtMath.js";
 import { calculatePacing } from "./savingsPacing.js";
@@ -167,5 +168,21 @@ field = openDueDate(field, editCtx);
 assert(field.value === "2026-11-20", "Cancel, then reopen: the saved date, not the typed one");
 field = openDueDate(closeDueDate(typeDueDate("")), { saved: null, today: "2026-11-06" });
 assert(field.value === "2026-11-06", "No saved date: today at open");
+
+console.log("\n--- Test 9: Edit Debt's dialog step (the function its effect calls on every open/close) ---");
+const savedDebt = { id: "d1", next_due_date: "2026-11-20" };
+const step9 = (f, isOpen, debtNow = savedDebt) => dueDateOnDialogChange(f, { isOpen, debt: debtNow, today: "2026-11-06" });
+let dialog = step9({ value: "", edited: false }, true);
+assert(dialog.value === "2026-11-20", "Open: the saved date");
+dialog = step9(typeDueDate("2027-02-14"), true, { ...savedDebt }); // refetch hands in a new debt object
+assert(dialog.value === "2027-02-14", "Refetch while open: the typed date stays");
+dialog = step9(dialog, false, null); // Cancel / Escape / X: the page may also clear the debt
+dialog = step9(dialog, true);
+assert(dialog.value === "2026-11-20", "Close, reopen: back to the saved date");
+dialog = step9(typeDueDate("2027-02-14"), false); // closed while the page keeps the same debt selected
+dialog = step9(dialog, true);
+assert(dialog.value === "2026-11-20", "Close with the debt still selected, reopen: the saved date");
+assert(step9({ value: "x", edited: true }, true, null).value === "x", "Open before the debt arrives: unchanged");
+assert(step9({ value: "", edited: false }, true, { id: "d2", next_due_date: null }).value === "2026-11-06", "No saved date: today");
 
 if (failed > 0) process.exit(1);
