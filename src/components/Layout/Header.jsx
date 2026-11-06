@@ -22,11 +22,13 @@ const Header = ({
             <button
               type="button"
               onClick={onPrevMonth}
-              className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] rounded-md transition-colors cursor-pointer"
+              className="group -my-2 min-w-10 min-h-10 -mx-2 inline-flex items-center justify-center text-zinc-400 hover:text-zinc-100 cursor-pointer"
               title="Previous month"
               aria-label="Previous month"
             >
-              <ChevronLeft size={13} />
+              <span className="p-1 rounded-md transition-colors group-hover:bg-white/[0.06]">
+                <ChevronLeft size={13} />
+              </span>
             </button>
             <span className="px-2.5 text-[11px] font-semibold text-zinc-300 uppercase tracking-wider min-w-[110px] text-center">
               {month} {year}
@@ -34,11 +36,13 @@ const Header = ({
             <button
               type="button"
               onClick={onNextMonth}
-              className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.06] rounded-md transition-colors cursor-pointer"
+              className="group -my-2 min-w-10 min-h-10 -mx-2 inline-flex items-center justify-center text-zinc-400 hover:text-zinc-100 cursor-pointer"
               title="Next month"
               aria-label="Next month"
             >
-              <ChevronRight size={13} />
+              <span className="p-1 rounded-md transition-colors group-hover:bg-white/[0.06]">
+                <ChevronRight size={13} />
+              </span>
             </button>
           </div>
 

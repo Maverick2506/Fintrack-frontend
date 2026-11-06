@@ -27,19 +27,23 @@ const ProgressSection = ({
           {onAddDebt && (
             <button
               onClick={onAddDebt}
-              className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+              className="tap-wrap"
             >
-              <Plus size={12} strokeWidth={2} className="text-zinc-400" />
-              <span>Debt</span>
+              <span className="btn-secondary !py-1 !px-2.5 !text-[11px]">
+                <Plus size={12} strokeWidth={2} className="text-zinc-400" />
+                <span>Debt</span>
+              </span>
             </button>
           )}
           {onAddSavingsGoal && (
             <button
               onClick={onAddSavingsGoal}
-              className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+              className="tap-wrap"
             >
-              <Plus size={12} strokeWidth={2} className="text-zinc-400" />
-              <span>Goal</span>
+              <span className="btn-secondary !py-1 !px-2.5 !text-[11px]">
+                <Plus size={12} strokeWidth={2} className="text-zinc-400" />
+                <span>Goal</span>
+              </span>
             </button>
           )}
         </div>
@@ -69,9 +73,9 @@ const ProgressSection = ({
                   </div>
                   <button
                     onClick={() => onPayDebt(debt.id)}
-                    className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+                    className="tap-wrap"
                   >
-                    Pay
+                    <span className="btn-secondary !py-1 !px-2.5 !text-[11px]">Pay</span>
                   </button>
                 </div>
                 <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
@@ -122,9 +126,9 @@ const ProgressSection = ({
                   </div>
                   <button
                     onClick={() => onContribute(goal.id)}
-                    className="btn-secondary !py-1 !px-2.5 !text-[11px]"
+                    className="tap-wrap"
                   >
-                    + Add
+                    <span className="btn-secondary !py-1 !px-2.5 !text-[11px]">+ Add</span>
                   </button>
                 </div>
                 <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">

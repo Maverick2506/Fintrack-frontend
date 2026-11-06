@@ -254,7 +254,8 @@ const ReportsPage = () => {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all text-center whitespace-nowrap cursor-pointer ${
+              aria-pressed={activeTab === tab.id}
+              className={`flex-1 min-h-10 px-3 rounded-lg text-xs font-medium transition-all text-center whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? "bg-zinc-800 text-emerald-400 shadow-sm border border-white/[0.08]"
                   : "text-zinc-400 hover:text-zinc-200"
@@ -492,14 +493,18 @@ const ReportsPage = () => {
                       const limit = budgets[cat.name];
                       const over = limit && cat.value > limit;
                       return (
-                        <div key={cat.name} className="flex items-center justify-between text-xs py-1">
-                          <span className="text-zinc-300 font-medium w-32 truncate">{cat.name}</span>
-                          <span className={`tabular-nums ${over ? "text-rose-400 font-medium" : "text-zinc-400"}`}>
+                        <div
+                          key={cat.name}
+                          className={`flex items-center justify-between text-xs py-1 ${editingBudget === cat.name ? "flex-wrap gap-y-1" : ""}`}
+                        >
+                          <span className="text-zinc-300 font-medium w-32 min-w-0 truncate">{cat.name}</span>
+                          <span className={`tabular-nums whitespace-nowrap ${over ? "text-rose-400 font-medium" : "text-zinc-400"}`}>
                             {formatCurrency(cat.value)}
                             {limit && <span className="text-zinc-500"> / {formatCurrency(limit)}</span>}
                           </span>
                           {editingBudget === cat.name ? (
-                            <div className="flex items-center gap-1">
+                            // On phones the editor takes its own line so the name and amount stay readable
+                            <div className="flex items-center justify-end gap-1 w-full sm:w-auto">
                               <input
                                 type="number"
                                 placeholder="Limit"
@@ -508,25 +513,39 @@ const ReportsPage = () => {
                                 className="w-20 bg-zinc-950 text-zinc-100 rounded px-2 py-1 text-xs border border-white/10 focus:outline-none"
                                 autoFocus
                               />
-                              <button onClick={() => saveBudget(cat.name)} className="btn-ghost-icon !p-1 text-emerald-400">
+                              <button
+                                onClick={() => saveBudget(cat.name)}
+                                aria-label={`Save ${cat.name} budget`}
+                                title="Save budget"
+                                className="btn-ghost-icon tap-icon !p-1 text-emerald-400"
+                              >
                                 <Check size={13} />
                               </button>
-                              <button onClick={() => setEditingBudget(null)} className="btn-ghost-icon !p-1">
+                              <button
+                                onClick={() => setEditingBudget(null)}
+                                aria-label="Cancel"
+                                title="Cancel"
+                                className="btn-ghost-icon tap-icon !p-1"
+                              >
                                 <X size={13} />
                               </button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center shrink-0">
                               <button
                                 onClick={() => { setEditingBudget(cat.name); setBudgetInput(limit || ""); }}
-                                className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer py-2 px-1.5"
+                                aria-label={limit ? `Edit ${cat.name} budget` : `Set a budget for ${cat.name}`}
+                                title={limit ? "Edit budget" : undefined}
+                                className="tap-icon text-xs text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer px-1.5"
                               >
                                 {limit ? <Pencil size={12} /> : "+ Set limit"}
                               </button>
                               {limit && (
                                 <button
                                   onClick={() => removeBudget(cat.name)}
-                                  className="btn-ghost-icon !p-1 hover:text-rose-400"
+                                  aria-label={`Remove ${cat.name} budget`}
+                                  title="Remove budget"
+                                  className="btn-ghost-icon tap-icon !p-1 hover:text-rose-400"
                                 >
                                   <X size={12} />
                                 </button>

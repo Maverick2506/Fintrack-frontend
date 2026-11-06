@@ -28,6 +28,17 @@
     @apply p-1.5 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.06] transition-colors cursor-pointer;
   }
 
+  /* A small icon button with a 40px tap area; the negative margin keeps the row's height */
+  .tap-icon {
+    @apply inline-flex items-center justify-center min-w-10 min-h-10 -my-2;
+  }
+
+  /* A 40px tap area around a small button face (an inner span with the button's look),
+     so the button looks and sits as before but is easy to hit on a phone */
+  .tap-wrap {
+    @apply inline-flex items-center justify-center min-w-10 min-h-10 -my-2 cursor-pointer;
+  }
+
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }

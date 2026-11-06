@@ -118,11 +118,12 @@ const TransactionList = ({ transactions, onDelete, onSort, sortConfig }) => {
                   {formatCurrency(Math.abs(parseFloat(transaction.amount) || 0))}
                 </span>
               </div>
-              <div className="w-8 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+              <div className="w-10 flex justify-end opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                 <button
                   onClick={() => onDelete(transaction.id)}
                   title="Delete"
-                  className="btn-ghost-icon hover:text-rose-400"
+                  aria-label={`Delete ${transaction.name}`}
+                  className="btn-ghost-icon tap-icon hover:text-rose-400"
                 >
                   <Trash2 size={13} />
                 </button>

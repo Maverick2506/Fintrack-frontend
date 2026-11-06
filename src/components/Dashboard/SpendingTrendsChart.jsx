@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { BarChart3 } from "lucide-react";
+import ChartFrame from "../Common/ChartFrame";
 
 const SpendingTrendsChart = ({ data = [] }) => {
   const hasActivity =
@@ -41,7 +42,7 @@ const SpendingTrendsChart = ({ data = [] }) => {
           </p>
         </div>
       ) : (
-        <div style={{ width: "100%", height: 260 }}>
+        <ChartFrame style={{ width: "100%", height: 260 }}>
           <ResponsiveContainer>
             <BarChart
               data={data}
@@ -97,7 +98,7 @@ const SpendingTrendsChart = ({ data = [] }) => {
               />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartFrame>
       )}
     </div>
   );

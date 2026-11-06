@@ -10,8 +10,9 @@ import {
   Plus,
 } from "lucide-react";
 import dashboardService from "../services/dashboardService";
-import { formatCurrency } from "../utils/formatUtils";
+import { formatCurrency, formatShortDateWithYear } from "../utils/formatUtils";
 import { getTorontoTodayStr } from "../utils/dateUtils";
+import { useTorontoToday } from "../hooks/useTorontoMonth";
 import AddTransactionModal from "../components/Modals/AddTransactionModal";
 import ConfirmDeleteModal from "../components/Modals/ConfirmDeleteModal";
 import CompactSummaryBar from "../components/Common/CompactSummaryBar";
@@ -31,6 +32,7 @@ const CADENCE_BADGES = {
 };
 
 const SubscriptionsPage = () => {
+  const todayStr = useTorontoToday();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -261,7 +263,7 @@ const SubscriptionsPage = () => {
                   <div className="flex items-center justify-between text-xs text-zinc-400 pt-1 border-t border-white/[0.04]">
                     <div className="flex items-center gap-1.5 text-zinc-300">
                       <Calendar size={12} className="text-zinc-500 shrink-0" />
-                      <span>{sub.nextDate ? `next ${sub.nextDate}` : "None scheduled"}</span>
+                      <span>{sub.nextDate ? `next ${formatShortDateWithYear(sub.nextDate, todayStr)}` : "None scheduled"}</span>
                     </div>
                     {hasPriceChange && (
                       <span
@@ -404,7 +406,7 @@ const SubscriptionsPage = () => {
                         {sub.nextDate ? (
                           <div className="flex items-center gap-1.5 text-zinc-300 font-medium">
                             <Calendar size={12} className="text-zinc-500 shrink-0" />
-                            <span>{sub.nextDate}</span>
+                            <span>{formatShortDateWithYear(sub.nextDate, todayStr)}</span>
                           </div>
                         ) : (
                           <span className="text-zinc-500 italic text-[11px]">
@@ -413,7 +415,7 @@ const SubscriptionsPage = () => {
                         )}
                         {sub.lastPaidDate && (
                           <div className="text-[10px] text-zinc-500 mt-0.5">
-                            Last paid: {sub.lastPaidDate}
+                            Last paid: {formatShortDateWithYear(sub.lastPaidDate, todayStr)}
                           </div>
                         )}
                       </td>

@@ -102,6 +102,24 @@ assert(
   `Planner total interest and payoff month match the backend projection ($1,404.25 in 39 months, got $${sweepMatch.totalInterest} in ${sweepMatch.perDebt[0].payoffMonth})`
 );
 
+// Debts page: a 0% debt and one with no rate still get a payoff estimate (balance / payment by frequency)
+const estBase = new Date(2026, 10, 6, 12);
+const zeroRate = simulate([{ id: "z", total_remaining: 2400, monthly_payment: 200, interest_rate: 0 }], 0, "avalanche", estBase).perDebt[0];
+assert(
+  zeroRate.isSolvent && zeroRate.payoffMonth === 12 && zeroRate.payoffDate === "2027-11-06" && zeroRate.totalInterest === 0,
+  `$2,400 at 0% paying $200 a month: payoff in 12 months (Nov 2027), no interest (got ${zeroRate.payoffMonth}, ${zeroRate.payoffDate})`
+);
+const noRate = simulate(
+  [{ id: "n", total_remaining: 960, monthly_payment: 40, payment_frequency: "bi-weekly", interest_rate: null }],
+  0,
+  "avalanche",
+  estBase
+).perDebt[0];
+assert(
+  noRate.isSolvent && noRate.payoffMonth === 12 && noRate.totalInterest === 0,
+  `$960 with no rate paying $40 bi-weekly ($86.67/mo): payoff in 12 months (got ${noRate.payoffMonth})`
+);
+
 console.log("\n==================================================");
 console.log("   ALL DEBT MATH UNIT TESTS PASSED                ");
 console.log("==================================================");

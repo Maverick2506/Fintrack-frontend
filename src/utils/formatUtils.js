@@ -39,15 +39,23 @@ export const formatNumber = (amount, options = {}) => {
 /**
  * Formats an ISO YYYY-MM-DD date string into a friendly "MMM D" string (e.g. "Oct 22", "Nov 1").
  */
-export const formatShortDate = (dateStr) => {
+export const formatShortDate = (dateStr) => formatShortDateWithYear(dateStr);
+
+/**
+ * "MMM D" like formatShortDate, plus the year when the date isn't in todayStr's year
+ * (todayStr is Toronto's today, YYYY-MM-DD): "Dec 1", "Jan 5, 2027".
+ */
+export const formatShortDateWithYear = (dateStr, todayStr) => {
   if (!dateStr) return "";
   const parts = String(dateStr).split("T")[0].split("-").map(Number);
   if (parts.length !== 3 || parts.some(isNaN)) return dateStr;
   const [y, m, d] = parts;
   const date = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const otherYear = typeof todayStr === "string" && String(y) !== todayStr.slice(0, 4);
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    ...(otherYear ? { year: "numeric" } : {}),
     timeZone: "UTC",
   });
 };
