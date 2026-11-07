@@ -73,7 +73,7 @@ export const applyPayeeToQuickAdd = (parsed, typed, payees) => {
   const keywordCategory = typed.category !== (typed.type === "income" ? "Income" : "Other");
   if (
     parsed.type === "expense" &&
-    !parsed.ruleApplied &&
+    !parsed.ruleCategory &&
     !keywordCategory &&
     EXPENSE_CATEGORIES.includes(payee.category) &&
     payee.category !== "Other"

@@ -20,6 +20,7 @@ const AddCreditCardPaymentModal = ({
   const fundBills = card?.fundBills || [];
   const [fundChecks, setFundChecks] = useState(() => defaultFundChecks(fundBills));
 
+  // Fill the form when the dialog opens (or a shared amount arrives); a refetch while it's open leaves your typing alone
   useEffect(() => {
     if (!isOpen) return;
     // A shared card payment opens with its amount; otherwise the statement balance, else the full balance
@@ -27,15 +28,18 @@ const AddCreditCardPaymentModal = ({
     setError(null);
     setIsSubmitting(false);
     setFundChecks(defaultFundChecks(card?.fundBills));
+    // card is read once per opening on purpose: its object changes on every refetch
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialAmount, card?.id]);
 
+  useEffect(() => {
+    if (!isOpen) return;
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // Only when the dialog opens or the shared amount changes, never while you're typing
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, onClose, card?.fundBills, initialAmount]);
+  }, [isOpen, onClose]);
 
   const effectiveCardId = cardId || card?.id;
   const cardName = card?.name || "Credit Card";

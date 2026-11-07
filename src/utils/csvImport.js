@@ -175,6 +175,8 @@ export const applyRulesToQuickAdd = (parsed, rules, cards, todayStr) => {
   if (ruled.category) {
     next.category = ruled.category;
     next.ruleApplied = true;
+    // Only a rule that sets a category decides the category (a card-only rule leaves it to keywords/payee)
+    next.ruleCategory = true;
   }
   const card = !parsed.accountMentioned && ruled.accountId ? (cards || []).find((c) => c.id === ruled.accountId) : null;
   if (card) {

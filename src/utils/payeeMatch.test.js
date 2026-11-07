@@ -1,6 +1,7 @@
 /* global process */
 import { payeeKey, titleCaseWords, findPayee, applyPayeeToQuickAdd } from "./payeeMatch.js";
 import { parseQuickAdd } from "./quickAddParser.js";
+import { applyRulesToQuickAdd } from "./csvImport.js";
 
 function assert(condition, message) {
   if (condition) {
@@ -49,9 +50,21 @@ const timTyped = { ...timCoffee, category: "Entertainment" };
 const timKeyword = applyPayeeToQuickAdd(timTyped, timTyped, payees);
 assert(timKeyword.category === "Entertainment" && timKeyword.name === "Tim Hortons", "A keyword category stays; the spelling still changes");
 
-// A rule's category beats it too
-const ruled = run("4.50 tim hortons", [], (p) => ({ ...p, category: "Essentials", ruleApplied: true }));
-assert(ruled.category === "Essentials" && ruled.name === "Tim Hortons", "A rule's category stays");
+// A rule's category beats it too (real rules, as Quick Add applies them)
+const visa = [{ id: "c1", name: "Visa" }];
+const withRules = (text, rules) => {
+  const typed = parseQuickAdd(text, visa, today);
+  return applyPayeeToQuickAdd(applyRulesToQuickAdd(typed, rules, visa, today), typed, payees);
+};
+const ruled = withRules("80 ikea", [{ match: "ikea", category: "Essentials", priority: 1 }]);
+assert(ruled.category === "Essentials" && ruled.name === "IKEA", `A rule's category stays (got ${ruled.category})`);
+
+// A rule that only sets the card doesn't decide the category: the payee's usual one stays (review Required 1)
+const cardOnly = withRules("80 ikea", [{ match: "ikea", accountId: "c1", priority: 1 }]);
+assert(
+  cardOnly.category === "Shopping" && cardOnly.creditCardId === "c1" && cardOnly.name === "IKEA",
+  `A card-only rule keeps the payee's category and sets the card (got ${cardOnly.category}, ${cardOnly.creditCardId})`
+);
 
 // "Other" is never copied over a real choice
 const corner = run("5 corner shop");
