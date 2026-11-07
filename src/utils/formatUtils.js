@@ -75,3 +75,13 @@ export const formatMonthYear = (dateStr) => {
     timeZone: "UTC",
   });
 };
+
+/**
+ * An amount for an edit form's number box, always with 2 decimals: 23.4 -> "23.40", "5000" -> "5000.00".
+ * Empty, null or not a number -> "" (the box stays blank).
+ */
+export const toAmountInput = (value) => {
+  if (value === null || value === undefined || String(value).trim() === "") return "";
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(2) : "";
+};

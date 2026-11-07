@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -18,26 +18,49 @@ import {
   Inbox,
   Wand2,
   LayoutGrid,
+  ChevronDown,
+  ShieldOff,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { logout } from "../../utils/auth";
 import dashboardService from "../../services/dashboardService";
 import { openAskFinTrack } from "../../utils/askFinTrack";
+import ConfirmDeleteModal from "../Modals/ConfirmDeleteModal";
 
+// The full row from lg (1024px) up. Between md and lg only the core four fit; the rest go in More.
 const navItems = [
-  { to: "/", label: "Overview", icon: LayoutDashboard },
-  { to: "/reports", label: "Analytics", icon: BarChart3 },
-  { to: "/debts", label: "Debts", icon: Landmark },
+  { to: "/", label: "Overview", icon: LayoutDashboard, core: true },
+  { to: "/reports", label: "Analytics", icon: BarChart3, core: true },
+  { to: "/debts", label: "Debts", icon: Landmark, core: true },
   { to: "/savings", label: "Savings", icon: PiggyBank },
   { to: "/credit-cards", label: "Cards", icon: CreditCard },
   { to: "/subscriptions", label: "Subscriptions", icon: Repeat },
-  { to: "/ledger", label: "Ledger", icon: ReceiptText },
+  { to: "/ledger", label: "Ledger", icon: ReceiptText, core: true },
+];
+
+// Pages without a tab: the phone More sheet and the tablet/desktop More menu
+const secondaryPages = [
+  { to: "/savings", label: "Savings Goals", icon: PiggyBank, desc: "Track emergency fund & investments" },
+  { to: "/credit-cards", label: "Credit Cards", icon: CreditCard, desc: "Statement balances & due dates" },
+  { to: "/subscriptions", label: "Subscriptions", icon: Repeat, desc: "Recurring bills & services" },
+];
+const quickAddPage = { to: "/quick", label: "Quick Add", icon: Zap, desc: "Natural language transaction entry" };
+const toolPages = [
+  { to: "/widgets", label: "Widgets", icon: LayoutGrid, desc: "Home-screen widget, shortcut and Share" },
+  { to: "/import", label: "Import CSV", icon: Upload, desc: "Add transactions from your bank or card" },
+  { to: "/review", label: "Review new", icon: Inbox, desc: "Imported rows waiting for a look", reviewBadge: true },
+  { to: "/rules", label: "Rules", icon: Wand2, desc: "Categories and cards set by title" },
+  { to: "/trash", label: "Trash", icon: Trash2, desc: "Deleted transactions, kept for 30 days" },
 ];
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // tablet/desktop More menu
+  const [isSignOutAllOpen, setIsSignOutAllOpen] = useState(false);
+  const [isSigningOutAll, setIsSigningOutAll] = useState(false);
+  const menuRef = useRef(null);
   // Same health check as the Overview card: no Ask button when the server has no AI configured
   const { data: healthData } = useQuery({
     queryKey: ["health"],
@@ -53,22 +76,53 @@ const Navbar = () => {
   });
   const reviewCount = Array.isArray(reviewRows) ? reviewRows.length : 0;
 
-  const isMoreActive = [
-    "/savings",
-    "/credit-cards",
-    "/subscriptions",
-    "/quick",
-    "/trash",
-    "/import",
-    "/review",
-    "/rules",
-    "/widgets",
-  ].includes(location.pathname);
+  const isSecondaryActive = secondaryPages.some((p) => p.to === location.pathname);
+  const isToolActive = [quickAddPage, ...toolPages].some((p) => p.to === location.pathname);
+  const isMoreActive = isSecondaryActive || isToolActive;
+
+  // Close the More menu on a page change, an outside click or Escape
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onPointer = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setIsMenuOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setIsMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isMenuOpen]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
     window.location.reload();
+  };
+
+  const openSignOutAll = () => {
+    setIsMoreOpen(false);
+    setIsMenuOpen(false);
+    setIsSignOutAllOpen(true);
+  };
+
+  const handleSignOutAll = async () => {
+    if (isSigningOutAll) return;
+    setIsSigningOutAll(true);
+    try {
+      await dashboardService.signOutAllDevices();
+      handleLogout();
+    } catch {
+      // The error toast is already shown; stay signed in here
+      setIsSigningOutAll(false);
+      setIsSignOutAllOpen(false);
+    }
   };
 
   return (
@@ -85,7 +139,7 @@ const Navbar = () => {
             </span>
           </div>
 
-          {/* Desktop & Tablet Navigation Links */}
+          {/* Desktop & Tablet Navigation Links: core four + More at md, full row + More from lg */}
           <nav className="hidden md:flex items-center gap-0.5 lg:gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -94,7 +148,7 @@ const Navbar = () => {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                    `${item.core ? "inline-flex" : "hidden lg:inline-flex"} items-center gap-1.5 px-2.5 lg:px-3 h-10 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                       isActive
                         ? "bg-white/[0.08] text-zinc-100"
                         : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
@@ -106,12 +160,77 @@ const Navbar = () => {
                 </NavLink>
               );
             })}
+
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={isMenuOpen}
+                className={`inline-flex items-center gap-1 px-2.5 lg:px-3 h-10 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                  isMenuOpen || isToolActive
+                    ? "bg-white/[0.08] text-zinc-100"
+                    : isSecondaryActive
+                      ? "bg-white/[0.08] text-zinc-100 lg:bg-transparent lg:text-zinc-400 lg:hover:text-zinc-200 lg:hover:bg-white/[0.04]"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                }`}
+              >
+                <MoreHorizontal size={14} strokeWidth={1.75} />
+                <span>More</span>
+                <ChevronDown size={12} className={`transition-transform ${isMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {isMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-2 w-64 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-xl border border-white/[0.1] bg-zinc-950 shadow-2xl p-1.5 z-50"
+                >
+                  {[...secondaryPages.map((p) => ({ ...p, tabletOnly: true })), ...toolPages].map((item) => {
+                    const Icon = item.icon;
+                    const badge = item.reviewBadge ? reviewCount : 0;
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        role="menuitem"
+                        onClick={() => setIsMenuOpen(false)}
+                        className={({ isActive }) =>
+                          `${item.tabletOnly ? "flex lg:hidden" : "flex"} items-center gap-2.5 px-2.5 min-h-10 rounded-lg text-xs font-medium transition-colors ${
+                            isActive
+                              ? "bg-white/[0.08] text-zinc-100"
+                              : "text-zinc-300 hover:bg-white/[0.05] hover:text-zinc-100"
+                          }`
+                        }
+                      >
+                        <Icon size={14} strokeWidth={1.75} className="shrink-0" />
+                        <span className="flex-1 min-w-0 truncate">{item.label}</span>
+                        {badge > 0 && (
+                          <span className="shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-sky-500/15 border border-sky-500/25 text-sky-300 text-[10px] font-semibold tabular-nums flex items-center justify-center">
+                            {badge}
+                          </span>
+                        )}
+                      </NavLink>
+                    );
+                  })}
+                  <div className="my-1 border-t border-white/[0.06]" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={openSignOutAll}
+                    className="w-full flex items-center gap-2.5 px-2.5 min-h-10 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                  >
+                    <ShieldOff size={14} strokeWidth={1.75} className="shrink-0" />
+                    <span>Sign out all devices</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
             <NavLink
               to="/quick"
-              className="inline-flex items-center gap-1 px-2.5 h-10 md:h-auto md:py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 h-10 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
               title="Quick Add (Natural Language Entry)"
             >
               <Zap size={13} />
@@ -136,10 +255,10 @@ const Navbar = () => {
               onClick={handleLogout}
               title="Sign out"
               aria-label="Sign out"
-              className="inline-flex items-center gap-1.5 px-2.5 h-10 md:h-auto md:py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 h-10 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.05] transition-colors cursor-pointer shrink-0"
             >
               <LogOut size={14} strokeWidth={1.75} />
-              <span className="hidden lg:inline">Sign out</span>
+              <span className="hidden xl:inline">Sign out</span>
             </button>
           </div>
         </div>
@@ -239,63 +358,7 @@ const Navbar = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-1.5">
-              {[
-                {
-                  to: "/savings",
-                  label: "Savings Goals",
-                  icon: PiggyBank,
-                  desc: "Track emergency fund & investments",
-                },
-                {
-                  to: "/credit-cards",
-                  label: "Credit Cards",
-                  icon: CreditCard,
-                  desc: "Statement balances & due dates",
-                },
-                {
-                  to: "/subscriptions",
-                  label: "Subscriptions",
-                  icon: Repeat,
-                  desc: "Recurring bills & services",
-                },
-                {
-                  to: "/quick",
-                  label: "Quick Add",
-                  icon: Zap,
-                  desc: "Natural language transaction entry",
-                },
-                {
-                  to: "/widgets",
-                  label: "Widgets",
-                  icon: LayoutGrid,
-                  desc: "Home-screen widget, shortcut and Share",
-                },
-                {
-                  to: "/import",
-                  label: "Import CSV",
-                  icon: Upload,
-                  desc: "Add transactions from your bank or card",
-                },
-                {
-                  to: "/review",
-                  label: "Review new",
-                  icon: Inbox,
-                  desc: "Imported rows waiting for a look",
-                  badge: reviewCount,
-                },
-                {
-                  to: "/rules",
-                  label: "Rules",
-                  icon: Wand2,
-                  desc: "Categories and cards set by title",
-                },
-                {
-                  to: "/trash",
-                  label: "Trash",
-                  icon: Trash2,
-                  desc: "Deleted transactions, kept for 30 days",
-                },
-              ].map((item) => {
+              {[...secondaryPages, quickAddPage, ...toolPages].map((item) => {
                 const Icon = item.icon;
                 const isItemActive = location.pathname === item.to;
                 return (
@@ -320,9 +383,9 @@ const Navbar = () => {
                         {item.desc}
                       </span>
                     </div>
-                    {item.badge > 0 && (
+                    {item.reviewBadge && reviewCount > 0 && (
                       <span className="shrink-0 min-w-6 h-6 px-1.5 rounded-full bg-sky-500/15 border border-sky-500/25 text-sky-300 text-[11px] font-semibold tabular-nums flex items-center justify-center">
-                        {item.badge}
+                        {reviewCount}
                       </span>
                     )}
                   </NavLink>
@@ -364,10 +427,32 @@ const Navbar = () => {
                 </div>
                 <span>Sign out</span>
               </button>
+              <button
+                type="button"
+                onClick={openSignOutAll}
+                className="w-full flex items-center gap-3 p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer text-sm font-medium"
+              >
+                <div className="w-9 h-9 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                  <ShieldOff size={16} />
+                </div>
+                <div className="flex flex-col text-left min-w-0">
+                  <span>Sign out all devices</span>
+                  <span className="text-[11px] font-normal text-zinc-500">Every phone and browser, this one too</span>
+                </div>
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={isSignOutAllOpen}
+        onClose={() => !isSigningOutAll && setIsSignOutAllOpen(false)}
+        onConfirm={handleSignOutAll}
+        title="Sign out all devices?"
+        description="Every phone and browser signed in to FinTrack is signed out, this one included. You'll log in again here. Your Gem feed link and home-screen widget keep working."
+        confirmLabel={isSigningOutAll ? "Signing out…" : "Sign out everywhere"}
+      />
     </>
   );
 };

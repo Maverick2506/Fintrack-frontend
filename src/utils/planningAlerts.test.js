@@ -1,5 +1,6 @@
 /* global process */
 import {
+  defaultCardPayment,
   parseStatementDay,
   statementLines,
   statementDayLabel,
@@ -279,6 +280,17 @@ assert(
   !bulkPayOptions({ fundBills: [{ billId: "c1", useFund: true }] }, {}, new Set()).options.fundBills,
   "Bulk: a row with no card id sends no fund bills"
 );
+
+// Card Pay dialog: shared amount > statement balance > full balance
+{
+  const card = { currentBalance: 812.4, statement: { statementBalance: 455.1 } };
+  assert(defaultCardPayment(card).amount === "455.10" && defaultCardPayment(card).source === "statement", "Pay opens with the statement balance");
+  assert(defaultCardPayment(card, 60).amount === "60.00" && defaultCardPayment(card, 60).source === "shared", "A shared amount wins");
+  assert(defaultCardPayment({ currentBalance: "812.4", statement: { statementBalance: 0 } }).amount === "812.40", "A paid statement falls back to the full balance");
+  assert(defaultCardPayment({ currentBalance: 812.4 }).source === "balance", "No statement day: the full balance");
+  assert(defaultCardPayment({ currentBalance: 0, statement: { statementBalance: 0 } }).amount === "", "Nothing owing: blank");
+  assert(defaultCardPayment({ initialBalance: 100, statement: { statementBalance: 150 } }).amount === "100.00", "Never more than the balance");
+}
 
 if (failed > 0) {
   console.error(`\n${failed} planningAlerts test(s) failed`);

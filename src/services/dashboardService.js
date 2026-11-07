@@ -515,6 +515,11 @@ const dashboardService = {
     return api.get("/export/widget-config").then((res) => res.data);
   },
 
+  // Signs out every device, this one too; the caller then logs out locally
+  signOutAllDevices: async () => {
+    return handleRequest(api.post("/auth/sign-out-all"), null, false);
+  },
+
   regenerateWidgetKey: async () => {
     return handleRequest(
       api.post("/export/regenerate-widget-key"),
@@ -669,6 +674,11 @@ const dashboardService = {
   // Category and account rules
   fetchRules: async () => {
     return api.get("/rules").then((res) => res.data);
+  },
+
+  // Your payees (spelling and usual category) for Quick Add
+  fetchPayees: async () => {
+    return api.get("/expenses/payees").then((res) => res.data);
   },
 
   saveRule: async (rule) => {

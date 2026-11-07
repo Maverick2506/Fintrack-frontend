@@ -2,7 +2,7 @@ import { formatCurrency } from "../../utils/formatUtils";
 import { useState, useEffect } from "react";
 import { X, CreditCard, CheckCircle2, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
-import { defaultFundChecks, fundBillsPayload, fundsTotal } from "../../utils/planningAlerts";
+import { defaultCardPayment, defaultFundChecks, fundBillsPayload, fundsTotal } from "../../utils/planningAlerts";
 import FundBillsChecklist from "./FundBillsChecklist";
 
 const AddCreditCardPaymentModal = ({
@@ -22,8 +22,8 @@ const AddCreditCardPaymentModal = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    // A shared card payment opens with its amount filled in
-    setAmount(initialAmount > 0 ? String(initialAmount) : "");
+    // A shared card payment opens with its amount; otherwise the statement balance, else the full balance
+    setAmount(defaultCardPayment(card, initialAmount).amount);
     setError(null);
     setIsSubmitting(false);
     setFundChecks(defaultFundChecks(card?.fundBills));
@@ -33,6 +33,8 @@ const AddCreditCardPaymentModal = ({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // Only when the dialog opens or the shared amount changes, never while you're typing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, onClose, card?.fundBills, initialAmount]);
 
   const effectiveCardId = cardId || card?.id;
@@ -42,6 +44,7 @@ const AddCreditCardPaymentModal = ({
   );
   const creditLimit = parseFloat(card?.creditLimit || 0);
   const minPayment = parseFloat(card?.minimumPayment || 0);
+  const statementBalance = Math.min(parseFloat(card?.statement?.statementBalance) || 0, currentBalance);
 
   const numAmount = parseFloat(amount) || 0;
   const newBalance = Math.max(0, currentBalance - numAmount);
@@ -166,6 +169,18 @@ const AddCreditCardPaymentModal = ({
                   className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/10 transition-colors font-medium cursor-pointer"
                 >
                   Pay Full ({formatCurrency(currentBalance)})
+                </button>
+              )}
+              {statementBalance > 0 && statementBalance < currentBalance && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAmount(statementBalance.toFixed(2));
+                    setError(null);
+                  }}
+                  className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/10 transition-colors font-medium cursor-pointer"
+                >
+                  Pay Statement ({formatCurrency(statementBalance)})
                 </button>
               )}
               {minPayment > 0 && minPayment < currentBalance && (

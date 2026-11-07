@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toAmountInput } from "../../utils/formatUtils";
 import { X, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { parseStatementDay, statementDayLabel } from "../../utils/planningAlerts";
@@ -16,7 +17,7 @@ const EditCreditCardModal = ({ isOpen, onClose, refreshData, card }) => {
   useEffect(() => {
     if (card) {
       setName(card.name || "");
-      setCreditLimit(card.creditLimit ?? "");
+      setCreditLimit(toAmountInput(card.creditLimit));
       setDueDate(
         card.dueDate ? String(card.dueDate).slice(0, 10) : ""
       );
