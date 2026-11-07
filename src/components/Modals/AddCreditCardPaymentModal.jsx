@@ -2,7 +2,7 @@ import { formatCurrency } from "../../utils/formatUtils";
 import { useState, useEffect } from "react";
 import { X, CreditCard, CheckCircle2, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
-import { defaultFundChecks, fundBillsPayload, fundsTotal } from "../../utils/planningAlerts";
+import { defaultCardPayment, defaultFundChecks, fundBillsPayload, fundsTotal } from "../../utils/planningAlerts";
 import FundBillsChecklist from "./FundBillsChecklist";
 
 const AddCreditCardPaymentModal = ({
@@ -20,20 +20,26 @@ const AddCreditCardPaymentModal = ({
   const fundBills = card?.fundBills || [];
   const [fundChecks, setFundChecks] = useState(() => defaultFundChecks(fundBills));
 
+  // Fill the form when the dialog opens (or a shared amount arrives); a refetch while it's open leaves your typing alone
   useEffect(() => {
     if (!isOpen) return;
-    // A shared card payment opens with its amount filled in
-    setAmount(initialAmount > 0 ? String(initialAmount) : "");
+    // A shared card payment opens with its amount; otherwise the statement balance, else the full balance
+    setAmount(defaultCardPayment(card, initialAmount).amount);
     setError(null);
     setIsSubmitting(false);
     setFundChecks(defaultFundChecks(card?.fundBills));
+    // card is read once per opening on purpose: its object changes on every refetch
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialAmount, card?.id]);
 
+  useEffect(() => {
+    if (!isOpen) return;
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose, card?.fundBills, initialAmount]);
+  }, [isOpen, onClose]);
 
   const effectiveCardId = cardId || card?.id;
   const cardName = card?.name || "Credit Card";
@@ -42,6 +48,7 @@ const AddCreditCardPaymentModal = ({
   );
   const creditLimit = parseFloat(card?.creditLimit || 0);
   const minPayment = parseFloat(card?.minimumPayment || 0);
+  const statementBalance = Math.min(parseFloat(card?.statement?.statementBalance) || 0, currentBalance);
 
   const numAmount = parseFloat(amount) || 0;
   const newBalance = Math.max(0, currentBalance - numAmount);
@@ -166,6 +173,18 @@ const AddCreditCardPaymentModal = ({
                   className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/10 transition-colors font-medium cursor-pointer"
                 >
                   Pay Full ({formatCurrency(currentBalance)})
+                </button>
+              )}
+              {statementBalance > 0 && statementBalance < currentBalance && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAmount(statementBalance.toFixed(2));
+                    setError(null);
+                  }}
+                  className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 border border-white/10 transition-colors font-medium cursor-pointer"
+                >
+                  Pay Statement ({formatCurrency(statementBalance)})
                 </button>
               )}
               {minPayment > 0 && minPayment < currentBalance && (

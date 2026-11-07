@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toAmountInput } from "../../utils/formatUtils";
 import { X, PiggyBank, Calendar, AlertCircle } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
 import { getTorontoYearMonth } from "../../utils/dateUtils";
@@ -22,9 +23,9 @@ const EditSavingsGoalModal = ({ isOpen, onClose, refreshData, goal }) => {
   useEffect(() => {
     if (goal) {
       setName(goal.name || "");
-      setGoalAmount(parseFloat(goal.goal_amount) > 0 ? goal.goal_amount : "");
+      setGoalAmount(parseFloat(goal.goal_amount) > 0 ? toAmountInput(goal.goal_amount) : "");
       setBillAmount(null);
-      setCurrentAmount(goal.current_amount ?? "");
+      setCurrentAmount(toAmountInput(goal.current_amount));
       setTargetDate(
         goal.target_date
           ? String(goal.target_date).slice(0, 10)

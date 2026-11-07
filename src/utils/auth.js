@@ -66,6 +66,7 @@ export const logout = () => {
   // Quick Add's offline copies of the cards and rules (the queued saves themselves are kept for the next sign-in)
   localStorage.removeItem("fintrack_quick_cards");
   localStorage.removeItem("fintrack_quick_rules");
+  localStorage.removeItem("fintrack_quick_payees");
   try {
     sessionStorage.removeItem(ASK_HISTORY_KEY);
   } catch {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toAmountInput } from "../../utils/formatUtils";
 import { X, Calendar, Repeat, Landmark, AlertCircle } from "lucide-react";
 import { getTorontoTodayStr, typeDueDate, closeDueDate, dueDateOnDialogChange } from "../../utils/dateUtils";
 import dashboardService from "../../services/dashboardService";
@@ -28,8 +29,8 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
   useEffect(() => {
     if (debt) {
       setName(debt.name || "");
-      setTotalAmount(debt.total_amount ?? "");
-      setMonthlyPayment(debt.monthly_payment ?? "");
+      setTotalAmount(toAmountInput(debt.total_amount));
+      setMonthlyPayment(toAmountInput(debt.monthly_payment));
       setInterestRate(
         debt.interest_rate ?? debt.interestRate ?? ""
       );
@@ -37,7 +38,7 @@ const EditDebtModal = ({ isOpen, onClose, refreshData, debt }) => {
       setPaymentFrequency(
         debt.payment_frequency || debt.paymentFrequency || "monthly"
       );
-      const initRemaining = debt.total_remaining ?? debt.initialBalance ?? "";
+      const initRemaining = toAmountInput(debt.total_remaining ?? debt.initialBalance);
       setTotalRemaining(initRemaining);
       setInitialTotalRemaining(initRemaining);
     }

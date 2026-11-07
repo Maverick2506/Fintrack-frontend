@@ -5,6 +5,7 @@ import {
   formatShortDate,
   formatShortDateWithYear,
   formatMonthYear,
+  toAmountInput,
 } from "./formatUtils.js";
 
 function assert(condition, message) {
@@ -81,6 +82,15 @@ assert(
   formatMonthYear("2026-10-22") === "Oct 2026",
   "formatMonthYear produces 'Oct 2026'"
 );
+
+// Edit dialogs show amounts with 2 decimals
+assert(toAmountInput(23.4) === "23.40", "toAmountInput: 23.4 -> 23.40");
+assert(toAmountInput("5000") === "5000.00", "toAmountInput: \"5000\" -> 5000.00");
+assert(toAmountInput("12.345") === "12.35" || toAmountInput("12.345") === "12.34", "toAmountInput rounds to cents");
+assert(toAmountInput(0) === "0.00", "toAmountInput: 0 -> 0.00");
+assert(toAmountInput(null) === "" && toAmountInput("") === "", "toAmountInput: blank -> empty");
+assert(toAmountInput("1,200") === "1200.00", "toAmountInput: thousands commas are read");
+assert(toAmountInput("abc") === "abc", "toAmountInput: not a number is kept, never blanked");
 
 console.log("==================================================");
 console.log("   ALL FORMAT UTILS TESTS PASSED                  ");

@@ -327,3 +327,17 @@ export const suggestionText = (s) => {
 
 export const suggestionAcceptedToast = (s, result) =>
   `${result?.title || s.title} is now a monthly subscription${result?.nextDate ? `. Next charge ${formatShortDate(result.nextDate)}` : ""}.`;
+
+/**
+ * What the card Pay dialog opens with: a shared alert's amount, else the statement balance when there is
+ * one owing, else the full balance. Amounts as "123.45" for the number box; source says which was used.
+ */
+export const defaultCardPayment = (card, initialAmount = null) => {
+  const shared = parseFloat(initialAmount);
+  if (shared > 0) return { amount: shared.toFixed(2), source: "shared" };
+  const balance = parseFloat(card?.currentBalance ?? card?.initialBalance ?? 0) || 0;
+  const statement = parseFloat(card?.statement?.statementBalance) || 0;
+  if (statement > 0 && balance > 0) return { amount: Math.min(statement, balance).toFixed(2), source: "statement" };
+  if (balance > 0) return { amount: balance.toFixed(2), source: "balance" };
+  return { amount: "", source: null };
+};

@@ -26,7 +26,7 @@ import {
   CircleStop,
 } from "lucide-react";
 import dashboardService from "../../services/dashboardService";
-import { formatCurrency } from "../../utils/formatUtils";
+import { formatCurrency, toAmountInput } from "../../utils/formatUtils";
 import {
   getClientRefForKey,
   isTimeoutError,
@@ -156,7 +156,7 @@ const AddTransactionModal = ({
             ? existingTransaction.baseAmount
             : existingTransaction.amount;
         // A refund is stored as negative spending; the form edits its size and the server keeps the sign
-        setAmount(parseFloat(initialAmount) < 0 ? String(Math.abs(parseFloat(initialAmount))) : initialAmount);
+        setAmount(toAmountInput(Math.abs(parseFloat(initialAmount))));
         setCategory(existingTransaction.category || "Other");
         setHasManuallySelectedCategory(true);
         setSuggestedSource(null);

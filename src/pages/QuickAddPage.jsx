@@ -22,9 +22,10 @@ import toast from "react-hot-toast";
 import dashboardService from "../services/dashboardService";
 import { parseQuickAdd } from "../utils/quickAddParser";
 import { applyRulesToQuickAdd } from "../utils/csvImport";
+import { applyPayeeToQuickAdd } from "../utils/payeeMatch";
 import { buildExampleChips, cleanRecentChips } from "../utils/quickAddExamples";
 import { getTorontoTodayStr } from "../utils/dateUtils";
-import { formatCurrency, formatShortDate } from "../utils/formatUtils";
+import { formatCurrency, formatShortDate, formatShortDateWithYear } from "../utils/formatUtils";
 import { getClientRef } from "../utils/pendingSubmission";
 import { shouldQueueSave, queueBadgeText } from "../utils/offlineQueue";
 import { queueQuickAddSave } from "../services/offlineSync";
@@ -62,6 +63,7 @@ const SLOW_SAVE_MS = 8000;
 // Last cards and rules seen, so Quick Add still knows "visa" and your rules when opened offline
 const OFFLINE_CARDS_KEY = "fintrack_quick_cards";
 const OFFLINE_RULES_KEY = "fintrack_quick_rules";
+const OFFLINE_PAYEES_KEY = "fintrack_quick_payees";
 const readCached = (key) => {
   try {
     const list = JSON.parse(localStorage.getItem(key) || "null");
@@ -250,11 +252,27 @@ const QuickAddPage = () => {
     staleTime: 60000,
   });
 
+  // Payees you've used: their spelling, and their usual category when no rule or keyword sets one
+  const { data: payees = [] } = useQuery({
+    queryKey: ["payees"],
+    queryFn: () =>
+      dashboardService.fetchPayees().then((list) => {
+        writeCached(OFFLINE_PAYEES_KEY, list || []);
+        return list;
+      }),
+    placeholderData: () => readCached(OFFLINE_PAYEES_KEY),
+    staleTime: 5 * 60000,
+  });
+
   // Toronto's day, like the rest of the app, whatever time zone the phone is in
   const todayStr = getTorontoTodayStr();
   const typed = parseQuickAdd(input, creditCards, todayStr);
-  const ruledParsed = applyRulesToQuickAdd(typed, rules, creditCards, todayStr);
-  // A receipt's category fills in only when your rules and the keywords found none (typed > rules > keywords > AI)
+  const ruledParsed = applyPayeeToQuickAdd(
+    applyRulesToQuickAdd(typed, rules, creditCards, todayStr),
+    typed,
+    payees
+  );
+  // A receipt's category fills in only when rules, keywords and your payee history found none (typed > rules > keywords > payee > AI)
   const receiptActive = receipt && input === receipt.text;
   const receiptCat = receiptActive ? receiptCategory(receipt.draft) : null;
   const parsed =
@@ -695,7 +713,7 @@ const QuickAddPage = () => {
               {/* Date & Cleared status */}
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-900 border border-white/[0.06] text-zinc-300">
                 <Calendar size={11} className="text-zinc-500" />
-                {parsed.date} ({parsed.is_paid ? "Paid" : "Unpaid bill"})
+                {formatShortDateWithYear(parsed.date, todayStr)} ({parsed.is_paid ? "Paid" : "Unpaid bill"})
               </span>
             </div>
 
