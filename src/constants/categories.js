@@ -18,7 +18,7 @@ export const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, "Income"];
 /**
  * Round icon for a Ledger row: a lucide icon name (see components/Ledger/CategoryIcon.jsx)
  * and the Tailwind classes that tint the circle. Every EXPENSE_CATEGORIES entry has one;
- * Interest and Adjustment come from the daily interest sweep and Sync with statement; Savings
+ * Debt Payment is a payment to a debt; Interest and Adjustment come from the daily interest sweep and Sync with statement; Savings
  * Transfer marks a goal contribution saved as an expense.
  */
 export const CATEGORY_STYLES = {
@@ -29,6 +29,8 @@ export const CATEGORY_STYLES = {
   Transportation: { icon: "Car", tint: "bg-cyan-500/15 text-cyan-300" },
   Entertainment: { icon: "Clapperboard", tint: "bg-fuchsia-500/15 text-fuchsia-300" },
   Debt: { icon: "HandCoins", tint: "bg-rose-500/15 text-rose-300" },
+  // A payment to a debt (the backend's system category); same look as Debt
+  "Debt Payment": { icon: "HandCoins", tint: "bg-rose-500/15 text-rose-300" },
   Other: { icon: "Tag", tint: "bg-zinc-500/15 text-zinc-300" },
   Interest: { icon: "Percent", tint: "bg-orange-500/15 text-orange-300" },
   Adjustment: { icon: "SlidersHorizontal", tint: "bg-indigo-500/15 text-indigo-300" },
