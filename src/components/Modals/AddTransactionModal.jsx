@@ -45,6 +45,7 @@ import { getTorontoTodayStr, addDaysToDateStr } from "../../utils/dateUtils";
 import NotesTagsField from "./NotesTagsField";
 import ReceiptScanButton from "../Common/ReceiptScanButton";
 import { receiptFormFields, receiptDraftSummary, receiptDraftGaps } from "../../utils/receiptDraft";
+import { isPaydownCategory, isDebtCategory } from "../../utils/paydownCategory";
 
 const CATEGORY_CONFIG = [
   { name: "Essentials", icon: Home },
@@ -420,7 +421,7 @@ const AddTransactionModal = ({
         null;
 
       const finalTargetAccountId =
-        category === "Debt" || category === "Credit Card Payment"
+        isPaydownCategory(category)
           ? selectedTargetAccount || null
           : isEditing && category === existingTransaction?.category
           ? existingTargetId
@@ -627,7 +628,7 @@ const AddTransactionModal = ({
               >
                 {type === "expense" ? "Expense Amount" : "Income Amount"}
               </label>
-              {category === "Debt" && activeTargetObj && !amount && (
+              {isDebtCategory(category) && activeTargetObj && !amount && (
                 <button
                   type="button"
                   onClick={() => setAmount(activeTargetObj.balance.toFixed(2))}
@@ -739,7 +740,7 @@ const AddTransactionModal = ({
                     const active =
                       category === catName ||
                       (catName === "Debt" &&
-                        (category === "Credit Card Payment" || targetIsDebtOrCard));
+                        (isPaydownCategory(category) || targetIsDebtOrCard));
                     return (
                       <button
                         key={catName}
@@ -802,10 +803,8 @@ const AddTransactionModal = ({
                 </div>
               )}
 
-              {/* Pay Down Target Picker when Category === "Debt" or "Credit Card Payment" or target is debt/card */}
-              {(category === "Debt" ||
-                category === "Credit Card Payment" ||
-                Boolean(activeTargetObj)) && (
+              {/* Pay Down Target Picker for Debt, Debt Payment or Credit Card Payment, or when the target is a debt/card */}
+              {(isPaydownCategory(category) || Boolean(activeTargetObj)) && (
                 <div
                   className="relative"
                   onClick={(e) => e.stopPropagation()}
@@ -1019,7 +1018,7 @@ const AddTransactionModal = ({
               </div>
 
               {/* Custom Payment Method Picker (hidden if paying down a specific Debt/Card from Checking) */}
-              {!(category === "Debt" && selectedTargetAccount) && (
+              {!(isDebtCategory(category) && selectedTargetAccount) && (
                 <div
                   className="relative"
                   onClick={(e) => e.stopPropagation()}
